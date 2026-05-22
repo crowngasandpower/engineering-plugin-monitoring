@@ -1,0 +1,23 @@
+{
+  "name": "monitoring",
+  "version": "1.0.0",
+  "services": {
+    "grafana": {
+      "url": "http://grafana.mcp.local:3000",
+      "port": 3000
+    }
+  },
+  "tools": [],
+  "rest_proxy": [],
+  "permissions": {
+    "view_dashboards": ["admin", "engineer"]
+  },
+  "dashboard": {
+    "title": "Monitoring",
+    "icon": "chart-line",
+    "description": "Grafana dashboards for infrastructure, applications, and pricing monitoring",
+    "ui_type": "embedded",
+    "ui_path": "/grafana/",
+    "ui_service": "grafana"
+  }
+}
