@@ -16,8 +16,7 @@
     "title": "Monitoring",
     "icon": "chart-line",
     "description": "Grafana dashboards for infrastructure, applications, and pricing monitoring",
-    "ui_type": "embedded",
-    "ui_path": "/grafana/",
-    "ui_service": "grafana"
+    "ui_type": "external",
+    "external_url": "/grafana/"
   }
 }
