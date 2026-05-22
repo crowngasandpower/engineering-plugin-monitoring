@@ -10,7 +10,7 @@
   "tools": [],
   "rest_proxy": [],
   "permissions": {
-    "view_dashboards": ["admin", "engineer"]
+    "view_dashboards": ["engineer"]
   },
   "dashboard": {
     "title": "Monitoring",
