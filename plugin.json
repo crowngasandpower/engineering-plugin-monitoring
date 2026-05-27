@@ -1,10 +1,14 @@
 {
   "name": "monitoring",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "services": {
     "grafana": {
       "url": "http://grafana.mcp.local:3000",
       "port": 3000
+    },
+    "loki": {
+      "url": "http://loki.mcp.local:3100",
+      "port": 3100
     }
   },
   "tools": [],
@@ -18,5 +22,36 @@
     "description": "Grafana dashboards for infrastructure, applications, and pricing monitoring",
     "ui_type": "external",
     "external_url": "/grafana/"
-  }
+  },
+  "proxy_routes": [
+    {
+      "path_prefix": "/grafana",
+      "upstream_service": "grafana",
+      "upstream_path_prefix": "/grafana",
+      "authenticated": true,
+      "auth_headers": {
+        "user": "X-WEBAUTH-USER",
+        "role": "X-WEBAUTH-ROLE"
+      },
+      "role_map": {
+        "admin": "Admin",
+        "lead-engineer": "Editor",
+        "engineer": "Editor",
+        "*": "Viewer"
+      },
+      "unauthenticated_paths": ["/grafana/public-dashboards", "/grafana/public/"]
+    },
+    {
+      "path_prefix": "/loki",
+      "upstream_service": "loki",
+      "upstream_path_prefix": "/loki",
+      "authenticated": false
+    }
+  ],
+  "redirects": [
+    {
+      "path": "/tv",
+      "target": "/grafana/public-dashboards/e9ca7c1fef574a2e8b0f5c03a6ebcd27"
+    }
+  ]
 }
