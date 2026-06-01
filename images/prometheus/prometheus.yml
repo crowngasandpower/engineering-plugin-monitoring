@@ -342,6 +342,63 @@ scrape_configs:
         labels:
           host: apps-prod-mysql
 
+  # UniFi Site Manager — fleet overview via api.ui.com
+  - job_name: 'unifi'
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    static_configs:
+      - targets: ['192.168.164.184:9526']
+
+  # UniFi local controllers — per-device metrics via direct API
+  - job_name: 'unifi_local'
+    scrape_interval: 60s
+    scrape_timeout: 45s
+    static_configs:
+      - targets: ['192.168.164.184:9525']
+
+  # Dell OS10 switches — RESTCONF API
+  - job_name: 'dell_os10'
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    static_configs:
+      - targets: ['192.168.164.184:9523']
+
+  # Ad-hoc connectivity checks — managed via http://poc-containers:9511/connectivity
+  - job_name: 'connectivity_check'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    scrape_interval: 60s
+    scrape_timeout: 10s
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/connectivity/targets
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.164.184:9514
+
+  # Ping targets — managed via http://poc-containers:9511/ping
+  - job_name: 'ping_targets'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    scrape_interval: 60s
+    scrape_timeout: 10s
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/ping/targets
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.164.184:9514
+
   - job_name: 'blackbox'
     metrics_path: /probe
     params:

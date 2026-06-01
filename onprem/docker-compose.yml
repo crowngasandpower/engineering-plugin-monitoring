@@ -133,6 +133,8 @@ services:
   blackbox-exporter:
     image: prom/blackbox-exporter:latest
     container_name: monitoring-blackbox
+    cap_add:
+      - NET_RAW
     volumes:
     - ./blackbox.yml:/etc/blackbox_exporter/config.yml
     ports:
@@ -181,6 +183,72 @@ services:
     restart: unless-stopped
     ports:
       - "9522:3000"
+  exemption-api:
+    build: ./exemption-api
+    container_name: monitoring-exemption-api
+    environment:
+      DB_HOST: monitoring-postgres
+      DB_PORT: 5432
+      DB_NAME: monitoring
+      DB_USER: monitoring
+      DB_PASSWORD: monitoring
+    ports:
+      - "9511:8000"
+    depends_on:
+      - monitoring-postgres
+    restart: unless-stopped
+
+  unifi-exporter:
+    build: ./unifi-exporter
+    container_name: monitoring-unifi-exporter
+    environment:
+      UNIFI_API_KEY: ${UNIFI_API_KEY}
+    ports:
+      - "9526:3000"
+    restart: unless-stopped
+
+  unifi-local-exporter:
+    build: ./unifi-local-exporter
+    container_name: monitoring-unifi-local-exporter
+    environment:
+      UNIFI_1_URL: ${UNIFI_1_URL}
+      UNIFI_1_NAME: ${UNIFI_1_NAME:-site1}
+      UNIFI_1_API_KEY: ${UNIFI_1_API_KEY}
+      UNIFI_1_SITE: ${UNIFI_1_SITE:-default}
+      UNIFI_2_URL: ${UNIFI_2_URL:-}
+      UNIFI_2_NAME: ${UNIFI_2_NAME:-}
+      UNIFI_2_API_KEY: ${UNIFI_2_API_KEY:-}
+      UNIFI_2_SITE: ${UNIFI_2_SITE:-default}
+      UNIFI_3_URL: ${UNIFI_3_URL:-}
+      UNIFI_3_NAME: ${UNIFI_3_NAME:-}
+      UNIFI_3_API_KEY: ${UNIFI_3_API_KEY:-}
+      UNIFI_3_SITE: ${UNIFI_3_SITE:-default}
+      UNIFI_4_URL: ${UNIFI_4_URL:-}
+      UNIFI_4_NAME: ${UNIFI_4_NAME:-}
+      UNIFI_4_API_KEY: ${UNIFI_4_API_KEY:-}
+      UNIFI_4_SITE: ${UNIFI_4_SITE:-default}
+    ports:
+      - "9525:3000"
+    restart: unless-stopped
+
+  dell-os10-exporter:
+    build: ./dell-os10-exporter
+    container_name: monitoring-dell-os10-exporter
+    environment:
+      OS10_USER: ${OS10_USER:-readonly}
+      OS10_PASSWORD: ${OS10_PASSWORD}
+      OS10_1_ADDRESS: ${OS10_1_ADDRESS}
+      OS10_1_NAME: ${OS10_1_NAME:-hq-sw1}
+      OS10_2_ADDRESS: ${OS10_2_ADDRESS:-}
+      OS10_2_NAME: ${OS10_2_NAME:-}
+      OS10_3_ADDRESS: ${OS10_3_ADDRESS:-}
+      OS10_3_NAME: ${OS10_3_NAME:-}
+      OS10_4_ADDRESS: ${OS10_4_ADDRESS:-}
+      OS10_4_NAME: ${OS10_4_NAME:-}
+    ports:
+      - "9523:3000"
+    restart: unless-stopped
+
 volumes:
   pushgateway_data: null
   powerstore_sd: null
