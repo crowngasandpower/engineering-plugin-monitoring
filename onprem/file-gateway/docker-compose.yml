@@ -1,0 +1,39 @@
+services:
+  file-gateway:
+    build: .
+    image: file-gateway:latest
+    container_name: monitoring-file-gateway
+    ports:
+      - "9530:3000"
+    environment:
+      FILE_GATEWAY_ACCESS_KEY: ${FILE_GATEWAY_ACCESS_KEY:-crown-gateway}
+      FILE_GATEWAY_SECRET_KEY: ${FILE_GATEWAY_SECRET_KEY}
+    volumes:
+      - /mnt/genus/production:/mnt/genus/production
+      - /mnt/genus-elec/production:/mnt/genus-elec/production
+      - /mnt/crown-storage:/mnt/crown-storage
+      - /mnt/gdrive:/mnt/gdrive
+      - /mnt/pdrive:/mnt/pdrive
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.file-gateway.rule=Host(`s3gateway.cgp3.co.uk`)"
+      - "traefik.http.routers.file-gateway.entrypoints=websecure"
+      - "traefik.http.routers.file-gateway.tls.certresolver=letsencrypt"
+      - "traefik.http.services.file-gateway.loadbalancer.server.port=3000"
+    networks:
+      - default
+      - traefik_public
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    mem_limit: 256m
+
+networks:
+  traefik_public:
+    external: true
+    name: jenkins-poc_traefik_public

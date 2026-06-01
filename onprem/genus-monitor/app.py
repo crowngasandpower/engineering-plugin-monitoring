@@ -655,7 +655,7 @@ def collect_eps_pricing_metrics():
                 # Pre-CT-1673 these jobs ran on `default`; post-CT-1673 they
                 # are split across dedicated supervisors. Include both so the
                 # metric is correct in either configuration.
-                pricing_queues = {'default', 'pricing-vcc', 'pricing-hh', 'pricing-nhh'}
+                pricing_queues = {'default', 'pricing-vcc', 'pricing-hh', 'pricing-nhh', 'pricing-hh-small', 'pricing-hh-large', 'pricing-nhh-small', 'pricing-nhh-large'}
                 pending_ids = r.zrange(f"{prefix}pending_jobs", 0, -1)
                 one_hour_ago = uk_now.timestamp() - 3600
                 all_default_jobs = []  # (site_id, created_ts)

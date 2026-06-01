@@ -1,0 +1,26 @@
+# Postgres bind-mount data — never commit
+data/
+
+# Local secrets
+.env
+.env.local
+
+# Local compose overrides (machine-specific port remappings etc.)
+docker-compose.override.yml
+
+# PowerStore exporter — cloned from github.com/dell/powerstore-metrics-exporter
+# config.yml contains credentials, neither file is committed
+powerstore-monitor/
+
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

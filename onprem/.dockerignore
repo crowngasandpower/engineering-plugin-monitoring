@@ -1,0 +1,2 @@
+# Exclude large/irrelevant directories from the powerstore-exporter build context
+data/

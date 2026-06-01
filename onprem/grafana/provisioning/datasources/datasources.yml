@@ -1,0 +1,68 @@
+apiVersion: 1
+
+# NB: the Loki datasource is intentionally NOT provisioned here — it was
+# added via the Grafana UI and lives in the grafana_data named volume,
+# which re-attaches when this stack starts under the `monitoring` project
+# name. Provisioning a Loki entry here would either duplicate it or change
+# its UID, breaking dashboards that reference it.
+
+# Pre-cutover the grafana_data volume held a single "PostgreSQL" datasource
+# with UID PCC52D03280B7034C pointing at the (then-shared) postgres. After
+# the split we want TWO postgres datasources (cross-stack to the review-api
+# postgres, in-stack to the monitoring postgres) but Grafana provisioning
+# can't repurpose the old one with a different UID. Delete it here so the
+# `datasources:` block below can re-create both cleanly.
+deleteDatasources:
+  - name: PostgreSQL
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    uid: PBFA97CFB590B2093
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  # NAMED reference target.
+  # The Code Review dashboard references its datasource by name ("PostgreSQL"),
+  # so this entry stays named PostgreSQL and points cross-stack at the
+  # crown-engineering-mcp postgres (which holds the `reviews` table).
+  - name: PostgreSQL
+    uid: review-api-postgres
+    type: postgres
+    access: proxy
+    # Cross-stack: use poc-containers' actual IP. Inside this container,
+    # `poc-containers` resolves to 127.0.1.1 (the container itself) because
+    # Docker copies the host's /etc/hosts entry. Using the host IP explicitly
+    # avoids that.
+    url: 192.168.164.184:9504
+    user: codereview
+    secureJsonData:
+      password: codereview
+    jsonData:
+      database: codereview
+      sslmode: disable
+    isDefault: false
+    editable: false
+
+  # UID reference target.
+  # The Genus dashboards reference their datasource by UID
+  # (PCC52D03280B7034C — Grafana's stock postgres datasource UID).
+  # This entry preserves that UID and points at the in-stack monitoring
+  # postgres (which holds genus_file_status, ewelcome_form_status,
+  # eps_failed_to_price after the migration).
+  - name: PostgreSQL Monitoring
+    uid: PCC52D03280B7034C
+    type: postgres
+    access: proxy
+    url: monitoring-postgres:5432
+    user: monitoring
+    secureJsonData:
+      password: monitoring
+    jsonData:
+      database: monitoring
+      sslmode: disable
+    isDefault: false
+    editable: false

@@ -67,17 +67,30 @@ on 3100 (see `engineering-tools-framework/terraform/ecs/security_groups.tf`).
 plugin.json              MCP manifest — surfaces Grafana (/grafana, authed +
                          role-mapped), Loki (/loki, unauth for push), /tv redirect.
 buildspec.yml            CodeBuild: build+push the 3 images, force-redeploy ECS.
-images/                  AWS Fargate image build contexts:
+images/                  AWS Fargate image build contexts (what CodeBuild builds):
   grafana/    Dockerfile + provisioning/ (AWS datasources→*.mcp.local + alerting) + dashboards/
   loki/       Dockerfile + loki-config.yml
   prometheus/ Dockerfile + prometheus.yml  (the VPN-pull scrape config — the lynchpin)
-collectors/              On-prem bridge containers (run on poc-containers):
-  docker-compose.yml     run definitions (project: monitoring-collectors)
-  metrics-proxy/nginx.conf   :9550 scrape router + :9551 loki push-proxy
-  alloy/alloy.config         cAdvisor docker metrics → remote_write
-exporters/               Custom Prometheus exporter source (built/run on poc-containers):
-  genus-monitor/  powerstore-exporter/  weather-exporter/  idrac-monitor/
+onprem/                  The poc-containers stack — a faithful copy of what runs on
+                         192.168.164.184 (:/home/docker/monitoring). Deployed THERE, not on AWS:
+  docker-compose.yml         the `monitoring` compose project (exporters, pushgateway,
+                             legacy on-prem prometheus/loki/grafana, proxies)
+  prometheus.yml, loki-config.yml, blackbox.yml, init.sql   on-prem configs
+  grafana/                   on-prem Grafana provisioning + dashboards (legacy)
+  genus-monitor/             custom exporter → room_temperature_celsius (server-room temps)
+  powerstore-exporter/ weather-exporter/ idrac-monitor/   custom exporters
+  error-diagnosis/ supervisor-monitor/ grafana-proxy/ jenkins-proxy/ file-gateway/
+  alloy/alloy.config         cAdvisor docker metrics → remote_write (standalone container)
+  metrics-proxy-nginx.conf   :9550 scrape router + :9551 loki push-proxy (standalone)
+  collectors-compose.yml     run definitions for the two standalone bridge containers
+                             (alloy + metrics-proxy; project: monitoring-collectors)
 ```
+
+> **AWS vs on-prem configs deliberately differ.** `images/prometheus/prometheus.yml`
+> is the AWS scrape config (pulls on-prem over the VPN); `onprem/prometheus.yml` is
+> the legacy on-prem scrape config. Likewise the Grafana datasources/dashboards under
+> `images/grafana` (AWS, prod) vs `onprem/grafana` (legacy). Dashboards are NOT yet
+> reconciled between the two — `images/` is what prod serves.
 
 ---
 
@@ -102,13 +115,24 @@ Dashboards are file-provisioned (baked into the grafana image). To change a
 dashboard or the incident counter, edit the JSON here and rebuild — there is no
 live UI editing of provisioned dashboards.
 
-## Deploy (on-prem collectors)
+## Deploy (on-prem stack + collectors)
 
-On poc-containers, from a checkout of this repo:
+The on-prem stack runs on **poc-containers** (`192.168.164.184`) out of
+`/home/docker/monitoring`, which historically tracked the old
+`crowngasandpower/monitoring` repo. `onprem/` here is the authoritative copy.
 
 ```bash
-cd collectors && docker compose -p monitoring-collectors up -d
+# main stack (compose project name MUST stay "monitoring" so named volumes re-attach)
+cd onprem && docker compose -p monitoring up -d
+# the two standalone bridge containers (alloy + metrics-proxy)
+docker compose -f onprem/collectors-compose.yml -p monitoring-collectors up -d
 ```
+
+> ⚠️ Re-pointing the live poc-containers checkout at this repo is a maintenance-window
+> task (the directory layout moved under `onprem/`, and recreating containers briefly
+> disrupts scraping). The running stack was left untouched during consolidation; do the
+> re-clone deliberately, preserving the `monitoring` project name and the git-ignored
+> `data/` and `.env` files.
 
 ## MCP plugin
 

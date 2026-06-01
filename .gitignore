@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 *.tfplan
 .env
+
+# on-prem stack local artifacts
+onprem/data/
+onprem/powerstore-monitor/
+onprem/docker-compose.override.yml

@@ -1,0 +1,283 @@
+name: monitoring
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: monitoring-prometheus
+    volumes:
+    - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    - prometheus_data:/prometheus
+    - powerstore_sd:/etc/prometheus/sd:ro
+    ports:
+    - 9500:9090
+    restart: unless-stopped
+    extra_hosts:
+    - swarm1:192.168.164.67
+    - swarm2:192.168.164.68
+    - swarm3:192.168.164.69
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: monitoring-pushgateway
+    command:
+    - --persistence.file=/data/pushgateway.dat
+    volumes:
+    - pushgateway_data:/data
+    ports:
+    - 9501:9091
+    restart: unless-stopped
+  loki:
+    image: grafana/loki:3.5.0
+    container_name: monitoring-loki
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+    - ./loki-config.yml:/etc/loki/config.yml
+    - loki_data:/loki
+    ports:
+    - 9503:3100
+    restart: unless-stopped
+  monitoring-postgres:
+    image: postgres:16-alpine
+    container_name: monitoring-postgres
+    environment:
+      POSTGRES_USER: monitoring
+      POSTGRES_PASSWORD: monitoring
+      POSTGRES_DB: monitoring
+    volumes:
+    - ./data/postgres:/var/lib/postgresql/data
+    - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+    - 9508:5432
+    restart: unless-stopped
+  monitoring-postgrest:
+    image: postgrest/postgrest:latest
+    container_name: monitoring-postgrest
+    environment:
+      PGRST_DB_URI: postgres://monitoring:monitoring@monitoring-postgres:5432/monitoring
+      PGRST_DB_ANON_ROLE: monitoring
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:9509
+    ports:
+    - 9509:3000
+    depends_on:
+    - monitoring-postgres
+    restart: unless-stopped
+  genus-monitor:
+    build: ./genus-monitor
+    container_name: monitoring-genus-monitor
+    environment:
+      GENUS_GAS_HOST: ${GENUS_GAS_HOST}
+      GENUS_GAS_DB: ${GENUS_GAS_DB}
+      GENUS_GAS_USER: ${GENUS_GAS_USER}
+      GENUS_GAS_PASSWORD: ${GENUS_GAS_PASSWORD}
+      GENUS_ELEC_HOST: ${GENUS_ELEC_HOST:-}
+      GENUS_ELEC_DB: ${GENUS_ELEC_DB:-}
+      GENUS_ELEC_USER: ${GENUS_ELEC_USER:-}
+      GENUS_ELEC_PASSWORD: ${GENUS_ELEC_PASSWORD:-}
+      MYSQL_HOST: ${MYSQL_HOST:-}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-}
+      PG_HOST: monitoring-postgres
+      PG_PORT: 5432
+      PG_DB: monitoring
+      PG_USER: monitoring
+      PG_PASSWORD: monitoring
+      EPS_REDIS_HOST: ${EPS_REDIS_HOST:-}
+      EPS_REDIS_PORT: ${EPS_REDIS_PORT:-6379}
+      EPS_REDIS_PASSWORD: ${EPS_REDIS_PASSWORD:-}
+      EPS_REDIS_PREFIX: ${EPS_REDIS_PREFIX:-eps_horizon:}
+      PRTG_URL: ${PRTG_URL:-}
+      PRTG_API_TOKEN: ${PRTG_API_TOKEN:-}
+      POWERSTORE_HOST: ${POWERSTORE_HOST:-}
+      POWERSTORE_USER: ${POWERSTORE_USER:-}
+      POWERSTORE_PASSWORD: ${POWERSTORE_PASSWORD:-}
+      UBIBOT_1_CHANNEL_ID: ${UBIBOT_1_CHANNEL_ID:-}
+      UBIBOT_1_API_KEY: ${UBIBOT_1_API_KEY:-}
+      UBIBOT_1_NAME: ${UBIBOT_1_NAME:-}
+      UBIBOT_2_CHANNEL_ID: ${UBIBOT_2_CHANNEL_ID:-}
+      UBIBOT_2_API_KEY: ${UBIBOT_2_API_KEY:-}
+      UBIBOT_2_NAME: ${UBIBOT_2_NAME:-}
+      UBIBOT_3_CHANNEL_ID: ${UBIBOT_3_CHANNEL_ID:-}
+      UBIBOT_3_API_KEY: ${UBIBOT_3_API_KEY:-}
+      UBIBOT_3_NAME: ${UBIBOT_3_NAME:-}
+      UBIBOT_4_CHANNEL_ID: ${UBIBOT_4_CHANNEL_ID:-}
+      UBIBOT_4_API_KEY: ${UBIBOT_4_API_KEY:-}
+      UBIBOT_4_NAME: ${UBIBOT_4_NAME:-}
+      POLL_INTERVAL_SECONDS: 30
+    ports:
+    - 9507:3000
+    depends_on:
+    - monitoring-postgres
+    restart: unless-stopped
+  powerstore-exporter:
+    build:
+      context: .
+      dockerfile: powerstore-exporter/Dockerfile
+    container_name: monitoring-powerstore-exporter
+    environment:
+      POWERSTORE_API_VERSION: ${POWERSTORE_API_VERSION:-1.0}
+      POWERSTORE_USER: ${POWERSTORE_EXPORTER_USER}
+      POWERSTORE_PASSWORD: ${POWERSTORE_EXPORTER_PASSWORD}
+      POWERSTORE_1_ADDRESS: ${POWERSTORE_1_ADDRESS}
+      POWERSTORE_1_NAME: ${POWERSTORE_1_NAME:-}
+      POWERSTORE_2_ADDRESS: ${POWERSTORE_2_ADDRESS:-}
+      POWERSTORE_2_NAME: ${POWERSTORE_2_NAME:-}
+      POWERSTORE_3_ADDRESS: ${POWERSTORE_3_ADDRESS:-}
+      POWERSTORE_3_NAME: ${POWERSTORE_3_NAME:-}
+      POWERSTORE_4_ADDRESS: ${POWERSTORE_4_ADDRESS:-}
+      POWERSTORE_4_NAME: ${POWERSTORE_4_NAME:-}
+    volumes:
+    - powerstore_sd:/sd
+    ports:
+    - 9521:9010
+    restart: unless-stopped
+  idrac-exporter:
+    image: ghcr.io/mrlhansen/idrac_exporter:latest
+    container_name: monitoring-idrac-exporter
+    environment:
+      IDRAC_USERNAME: ${IDRAC_USERNAME}
+      IDRAC_PASSWORD: ${IDRAC_PASSWORD}
+    volumes:
+    - ./idrac-monitor/idrac.yml:/etc/prometheus/idrac.yml:ro
+    ports:
+    - 9516:9348
+    restart: unless-stopped
+  vmware-exporter:
+    image: ghcr.io/prezhdarov/vmware-exporter:v0.1.17
+    container_name: monitoring-vmware-exporter
+    command:
+    - -envflag.enable=true
+    environment:
+      vmware_vcenter: ${VCENTER_HOST}:443
+      vmware_username: ${VCENTER_USER}
+      vmware_password: ${VCENTER_PASSWORD}
+      vmware_schema: https
+      vmware_insecureTLS: ${VCENTER_IGNORE_SSL:-false}
+    ports:
+    - 9515:9169
+    restart: unless-stopped
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: monitoring-blackbox
+    volumes:
+    - ./blackbox.yml:/etc/blackbox_exporter/config.yml
+    ports:
+    - 9514:9115
+    restart: unless-stopped
+  grafana:
+    image: grafana/grafana:latest
+    container_name: monitoring-grafana
+    volumes:
+    - grafana_data:/var/lib/grafana
+    - ./grafana/provisioning:/etc/grafana/provisioning
+    - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+    - GF_SECURITY_ADMIN_USER=admin
+    - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-crown2026}
+    - GF_USERS_ALLOW_SIGN_UP=false
+    - GF_SERVER_ROOT_URL=http://grafana.poc.crowngasandpower.co.uk/
+    - GF_PANELS_DISABLE_SANITIZE_HTML=true
+    - GF_AUTH_PROXY_ENABLED=true
+    - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
+    - GF_AUTH_PROXY_HEADER_PROPERTY=username
+    - GF_AUTH_PROXY_HEADERS=Role:X-WEBAUTH-ROLE
+    - GF_AUTH_PROXY_AUTO_SIGN_UP=true
+    - GF_AUTH_PROXY_SYNC_TTL=60
+    - GF_AUTH_LDAP_ENABLED=false
+    - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+    depends_on:
+    - monitoring-postgres
+    restart: unless-stopped
+  jenkins-proxy:
+    build: ./jenkins-proxy
+    container_name: monitoring-jenkins-proxy
+    extra_hosts:
+    - host.docker.internal:host-gateway
+    ports:
+    - 9519:3000
+    networks:
+    - default
+    - traefik_public
+    labels:
+    - traefik.enable=true
+    - traefik.http.routers.jenkins-auth.rule=Host(`jenkins.poc.crowngasandpower.co.uk`)
+    - traefik.http.routers.jenkins-auth.entrypoints=web
+    - traefik.http.services.jenkins-auth.loadbalancer.server.port=3000
+    - traefik.docker.network=jenkins-poc_traefik_public
+    restart: unless-stopped
+  grafana-proxy:
+    build: ./grafana-proxy
+    container_name: monitoring-grafana-proxy
+    extra_hosts:
+    - host.docker.internal:host-gateway
+    ports:
+    - 9502:3000
+    networks:
+    - default
+    - traefik_public
+    labels:
+    - traefik.enable=true
+    - traefik.http.routers.grafana-auth.rule=Host(`grafana.poc.crowngasandpower.co.uk`)
+    - traefik.http.routers.grafana-auth.entrypoints=web
+    - traefik.http.services.grafana-auth.loadbalancer.server.port=3000
+    - traefik.docker.network=jenkins-poc_traefik_public
+    - traefik.http.routers.grafana-kiosk.rule=Host(`192.168.173.140`)
+    - traefik.http.routers.grafana-kiosk.entrypoints=web
+    - traefik.http.routers.grafana-kiosk.service=grafana-auth
+    - traefik.http.routers.grafana-kiosk.middlewares=grafana-kiosk-redirect
+    - traefik.http.middlewares.grafana-kiosk-redirect.redirectregex.regex=^http://192\.168\.173\.140/?$$
+    - traefik.http.middlewares.grafana-kiosk-redirect.redirectregex.replacement=http://192.168.173.140/public-dashboards/abfb6befdeed44f4b9ae481e5ef12b16
+    depends_on:
+    - grafana
+    restart: unless-stopped
+  error-diagnosis:
+    build: ./error-diagnosis
+    container_name: monitoring-error-diagnosis
+    read_only: true
+    tmpfs:
+    - /tmp
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+    environment:
+      ANTHROPIC_API_KEY_DIAGNOSIS: ${ANTHROPIC_API_KEY_DIAGNOSIS:-}
+      ANTHROPIC_API_KEY_INVESTIGATE: ${ANTHROPIC_API_KEY_INVESTIGATE:-}
+      DIAGNOSIS_CLAUDE_MODEL: ${DIAGNOSIS_CLAUDE_MODEL:-claude-sonnet-4-6}
+      JIRA_API_TOKEN: ${JIRA_API_TOKEN:-}
+      JIRA_PROJECT: ${JIRA_PROJECT:-CT}
+      JIRA_SITE_URL: ${JIRA_SITE_URL:-https://crowngasandpower-team-delivery.atlassian.net}
+      MYSQL_HOST: ${MYSQL_HOST:-}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_ORG: ${GITHUB_ORG:-crowngasandpower}
+      DIAGNOSIS_TEAMS_WEBHOOK_URL: ${DIAGNOSIS_TEAMS_WEBHOOK_URL:-}
+      DIAGNOSIS_COOLDOWN_HOURS: ${DIAGNOSIS_COOLDOWN_HOURS:-4}
+      TEAMS_TENANT_ID: ${TEAMS_TENANT_ID:-}
+      TEAMS_CLIENT_ID: ${TEAMS_CLIENT_ID:-}
+      TEAMS_CLIENT_SECRET: ${TEAMS_CLIENT_SECRET:-}
+      TEAMS_TEAM_ID: ${TEAMS_TEAM_ID:-}
+      TEAMS_CHANNEL_ID: ${TEAMS_CHANNEL_ID:-}
+      TEAMS_POLL_INTERVAL: ${TEAMS_POLL_INTERVAL:-15}
+      TEAMS_REPLY_WEBHOOK_URL: ${TEAMS_REPLY_WEBHOOK_URL:-}
+    ports:
+    - 9524:3000
+    restart: unless-stopped
+  weather-exporter:
+    build: ./weather-exporter
+    container_name: monitoring-weather-exporter
+    environment:
+      WEATHER_LOCATIONS: ${WEATHER_LOCATIONS:-bury:53.5933:-2.2966}
+    restart: unless-stopped
+    ports:
+      - "9522:3000"
+volumes:
+  prometheus_data: null
+  pushgateway_data: null
+  grafana_data: null
+  loki_data: null
+  powerstore_sd: null
+networks:
+  traefik_public:
+    external: true
+    name: jenkins-poc_traefik_public
