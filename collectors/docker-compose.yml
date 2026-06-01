@@ -1,0 +1,43 @@
+# On-prem collectors that run on poc-containers (192.168.164.184).
+#
+# These were previously started as bare `docker run` containers with no
+# committed definition. They are NOT part of the legacy `monitoring` compose
+# project — they bridge the on-prem estate to the AWS monitoring stack:
+#
+#   metrics-proxy : :9550  scrape path-router  — AWS Prometheus PULLS on-prem
+#                                                 exporters through this over the VPN
+#                   :9551  loki push-proxy     — app-host log shippers PUSH through
+#                                                 here → https://tools.cgp3.co.uk → ALB → Loki
+#   alloy         : cAdvisor docker-container metrics → remote_write to Prometheus
+#
+# Deploy:  docker compose -p monitoring-collectors up -d
+# (kept project-separate from the legacy `monitoring` stack on the same host)
+
+services:
+  metrics-proxy:
+    image: nginx:alpine
+    container_name: monitoring-metrics-proxy
+    restart: unless-stopped
+    volumes:
+      - ./metrics-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "9550:9550"   # metrics scrape router (AWS Prometheus → on-prem exporters)
+      - "9551:9551"   # loki push proxy (app-host log shippers → AWS Loki via ALB)
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: monitoring-alloy
+    restart: unless-stopped
+    command: ["run", "/etc/alloy/alloy.config"]
+    environment:
+      # Label applied to every cAdvisor series so AWS Prometheus can group by host
+      ALLOY_HOST_LABEL: "${ALLOY_HOST_LABEL:-poc-containers}"
+    volumes:
+      - ./alloy:/etc/alloy:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "9527:12345"  # Alloy UI / metrics
