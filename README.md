@@ -144,6 +144,24 @@ docker compose -f onprem/collectors-compose.yml -p monitoring-collectors up -d
 
 ---
 
+## Alerting (PagerDuty)
+
+Grafana alerting rules + the PagerDuty contact point live in
+`grafana/provisioning/alerting/alerting.yml`. The substantive iDRAC / PowerStore
+/ vCenter ruleset + PagerDuty routing (migrated from the archived
+`crowngasandpower/monitoring` PR #18) currently sits under **`onprem/`**, where it
+was authored and tested against the on-prem Grafana.
+
+**Not yet live on the AWS prod Grafana.** To activate paging on prod:
+1. Obtain the PagerDuty Events API v2 integration key (PagerDuty service → Integrations).
+2. Store it as a Secrets Manager secret and reference it from the grafana ECS task
+   def (`GF`-style env / `secrets`) in `monitoring.tf`, like `GF_DATABASE_PASSWORD`.
+3. Promote the validated `alerting.yml` into `images/grafana/provisioning/alerting/`
+   and rebuild via `crown-eng-mcp-monitoring-build`.
+
+Done blind, an untested 1965-line alerting config can break Grafana provisioning on
+startup — validate before promoting.
+
 ## App-host agents (documented, not deployed from here)
 
 The per-machine exporters and log shippers on the app hosts are host-level
