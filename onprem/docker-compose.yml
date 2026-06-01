@@ -183,6 +183,7 @@ services:
     - GF_AUTH_PROXY_SYNC_TTL=60
     - GF_AUTH_LDAP_ENABLED=false
     - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+    - PAGERDUTY_PLATFORM_INTEGRATION_KEY=${PAGERDUTY_PLATFORM_INTEGRATION_KEY:-}
     depends_on:
     - monitoring-postgres
     restart: unless-stopped
