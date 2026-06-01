@@ -10,16 +10,6 @@ services:
     ports:
     - 9501:9091
     restart: unless-stopped
-  loki:
-    image: grafana/loki:3.5.0
-    container_name: monitoring-loki
-    command: -config.file=/etc/loki/config.yml
-    volumes:
-    - ./loki-config.yml:/etc/loki/config.yml
-    - loki_data:/loki
-    ports:
-    - 9503:3100
-    restart: unless-stopped
   monitoring-postgres:
     image: postgres:16-alpine
     container_name: monitoring-postgres
@@ -210,7 +200,6 @@ services:
       - "9522:3000"
 volumes:
   pushgateway_data: null
-  loki_data: null
   powerstore_sd: null
 networks:
   traefik_public:
