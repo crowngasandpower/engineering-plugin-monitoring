@@ -162,31 +162,6 @@ services:
     ports:
     - 9514:9115
     restart: unless-stopped
-  grafana:
-    image: grafana/grafana:latest
-    container_name: monitoring-grafana
-    volumes:
-    - grafana_data:/var/lib/grafana
-    - ./grafana/provisioning:/etc/grafana/provisioning
-    - ./grafana/dashboards:/var/lib/grafana/dashboards
-    environment:
-    - GF_SECURITY_ADMIN_USER=admin
-    - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-crown2026}
-    - GF_USERS_ALLOW_SIGN_UP=false
-    - GF_SERVER_ROOT_URL=http://grafana.poc.crowngasandpower.co.uk/
-    - GF_PANELS_DISABLE_SANITIZE_HTML=true
-    - GF_AUTH_PROXY_ENABLED=true
-    - GF_AUTH_PROXY_HEADER_NAME=X-WEBAUTH-USER
-    - GF_AUTH_PROXY_HEADER_PROPERTY=username
-    - GF_AUTH_PROXY_HEADERS=Role:X-WEBAUTH-ROLE
-    - GF_AUTH_PROXY_AUTO_SIGN_UP=true
-    - GF_AUTH_PROXY_SYNC_TTL=60
-    - GF_AUTH_LDAP_ENABLED=false
-    - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
-    - PAGERDUTY_PLATFORM_INTEGRATION_KEY=${PAGERDUTY_PLATFORM_INTEGRATION_KEY:-}
-    depends_on:
-    - monitoring-postgres
-    restart: unless-stopped
   jenkins-proxy:
     build: ./jenkins-proxy
     container_name: monitoring-jenkins-proxy
@@ -203,31 +178,6 @@ services:
     - traefik.http.routers.jenkins-auth.entrypoints=web
     - traefik.http.services.jenkins-auth.loadbalancer.server.port=3000
     - traefik.docker.network=jenkins-poc_traefik_public
-    restart: unless-stopped
-  grafana-proxy:
-    build: ./grafana-proxy
-    container_name: monitoring-grafana-proxy
-    extra_hosts:
-    - host.docker.internal:host-gateway
-    ports:
-    - 9502:3000
-    networks:
-    - default
-    - traefik_public
-    labels:
-    - traefik.enable=true
-    - traefik.http.routers.grafana-auth.rule=Host(`grafana.poc.crowngasandpower.co.uk`)
-    - traefik.http.routers.grafana-auth.entrypoints=web
-    - traefik.http.services.grafana-auth.loadbalancer.server.port=3000
-    - traefik.docker.network=jenkins-poc_traefik_public
-    - traefik.http.routers.grafana-kiosk.rule=Host(`192.168.173.140`)
-    - traefik.http.routers.grafana-kiosk.entrypoints=web
-    - traefik.http.routers.grafana-kiosk.service=grafana-auth
-    - traefik.http.routers.grafana-kiosk.middlewares=grafana-kiosk-redirect
-    - traefik.http.middlewares.grafana-kiosk-redirect.redirectregex.regex=^http://192\.168\.173\.140/?$$
-    - traefik.http.middlewares.grafana-kiosk-redirect.redirectregex.replacement=http://192.168.173.140/public-dashboards/abfb6befdeed44f4b9ae481e5ef12b16
-    depends_on:
-    - grafana
     restart: unless-stopped
   error-diagnosis:
     build: ./error-diagnosis
@@ -275,7 +225,6 @@ services:
 volumes:
   prometheus_data: null
   pushgateway_data: null
-  grafana_data: null
   loki_data: null
   powerstore_sd: null
 networks:

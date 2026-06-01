@@ -74,23 +74,22 @@ images/                  AWS Fargate image build contexts (what CodeBuild builds
 onprem/                  The poc-containers stack — a faithful copy of what runs on
                          192.168.164.184 (:/home/docker/monitoring). Deployed THERE, not on AWS:
   docker-compose.yml         the `monitoring` compose project (exporters, pushgateway,
-                             legacy on-prem prometheus/loki/grafana, proxies)
+                             legacy on-prem prometheus/loki, jenkins-proxy)
   prometheus.yml, loki-config.yml, blackbox.yml, init.sql   on-prem configs
-  grafana/                   on-prem Grafana provisioning + dashboards (legacy)
   genus-monitor/             custom exporter → room_temperature_celsius (server-room temps)
   powerstore-exporter/ weather-exporter/ idrac-monitor/   custom exporters
-  error-diagnosis/ supervisor-monitor/ grafana-proxy/ jenkins-proxy/ file-gateway/
+  error-diagnosis/ supervisor-monitor/ jenkins-proxy/ file-gateway/
   alloy/alloy.config         cAdvisor docker metrics → remote_write (standalone container)
   metrics-proxy-nginx.conf   :9550 scrape router + :9551 loki push-proxy (standalone)
   collectors-compose.yml     run definitions for the two standalone bridge containers
                              (alloy + metrics-proxy; project: monitoring-collectors)
 ```
 
-> **AWS vs on-prem configs deliberately differ.** `images/prometheus/prometheus.yml`
-> is the AWS scrape config (pulls on-prem over the VPN); `onprem/prometheus.yml` is
-> the legacy on-prem scrape config. Likewise the Grafana datasources/dashboards under
-> `images/grafana` (AWS, prod) vs `onprem/grafana` (legacy). Dashboards are NOT yet
-> reconciled between the two — `images/` is what prod serves.
+> **Grafana runs on AWS only.** The on-prem Grafana (+ its auth proxy) was
+> decommissioned 2026-06-01 — `images/grafana` is the one and only Grafana now.
+> The legacy on-prem **prometheus/loki** still run on poc-containers (alongside the
+> AWS ones) but feed nothing critical; `onprem/prometheus.yml` is their scrape config,
+> distinct from the AWS scrape config in `images/prometheus/prometheus.yml`.
 
 ---
 
@@ -153,11 +152,10 @@ live: the PagerDuty `integrationKey` reads `${PAGERDUTY_PLATFORM_INTEGRATION_KEY
 wired as an ECS secret (Secrets Manager `crown-eng-mcp/pagerduty-platform-key`) in
 `monitoring.tf`.
 
-> ⚠️ **Do NOT put the PagerDuty contact point in `onprem/`.** The on-prem Grafana
-> has no PagerDuty key in its `.env`, and Grafana treats an empty `integrationKey`
-> as a **fatal** provisioning error (`could not find integration key property`) —
-> it crash-loops on startup. The on-prem Grafana keeps its original Teams-only
-> alerting and is due for decommissioning; AWS is the only place that pages.
+> The on-prem Grafana was removed (2026-06-01), so AWS is the only Grafana and the
+> only place that pages. (Historical note: an empty PagerDuty `integrationKey` is a
+> **fatal** Grafana provisioning error — `could not find integration key property` —
+> which is why the contact point only belongs where the key is actually wired: AWS.)
 
 ## App-host agents (documented, not deployed from here)
 
