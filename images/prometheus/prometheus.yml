@@ -14,8 +14,8 @@ scrape_configs:
       - targets: ['192.168.164.184:9507']
 
   # Weather exporter — outside temperature for the server-room dashboards.
-  # Requires the weather-exporter to publish host port 9520 (see
-  # collectors/docker-compose note); the on-prem compose maps 9522:3000.
+  # The on-prem compose maps weather-exporter 9522:3000 (9520 was taken by
+  # crown-mcp-diff-harness-api).
   - job_name: 'weather'
     scrape_interval: 60s
     scrape_timeout: 15s
