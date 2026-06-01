@@ -1,0 +1,62 @@
+version: 0.2
+
+# CodeBuild project: crown-eng-mcp-monitoring-build
+# Source: this repo (crowngasandpower/engineering-plugin-monitoring)
+# Builds the three AWS monitoring images and (optionally) force-redeploys
+# their ECS services. Mirrors the framework buildspec's DEPLOY_CLUSTER pattern.
+#
+# Required env vars (set on the CodeBuild project):
+#   AWS_ACCOUNT_ID, AWS_DEFAULT_REGION
+#   ECR_REPO_PREFIX   = crown-eng-mcp
+#   DEPLOY_CLUSTER    = crown-eng-mcp-cluster   (omit to push-only, no redeploy)
+
+phases:
+  pre_build:
+    commands:
+      - echo "Logging in to ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION |
+          docker login --username AWS --password-stdin
+          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:-latest}
+      - ECR_BASE="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPO_PREFIX"
+
+  build:
+    commands:
+      - echo "Building monitoring images..."
+      - |
+        build_and_tag() {
+          local svc="$1" ctx="$2"
+          echo "--- Building $svc from $ctx ---"
+          docker build -t "$ECR_BASE/$svc:$IMAGE_TAG" -t "$ECR_BASE/$svc:latest" "$ctx"
+        }
+        build_and_tag grafana    images/grafana
+        build_and_tag loki       images/loki
+        build_and_tag prometheus images/prometheus
+
+  post_build:
+    commands:
+      - echo "Pushing images to ECR..."
+      - |
+        push_image() {
+          local svc="$1"
+          echo "--- Pushing $svc ---"
+          docker push "$ECR_BASE/$svc:$IMAGE_TAG"
+          docker push "$ECR_BASE/$svc:latest"
+        }
+        push_image grafana
+        push_image loki
+        push_image prometheus
+      - echo "All images pushed at $(date)"
+      - |
+        if [ -n "$DEPLOY_CLUSTER" ]; then
+          echo "Forcing ECS redeployment on $DEPLOY_CLUSTER..."
+          for svc in grafana loki prometheus; do
+            echo "--- Redeploying $svc ---"
+            aws ecs update-service --cluster "$DEPLOY_CLUSTER" --service "$svc" \
+              --force-new-deployment --no-cli-pager 2>/dev/null || echo "  (service $svc not found, skipping)"
+          done
+          echo "ECS redeployment triggered at $(date)"
+        else
+          echo "DEPLOY_CLUSTER not set — images pushed to ECR only, no redeployment"
+        fi

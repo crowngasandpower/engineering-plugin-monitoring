@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Temperature Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #181b1f;
+    color: #d8d9da;
+    font-family: Inter, -apple-system, sans-serif;
+    padding: 16px;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 12px; color: #ccc; }
+  .chart-wrap {
+    background: #22252b;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #2c2f36;
+  }
+  .chart-inner { position: relative; height: 400px; }
+  canvas { width: 100% !important; }
+  .stats {
+    display: flex;
+    gap: 24px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #999;
+  }
+  .stats span { color: #d8d9da; font-weight: 500; }
+  .legend-note {
+    font-size: 11px;
+    color: #666;
+    margin-top: 8px;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Server Room Temperature Overview &mdash; Last 12h + 24h Forecast</h1>
+  <div class="chart-wrap">
+    <div class="chart-inner">
+      <canvas id="tempChart"></canvas>
+    </div>
+    <div class="legend-note">Dashed lines = forecast / modelled projection</div>
+  </div>
+  <div class="stats" id="stats"></div>
+</div>
+
+<script>
+const PROMETHEUS_URL = 'http://poc-containers:9500';
+const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast';
+const BURY_LAT = 53.59;
+const BURY_LON = -2.30;
+
+async function fetchPrometheus(query, startUnix, endUnix, step) {
+  const url = `${PROMETHEUS_URL}/api/v1/query_range?query=${encodeURIComponent(query)}&start=${startUnix}&end=${endUnix}&step=${step}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'success' && data.data.result.length > 0) {
+      return data.data.result[0].values.map(([t, v]) => ({
+        time: new Date(t * 1000),
+        value: parseFloat(v)
+      }));
+    }
+  } catch (e) {
+    console.warn('Prometheus query failed:', query, e);
+  }
+  return [];
+}
+
+async function fetchWeather() {
+  const url = `${OPEN_METEO_URL}?latitude=${BURY_LAT}&longitude=${BURY_LON}&hourly=temperature_2m&past_days=1&forecast_days=2&timezone=Europe/London`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const times = data.hourly.time;
+    const temps = data.hourly.temperature_2m;
+    return times.map((t, i) => ({ time: new Date(t), value: temps[i] }));
+  } catch (e) {
+    console.warn('Weather fetch failed:', e);
+    return [];
+  }
+}
+
+function splitAtNow(data) {
+  const now = new Date();
+  const past = data.filter(d => d.time <= now);
+  const future = data.filter(d => d.time > now);
+  return { past, future };
+}
+
+function calculateCorrelation(outsideData, insideData) {
+  // Build hourly averages for matching timestamps (within 30 min)
+  const pairs = [];
+  for (const inside of insideData) {
+    const closest = outsideData.reduce((best, o) => {
+      const diff = Math.abs(o.time - inside.time);
+      return diff < Math.abs(best.time - inside.time) ? o : best;
+    }, outsideData[0]);
+    if (closest && Math.abs(closest.time - inside.time) < 1800000) {
+      pairs.push({ outside: closest.value, inside: inside.value });
+    }
+  }
+
+  if (pairs.length < 5) return null;
+
+  // Simple linear regression: inside = a + b * outside
+  const n = pairs.length;
+  const sumX = pairs.reduce((s, p) => s + p.outside, 0);
+  const sumY = pairs.reduce((s, p) => s + p.inside, 0);
+  const sumXY = pairs.reduce((s, p) => s + p.outside * p.inside, 0);
+  const sumX2 = pairs.reduce((s, p) => s + p.outside * p.outside, 0);
+
+  const b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const a = (sumY - b * sumX) / n;
+
+  return { a, b, pairs: n };
+}
+
+function projectTemps(futureOutside, model) {
+  if (!model) return [];
+  return futureOutside.map(d => ({
+    time: d.time,
+    value: Math.round((model.a + model.b * d.value) * 10) / 10
+  }));
+}
+
+function toChartData(data) {
+  return data.map(d => ({ x: d.time, y: d.value }));
+}
+
+async function buildChart() {
+  const now = new Date();
+  const start12h = new Date(now.getTime() - 12 * 3600 * 1000);
+  const end24h = new Date(now.getTime() + 24 * 3600 * 1000);
+
+  const startUnix = Math.floor(start12h.getTime() / 1000);
+  const nowUnix = Math.floor(now.getTime() / 1000);
+
+  // Fetch all data in parallel
+  const [serverIntake, roomTemp, weatherData] = await Promise.all([
+    fetchPrometheus('max(server_intake_temp_celsius)', startUnix, nowUnix, 300),
+    fetchPrometheus('room_temperature_celsius', startUnix, nowUnix, 300),
+    fetchWeather()
+  ]);
+
+  // Split weather into past/future
+  const weather = splitAtNow(weatherData);
+
+  // Calculate correlation models
+  const serverModel = calculateCorrelation(weather.past, serverIntake);
+  const roomModel = calculateCorrelation(weather.past, roomTemp);
+
+  // Project future temps
+  const serverProjection = projectTemps(weather.future, serverModel);
+  const roomProjection = projectTemps(weather.future, roomModel);
+
+  // Calculate Y-axis min from all weather data in the visible range
+  const visibleWeather = weatherData.filter(d => d.time >= start12h && d.time <= end24h);
+  const yMin = visibleWeather.length ? Math.floor(Math.min(...visibleWeather.map(d => d.value))) : 0;
+
+  // Update stats
+  const statsEl = document.getElementById('stats');
+  const lastServer = serverIntake.length ? serverIntake[serverIntake.length - 1].value : '?';
+  const lastRoom = roomTemp.length ? roomTemp[roomTemp.length - 1].value : '?';
+  const lastOutside = weather.past.length ? weather.past[weather.past.length - 1].value : '?';
+  statsEl.innerHTML = `
+    Current: <span>Outside ${lastOutside}°C</span> &bull;
+    <span>Server Room ${lastRoom}°C</span> &bull;
+    <span>Server Intake ${lastServer}°C</span>
+    ${serverModel ? ` &bull; Model: intake = ${serverModel.a.toFixed(1)} + ${serverModel.b.toFixed(2)} &times; outside (${serverModel.pairs} points)` : ''}
+  `;
+
+  // Build chart
+  const ctx = document.getElementById('tempChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Outside (Bury)',
+          data: toChartData(weather.past),
+          borderColor: '#5794f2',
+          backgroundColor: 'rgba(87, 148, 242, 0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false
+        },
+        {
+          label: 'Outside (Forecast)',
+          data: toChartData(weather.future),
+          borderColor: '#5794f2',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false
+        },
+        {
+          label: 'Server Intake (Highest)',
+          data: toChartData(serverIntake),
+          borderColor: '#ff9830',
+          backgroundColor: 'rgba(255, 152, 48, 0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false
+        },
+        {
+          label: 'Server Intake (Projected)',
+          data: toChartData(serverProjection),
+          borderColor: '#ff9830',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false
+        },
+        {
+          label: 'Server Room',
+          data: toChartData(roomTemp),
+          borderColor: '#73bf69',
+          backgroundColor: 'rgba(115, 191, 105, 0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false
+        },
+        {
+          label: 'Server Room (Projected)',
+          data: toChartData(roomProjection),
+          borderColor: '#73bf69',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          tension: 0.3,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            color: '#999',
+            usePointStyle: true,
+            pointStyle: 'line',
+            font: { size: 12 },
+            filter: (item) => !item.text.includes('Projected') && !item.text.includes('Forecast')
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1e2028',
+          titleColor: '#d8d9da',
+          bodyColor: '#d8d9da',
+          borderColor: '#2c2f36',
+          borderWidth: 1,
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}°C`
+          }
+        },
+        annotation: undefined
+      },
+      scales: {
+        x: {
+          type: 'time',
+          min: start12h,
+          max: end24h,
+          time: {
+            displayFormats: {
+              hour: 'EEE HH:mm'
+            },
+            tooltipFormat: 'EEE dd MMM HH:mm'
+          },
+          grid: { color: '#2c2f36' },
+          ticks: { color: '#999', maxTicksLimit: 24 }
+        },
+        y: {
+          min: yMin,
+          title: {
+            display: true,
+            text: 'Temperature (°C)',
+            color: '#999'
+          },
+          grid: { color: '#2c2f36' },
+          ticks: { color: '#999' }
+        }
+      }
+    }
+  });
+
+  // Draw "now" line via plugin
+  const nowLinePlugin = {
+    id: 'nowLine',
+    afterDraw(chart) {
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      const nowX = xScale.getPixelForValue(now);
+      if (nowX >= xScale.left && nowX <= xScale.right) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.moveTo(nowX, yScale.top);
+        ctx.lineTo(nowX, yScale.bottom);
+        ctx.stroke();
+        ctx.fillStyle = '#999';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Now', nowX, yScale.top - 4);
+        ctx.restore();
+      }
+    }
+  };
+  Chart.register(nowLinePlugin);
+}
+
+buildChart();
+
+// Refresh every 5 minutes
+setInterval(buildChart, 300000);
+</script>
+</body>
+</html>
