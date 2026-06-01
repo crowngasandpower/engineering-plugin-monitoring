@@ -51,7 +51,7 @@
   "redirects": [
     {
       "path": "/tv",
-      "target": "/grafana/public-dashboards/e9ca7c1fef574a2e8b0f5c03a6ebcd27"
+      "target": "/grafana/public-dashboards/c6755cd19eb54e61af5c51c86663b3b9"
     }
   ]
 }
