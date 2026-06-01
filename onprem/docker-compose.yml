@@ -138,23 +138,6 @@ services:
     ports:
     - 9514:9115
     restart: unless-stopped
-  jenkins-proxy:
-    build: ./jenkins-proxy
-    container_name: monitoring-jenkins-proxy
-    extra_hosts:
-    - host.docker.internal:host-gateway
-    ports:
-    - 9519:3000
-    networks:
-    - default
-    - traefik_public
-    labels:
-    - traefik.enable=true
-    - traefik.http.routers.jenkins-auth.rule=Host(`jenkins.poc.crowngasandpower.co.uk`)
-    - traefik.http.routers.jenkins-auth.entrypoints=web
-    - traefik.http.services.jenkins-auth.loadbalancer.server.port=3000
-    - traefik.docker.network=jenkins-poc_traefik_public
-    restart: unless-stopped
   error-diagnosis:
     build: ./error-diagnosis
     container_name: monitoring-error-diagnosis
