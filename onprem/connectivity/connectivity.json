@@ -1,0 +1,9 @@
+[
+  {
+    "targets": ["<ip-address>"],
+    "labels": {
+      "name": "Phone Provider VPN",
+      "category": "telephony"
+    }
+  }
+]

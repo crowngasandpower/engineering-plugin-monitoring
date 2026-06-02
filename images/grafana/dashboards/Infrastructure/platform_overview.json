@@ -1122,39 +1122,6 @@
       "title": "Dell Switch Ports Down",
       "type": "stat"
     },
-    {
-      "id": 305,
-      "type": "stat",
-      "title": "Site Pings Failing",
-      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 17 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "links": [{ "title": "View Connectivity", "url": "/d/crown-network-connectivity", "targetBlank": false }],
-      "targets": [
-        {
-          "expr": "count(site_ping_success == 0) or vector(0)",
-          "legendFormat": "Failing",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }]
-          }
-        },
-        "overrides": []
-      }
-    },
 
     {
       "collapsed": true,

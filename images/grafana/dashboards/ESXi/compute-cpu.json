@@ -1,0 +1,82 @@
+{
+  "annotations": { "list": [{ "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" }] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    { "asDropdown": false, "icon": "arrow-left", "includeVars": false, "keepTime": true, "tags": [], "targetBlank": false, "title": "← Platform Overview", "tooltip": "Return to Platform Overview", "type": "link", "url": "/d/vms" }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": ["infrastructure"],
+  "templating": { "list": [] },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "CPU Performance",
+  "uid": "compute-cpu",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "CPU > 80% — Active Now",
+      "description": "Hosts currently above 80% CPU utilisation (10-minute average). Refreshes every 30s.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 0 },
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "CPU %" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }, { "color": "red", "value": 90 }] },
+          "noValue": "No hosts currently above 80% CPU"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "CPU %" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "(1 - avg by(host)(rate(node_cpu_seconds_total{mode=\"idle\", job=\"node\"}[10m]))) * 100 > 80", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "CPU %" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "CPU %" }] } }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "CPU > 80% — Triggered Today",
+      "description": "Hosts that exceeded 80% CPU at any point since midnight. Shows the peak value reached.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 0 },
+      "timeFrom": "now/d",
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Peak CPU %" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }, { "color": "red", "value": 90 }] },
+          "noValue": "No hosts exceeded 80% CPU today"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Peak CPU %" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "max_over_time(\n  ((1 - avg by(host)(rate(node_cpu_seconds_total{mode=\"idle\", job=\"node\"}[10m]))) * 100)\n  [$__range:5m]\n) > 80", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Peak CPU %" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Peak CPU %" }] } }
+      ]
+    }
+  ]
+}

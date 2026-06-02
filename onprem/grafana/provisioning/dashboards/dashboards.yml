@@ -6,8 +6,7 @@ providers:
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30
-    allowUiUpdates: true
-    editable: true
+    editable: false
     options:
-      path: /opt/grafana-dashboards
+      path: /var/lib/grafana/dashboards
       foldersFromFilesStructure: true

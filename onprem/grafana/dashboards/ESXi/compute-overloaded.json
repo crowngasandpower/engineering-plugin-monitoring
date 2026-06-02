@@ -1,0 +1,80 @@
+{
+  "annotations": { "list": [{ "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" }] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    { "asDropdown": false, "icon": "arrow-left", "includeVars": false, "keepTime": true, "tags": [], "targetBlank": false, "title": "← Platform Overview", "tooltip": "Return to Platform Overview", "type": "link", "url": "/d/vms" }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": ["infrastructure"],
+  "templating": { "list": [] },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Host Load",
+  "uid": "compute-overloaded",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Hosts Overloaded — Active Now",
+      "description": "Hosts where the 15-minute load average currently exceeds the CPU core count. Refreshes every 30s.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 0 },
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Load (15m)" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "noValue": "No overloaded hosts right now"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View Host", "url": "/d/VMwExHoV?var-host=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Load (15m)" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "node_load15{job=\"node\"} > on(host) group_left() count by(host)(node_cpu_seconds_total{mode=\"idle\", job=\"node\"})", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Load (15m)" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Load (15m)" }] } }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Hosts Overloaded — Triggered Today",
+      "description": "Hosts where load exceeded CPU count at any point since midnight. Shows the peak load-to-CPU ratio.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 0 },
+      "timeFrom": "now/d",
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Peak Load Ratio" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }, { "color": "red", "value": 2 }] },
+          "noValue": "No hosts were overloaded today"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View Host", "url": "/d/VMwExHoV?var-host=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Peak Load Ratio" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "max_over_time(\n  (node_load15{job=\"node\"} / on(host) group_left() count by(host)(node_cpu_seconds_total{mode=\"idle\", job=\"node\"}))\n  [$__range:5m]\n) > 1", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Peak Load Ratio" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Peak Load Ratio" }] } }
+      ]
+    }
+  ]
+}

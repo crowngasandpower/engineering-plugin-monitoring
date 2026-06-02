@@ -1,0 +1,182 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "arrow-left",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "← Platform Overview",
+      "tooltip": "Return to Platform Overview",
+      "type": "link",
+      "url": "/d/vms"
+    }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": ["infrastructure"],
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "VM Disk Capacity",
+  "uid": "vm-disk-capacity",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "VM Disk Usage — All Hosts",
+      "description": "Disk usage for all VMs reporting via node_exporter (Linux) or windows_exporter (Windows). Sorted by usage percentage, highest first. Click a host name to open its VM detail view.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 24, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Used %" }]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "left",
+            "cellOptions": { "type": "auto" },
+            "inspect": false
+          },
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Host" },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View VM",
+                    "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              { "id": "custom.width", "value": 220 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Volume" },
+            "properties": [
+              { "id": "custom.width", "value": 160 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Used %" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-background" }
+              },
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": 0 },
+                    { "color": "orange", "value": 70 },
+                    { "color": "red", "value": 90 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "format": "table",
+          "instant": true,
+          "refId": "A",
+          "expr": "(1 - (node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} / node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"})) * 100\nor label_replace(\n  (1 - (windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} / windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"})) * 100,\n  \"mountpoint\", \"$1\", \"volume\", \"(.+)\"\n)"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "format": "table",
+          "instant": true,
+          "refId": "B",
+          "expr": "node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} - node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"}\nor label_replace(\n  windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} - windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"},\n  \"mountpoint\", \"$1\", \"volume\", \"(.+)\"\n)"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "format": "table",
+          "instant": true,
+          "refId": "C",
+          "expr": "node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"}\nor label_replace(\n  windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"},\n  \"mountpoint\", \"$1\", \"volume\", \"(.+)\"\n)"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["host", "mountpoint", "Value #A", "Value #B", "Value #C"]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "host": 0,
+              "mountpoint": 1,
+              "Value #C": 2,
+              "Value #B": 3,
+              "Value #A": 4
+            },
+            "renameByName": {
+              "host": "Host",
+              "mountpoint": "Volume",
+              "Value #A": "Used %",
+              "Value #B": "Used",
+              "Value #C": "Total"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": [{ "desc": true, "displayName": "Used %" }]
+          }
+        }
+      ]
+    }
+  ]
+}

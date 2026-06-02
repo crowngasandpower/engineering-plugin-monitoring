@@ -249,6 +249,22 @@ services:
       - "9523:3000"
     restart: unless-stopped
 
+  vcenter-sd:
+    build: ./vcenter-sd
+    container_name: monitoring-vcenter-sd
+    environment:
+      VCENTER_HOST: ${VCENTER_HOST}
+      VCENTER_USER: ${VCENTER_USER}
+      VCENTER_PASSWORD: ${VCENTER_PASSWORD}
+      VCENTER_IGNORE_SSL: ${VCENTER_IGNORE_SSL:-false}
+      PUSHGATEWAY_URL: http://pushgateway:9091
+      POLL_INTERVAL_SECONDS: ${VCENTER_SD_POLL_INTERVAL:-60}
+    volumes:
+      - powerstore_sd:/sd
+    depends_on:
+      - pushgateway
+    restart: unless-stopped
+
 volumes:
   pushgateway_data: null
   powerstore_sd: null

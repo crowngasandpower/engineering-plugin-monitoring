@@ -1,0 +1,19 @@
+groups:
+  - name: windows-hosts
+    rules:
+      - alert: WindowsHostExporterDown
+        # Only fires if the host has been successfully scraped at least once in
+        # the past 7 days. Brand-new hosts without windows_exporter installed will
+        # never have up==1, so max_over_time returns 0 and the alert stays silent.
+        expr: >
+          up{job="windows"} == 0
+          and on(instance)
+          max_over_time(up{job="windows"}[7d]) == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "windows_exporter unreachable on {{ $labels.host }}"
+          description: >
+            {{ $labels.host }} ({{ $labels.instance }}) was previously reachable
+            but windows_exporter has not responded for more than 5 minutes.
