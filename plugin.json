@@ -39,7 +39,7 @@
         "engineer": "Editor",
         "*": "Viewer"
       },
-      "unauthenticated_paths": ["/grafana/public-dashboards", "/grafana/public/"]
+      "unauthenticated_paths": ["/grafana/public-dashboards", "/grafana/public/", "/grafana/api/public/"]
     },
     {
       "path_prefix": "/loki",
