@@ -363,6 +363,37 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9523']
 
+  # Certificate monitoring — TLS expiry via blackbox https_cert module.
+  # Targets managed via http://poc-containers:9511/cert
+  - job_name: 'cert_probe'
+    metrics_path: /probe
+    params:
+      module: [https_cert]
+    scrape_interval: 5m
+    scrape_timeout: 30s
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/cert/targets
+        refresh_interval: 1m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [name]
+        target_label: name
+      - source_labels: [team]
+        target_label: team
+      - target_label: __address__
+        replacement: 192.168.164.184:9514
+
+  # Certificate monitoring — OCSP revocation, chain validation, cert metadata.
+  - job_name: 'cert_custom'
+    scrape_interval: 5m
+    scrape_timeout: 4m
+    metrics_path: /cert/metrics
+    static_configs:
+      - targets: ['192.168.164.184:9511']
+
   # Ad-hoc connectivity checks — managed via http://poc-containers:9511/connectivity
   - job_name: 'connectivity_check'
     metrics_path: /probe

@@ -1,11 +1,21 @@
+import base64
+import datetime
 import json
 import os
+import socket
+import ssl
 import urllib.parse
 import urllib.request
 import psycopg2
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.x509 import ocsp as crypto_ocsp
+from cryptography.x509.oid import AuthorityInformationAccessOID
 
 app = FastAPI(title="Exemption API")
 
@@ -102,6 +112,14 @@ def create_tables():
                 hostname    TEXT PRIMARY KEY,
                 reason      TEXT,
                 added_at    TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS cert_targets (
+                url      TEXT PRIMARY KEY,
+                name     TEXT NOT NULL,
+                team     TEXT NOT NULL DEFAULT 'general',
+                added_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
 
@@ -749,6 +767,422 @@ function prefill(ip, name, category, site_filter, source_ip, old_site_filter) {{
   for (var i = 0; i < sel.options.length; i++) {{
     if (sel.options[i].value === site_filter) {{ sel.selectedIndex = i; break; }}
   }}
+}}
+</script>
+</body>
+</html>""")
+
+
+# ── Certificate Monitoring ────────────────────────────────────────────────────
+# Tracks HTTPS URLs using corporate certificates. Prometheus scrapes:
+#   - /cert/targets  → HTTP SD for blackbox cert_probe job (TLS expiry via probe_ssl_earliest_cert_expiry)
+#   - /cert/metrics  → custom Prometheus text: OCSP revocation + SHA-1 chain + cert metadata
+
+def _cert_get(url: str) -> tuple:
+    """Open TLS connection and return (x509.Certificate, success:bool). Skips chain
+    verification so we can inspect expired or self-signed certs."""
+    parsed = urllib.parse.urlparse(url)
+    hostname = parsed.hostname or url
+    port = parsed.port or 443
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    try:
+        with socket.create_connection((hostname, port), timeout=10) as sock:
+            with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
+                der = ssock.getpeercert(binary_form=True)
+        if not der:
+            return None, False
+        return x509.load_der_x509_certificate(der, default_backend()), True
+    except Exception:
+        return None, False
+
+
+def _get_issuer_cert(cert: x509.Certificate):
+    """Download the issuer certificate from the AIA caIssuers URL."""
+    try:
+        aia = cert.extensions.get_extension_for_class(x509.AuthorityInformationAccess)
+        for desc in aia.value:
+            if desc.access_method == AuthorityInformationAccessOID.CA_ISSUERS:
+                req = urllib.request.Request(
+                    desc.access_location.value,
+                    headers={"User-Agent": "crown-cert-monitor/1.0"},
+                )
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    data = r.read()
+                try:
+                    return x509.load_der_x509_certificate(data, default_backend())
+                except Exception:
+                    return x509.load_pem_x509_certificate(data, default_backend())
+    except Exception:
+        return None
+
+
+def _ocsp_status(cert: x509.Certificate, issuer: x509.Certificate) -> int:
+    """Return 0=good  1=revoked  2=unknown  -1=error/unreachable."""
+    try:
+        aia = cert.extensions.get_extension_for_class(x509.AuthorityInformationAccess)
+        ocsp_url = None
+        for desc in aia.value:
+            if desc.access_method == AuthorityInformationAccessOID.OCSP:
+                ocsp_url = desc.access_location.value
+                break
+        if not ocsp_url:
+            return 2
+
+        builder = crypto_ocsp.OCSPRequestBuilder().add_certificate(cert, issuer, hashes.SHA1())
+        req_bytes = builder.build().public_bytes(serialization.Encoding.DER)
+
+        post = urllib.request.Request(
+            ocsp_url,
+            data=req_bytes,
+            headers={
+                "Content-Type": "application/ocsp-request",
+                "User-Agent": "crown-cert-monitor/1.0",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(post, timeout=10) as r:
+            resp = crypto_ocsp.load_der_ocsp_response(r.read())
+
+        if resp.response_status == crypto_ocsp.OCSPResponseStatus.SUCCESSFUL:
+            if resp.certificate_status == crypto_ocsp.OCSPCertStatus.GOOD:
+                return 0
+            if resp.certificate_status == crypto_ocsp.OCSPCertStatus.REVOKED:
+                return 1
+        return 2
+    except Exception:
+        return -1
+
+
+def _crl_status(cert: x509.Certificate) -> int:
+    """Check CRL revocation. Return 0=good 1=revoked 2=unknown -1=error."""
+    try:
+        cdp_ext = cert.extensions.get_extension_for_class(x509.CRLDistributionPoints)
+        for dp in cdp_ext.value:
+            for gn in dp.full_name:
+                url = gn.value
+                if not url.startswith("http"):
+                    continue
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": "crown-cert-monitor/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    crl = x509.load_der_x509_crl(r.read())
+                return 1 if crl.get_revoked_certificate_by_serial_number(cert.serial_number) else 0
+        return 2
+    except Exception:
+        return -1
+
+
+def _chain_has_sha1(cert: x509.Certificate) -> bool:
+    try:
+        alg = cert.signature_hash_algorithm
+        return alg is not None and alg.name.lower() in ("sha1", "md5", "md2")
+    except Exception:
+        return False
+
+
+def _cn_from_name(name: x509.Name) -> str:
+    try:
+        return name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+    except Exception:
+        return str(name)[:64]
+
+
+def _check_one_cert(target: dict) -> dict:
+    url, name, team = target["url"], target["name"], target["team"]
+    result = {
+        "url": url, "name": name, "team": team,
+        "check_success": 0,
+        "ocsp_status": -1,
+        "has_sha1": 0,
+        "subject_cn": "",
+        "issuer_cn": "",
+        "not_after": "",
+        "expiry_ts": 0.0,
+    }
+    cert, ok = _cert_get(url)
+    if not ok or cert is None:
+        return result
+
+    result["check_success"] = 1
+    result["has_sha1"] = 1 if _chain_has_sha1(cert) else 0
+    result["subject_cn"] = _cn_from_name(cert.subject)
+    result["issuer_cn"] = _cn_from_name(cert.issuer)
+    result["not_after"] = cert.not_valid_after_utc.strftime("%Y-%m-%d")
+    result["expiry_ts"] = cert.not_valid_after_utc.timestamp()
+
+    issuer = _get_issuer_cert(cert)
+    ocsp = _ocsp_status(cert, issuer) if issuer else 2
+    if ocsp in (2, -1):
+        ocsp = _crl_status(cert)
+    result["ocsp_status"] = ocsp
+    return result
+
+
+def _escape_label(v: str) -> str:
+    return v.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
+@app.get("/cert/targets")
+def cert_targets_sd():
+    """Prometheus HTTP SD — feeds the cert_probe blackbox job."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT url, name, team FROM cert_targets ORDER BY name")
+        rows = cur.fetchall()
+    return JSONResponse([
+        {"targets": [r[0]], "labels": {"name": r[1], "team": r[2]}}
+        for r in rows
+    ])
+
+
+@app.get("/cert/metrics")
+def cert_metrics():
+    """Prometheus text format — OCSP status, chain validation, and cert metadata.
+    Scraped by the cert_custom job every 5 minutes. Checks run in parallel (up to 10
+    concurrent connections) so scrape time scales with the slowest host, not total count."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT url, name, team FROM cert_targets ORDER BY name")
+        targets = [{"url": r[0], "name": r[1], "team": r[2]} for r in cur.fetchall()]
+
+    if not targets:
+        return PlainTextResponse(
+            "# No cert targets configured — add URLs at /cert\n",
+            media_type="text/plain; version=0.0.4",
+        )
+
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        results = list(ex.map(_check_one_cert, targets))
+
+    def lbl(r: dict, extra: str = "") -> str:
+        base = f'url="{_escape_label(r["url"])}",name="{_escape_label(r["name"])}",team="{_escape_label(r["team"])}"'
+        return base + ("," + extra if extra else "")
+
+    lines = [
+        "# HELP cert_check_success 1 if TLS connection to the target succeeded",
+        "# TYPE cert_check_success gauge",
+        *[f'cert_check_success{{{lbl(r)}}} {r["check_success"]}' for r in results],
+        "",
+        "# HELP cert_ocsp_status OCSP revocation status: 0=good 1=revoked 2=unknown -1=error",
+        "# TYPE cert_ocsp_status gauge",
+        *[f'cert_ocsp_status{{{lbl(r)}}} {r["ocsp_status"]}' for r in results if r["check_success"]],
+        "",
+        "# HELP cert_chain_has_sha1 1 if the leaf certificate uses a weak SHA-1 or MD5 signature",
+        "# TYPE cert_chain_has_sha1 gauge",
+        *[f'cert_chain_has_sha1{{{lbl(r)}}} {r["has_sha1"]}' for r in results if r["check_success"]],
+        "",
+        "# HELP cert_info Certificate metadata; value is the Unix timestamp of the expiry date",
+        "# TYPE cert_info gauge",
+        *[
+            f'cert_info{{{lbl(r, "subject_cn=\"" + _escape_label(r["subject_cn"]) + "\",issuer_cn=\"" + _escape_label(r["issuer_cn"]) + "\",not_after=\"" + r["not_after"] + "\"")}}}'
+            f' {r["expiry_ts"]}'
+            for r in results if r["check_success"]
+        ],
+    ]
+    return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
+
+@app.get("/cert/add")
+def cert_add(
+    url: str = Query(..., description="Full HTTPS URL, e.g. https://portal.crowngasandpower.co.uk"),
+    name: str = Query(..., description="Human-readable name for dashboards and alerts"),
+    team: str = Query(default="general", description="Owning team — used in alert routing labels"),
+):
+    if not url.startswith("https://"):
+        raise HTTPException(status_code=400, detail="URL must start with https://")
+    with get_conn() as conn:
+        conn.cursor().execute(
+            """INSERT INTO cert_targets(url, name, team)
+               VALUES (%s, %s, %s)
+               ON CONFLICT(url) DO UPDATE SET name = EXCLUDED.name, team = EXCLUDED.team""",
+            (url, name, team),
+        )
+    return _page(f"✓ <strong>{name}</strong> (<code>{url}</code>) added to certificate monitoring.")
+
+
+@app.get("/cert/remove")
+def cert_remove(url: str = Query(...)):
+    with get_conn() as conn:
+        conn.cursor().execute("DELETE FROM cert_targets WHERE url = %s", (url,))
+    return _page(f"✓ <code>{url}</code> removed from certificate monitoring.")
+
+
+@app.get("/cert/scan", response_class=HTMLResponse)
+def cert_scan():
+    """Run all certificate checks immediately and return an HTML results page."""
+    import datetime as _dt
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT url, name, team FROM cert_targets ORDER BY team, name")
+        targets = [{"url": r[0], "name": r[1], "team": r[2]} for r in cur.fetchall()]
+
+    if not targets:
+        return HTMLResponse("<p>No certificate targets configured. <a href='/cert'>Add some</a>.</p>")
+
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        results = list(ex.map(_check_one_cert, targets))
+
+    now = _dt.datetime.now(_dt.timezone.utc)
+
+    def _ocsp_label(v):
+        return {0: ("Good", "#2e7d32"), 1: ("Revoked", "#c62828"), 2: ("Unknown", "#e65100")}.get(v, ("Error", "#f9a825"))
+
+    def _days_color(days):
+        if days < 7:   return "#c62828"
+        if days < 30:  return "#e65100"
+        return "#2e7d32"
+
+    rows_html = ""
+    for r in results:
+        if not r["check_success"]:
+            rows_html += (
+                f"<tr style='background:#fff3e0'>"
+                f"<td>{r['name']}</td><td>{r['team']}</td>"
+                f"<td><code>{r['url']}</code></td>"
+                f"<td colspan='5' style='color:#c62828'>&#x2715; TLS connection failed</td>"
+                f"</tr>"
+            )
+            continue
+
+        days = (r["expiry_ts"] - now.timestamp()) / 86400
+        days_str = f"{days:.1f}d"
+        days_color = _days_color(days)
+        sha1_cell = ("<span style='color:#e65100'>&#x26A0; SHA-1</span>" if r["has_sha1"]
+                     else "<span style='color:#2e7d32'>&#x2713; OK</span>")
+        ocsp_text, ocsp_color = _ocsp_label(r["ocsp_status"])
+
+        rows_html += (
+            f"<tr>"
+            f"<td>{r['name']}</td>"
+            f"<td>{r['team']}</td>"
+            f"<td><code>{r['url']}</code></td>"
+            f"<td>{r['subject_cn']}</td>"
+            f"<td>{r['issuer_cn']}</td>"
+            f"<td>{r['not_after']}</td>"
+            f"<td style='color:{days_color};font-weight:bold'>{days_str}</td>"
+            f"<td style='color:{ocsp_color}'>{ocsp_text}</td>"
+            f"<td>{sha1_cell}</td>"
+            f"</tr>"
+        )
+
+    scanned_at = now.strftime("%Y-%m-%d %H:%M:%S UTC")
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html>
+<head>
+<title>Certificate Scan Results</title>
+<style>
+  body {{ font-family: sans-serif; padding: 2rem; max-width: 1200px }}
+  h1 {{ font-size: 1.4rem; margin-bottom: 0.3rem }}
+  .meta {{ font-size: 0.85rem; color: #666; margin-bottom: 1.5rem }}
+  table {{ border-collapse: collapse; width: 100% }}
+  th, td {{ border: 1px solid #ddd; padding: 0.4rem 0.7rem; text-align: left }}
+  th {{ background: #f4f4f4 }}
+  code {{ font-size: 0.85em; background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 2px }}
+  a {{ color: #1a73e8 }}
+</style>
+</head>
+<body>
+<p><a href="/cert">← Back to Certificate Targets</a></p>
+<h1>Certificate Scan Results</h1>
+<p class="meta">Scanned {len(results)} target(s) at {scanned_at} &nbsp;|&nbsp;
+<a href="/cert/scan">Scan again</a></p>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th><th>Team</th><th>URL</th><th>Subject</th><th>Issuer</th>
+      <th>Expires On</th><th>Days Left</th><th>OCSP</th><th>Signature</th>
+    </tr>
+  </thead>
+  <tbody>{rows_html}</tbody>
+</table>
+</body>
+</html>""")
+
+
+@app.get("/cert", response_class=HTMLResponse)
+def cert_list():
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT url, name, team, added_at FROM cert_targets ORDER BY team, name")
+        rows = cur.fetchall()
+
+    rows_html = "".join(
+        f"<tr>"
+        f"<td>{r[1]}</td>"
+        f"<td>{r[2]}</td>"
+        f"<td><code>{r[0]}</code></td>"
+        f"<td>{r[3].strftime('%Y-%m-%d %H:%M') if r[3] else ''}</td>"
+        f"<td>"
+        f"<a href='#add-form' onclick=\"prefill('{r[0].replace(chr(39), '')}','{r[1].replace(chr(39), '')}','{r[2]}')\">Edit</a>"
+        f" &nbsp; "
+        f"<a href='/cert/remove?url={urllib.parse.quote(r[0])}' "
+        f"onclick=\"return confirm('Remove {r[1]}?')\">Remove</a>"
+        f"</td>"
+        f"</tr>"
+        for r in rows
+    ) or "<tr><td colspan='5' style='color:#888'>No certificate targets configured</td></tr>"
+
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html>
+<head>
+<title>Certificate Monitoring</title>
+<style>
+  body {{ font-family: sans-serif; padding: 2rem; max-width: 1000px }}
+  h1 {{ font-size: 1.4rem; margin-bottom: 1rem }}
+  h2 {{ font-size: 1.1rem; margin: 2rem 0 0.5rem }}
+  table {{ border-collapse: collapse; width: 100%; margin-bottom: 2rem }}
+  th, td {{ border: 1px solid #ddd; padding: 0.4rem 0.7rem; text-align: left }}
+  th {{ background: #f4f4f4 }}
+  code {{ font-size: 0.85em; background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 2px }}
+  a {{ color: #c00 }}
+  form {{ display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem }}
+  label {{ display: flex; flex-direction: column; font-size: 0.85rem; gap: 0.2rem }}
+  input {{ padding: 0.3rem 0.5rem; border: 1px solid #ccc; border-radius: 3px }}
+  button {{ padding: 0.35rem 0.9rem; background: #1a73e8; color: #fff; border: none; border-radius: 3px; cursor: pointer }}
+  button:hover {{ background: #1558b0 }}
+  .hint {{ font-size: 0.8rem; color: #666; margin-top: 0.2rem }}
+  .legend {{ background: #f8f8f8; border: 1px solid #ddd; padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; border-radius: 3px }}
+</style>
+</head>
+<body>
+<p><a href="javascript:history.back()">← Back</a></p>
+<h1>Certificate Monitoring</h1>
+<div class="legend">
+  HTTPS endpoints added here are probed every 5 minutes by the blackbox exporter (TLS expiry)
+  and the exemption API (OCSP revocation, chain signature). Changes take effect within 1 minute.
+  Alerts fire at &lt;30 days (warning) and &lt;3 days (PagerDuty critical).<br><br>
+  <a href="/cert/scan" style="display:inline-block;padding:0.35rem 0.9rem;background:#1a73e8;color:#fff;border-radius:3px;text-decoration:none;font-size:0.9rem">&#9654; Scan Now</a>
+  <span style="font-size:0.8rem;color:#666;margin-left:0.6rem">Runs all checks immediately and shows results — takes up to ~30s</span>
+</div>
+
+<table>
+  <thead><tr><th>Name</th><th>Team</th><th>URL</th><th>Added</th><th></th></tr></thead>
+  <tbody>{rows_html}</tbody>
+</table>
+
+<h2 id="add-form">Add / update target</h2>
+<form method="get" action="/cert/add">
+  <label>HTTPS URL
+    <input id="f-url" name="url" required placeholder="https://portal.crowngasandpower.co.uk" size="45" type="url">
+    <span class="hint">Full URL including https://</span>
+  </label>
+  <label>Name
+    <input id="f-name" name="name" required placeholder="e.g. Customer Portal" size="28">
+  </label>
+  <label>Team
+    <input id="f-team" name="team" value="general" size="15">
+    <span class="hint">Used in alert routing</span>
+  </label>
+  <button type="submit">Save</button>
+</form>
+<script>
+function prefill(url, name, team) {{
+  document.getElementById('f-url').value = url;
+  document.getElementById('f-name').value = name;
+  document.getElementById('f-team').value = team;
 }}
 </script>
 </body>

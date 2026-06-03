@@ -25,7 +25,22 @@
         "sort": 1,
         "includeAll": true,
         "allValue": ".+",
-        "multi": false,
+        "multi": true,
+        "hide": 0
+      },
+      {
+        "name": "interface",
+        "type": "query",
+        "label": "Interface",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(os10_interface_up, port)",
+        "refresh": 0,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "^$",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "options": [],
         "hide": 0
       }
     ]
@@ -75,7 +90,7 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "sum(os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"})",
+          "expr": "sum(os10_interface_up{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"})",
           "instant": true,
           "refId": "A"
         }
@@ -107,7 +122,7 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "sum(os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"} == 0)",
+          "expr": "sum(os10_interface_up{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"} == 0)",
           "instant": true,
           "refId": "A"
         }
@@ -179,7 +194,7 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "sum by (switch) (rate(os10_interface_in_bytes_total{interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}[5m]) * 8)",
+          "expr": "sum by (switch) (rate(os10_interface_in_bytes_total{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}[5m]) * 8)",
           "legendFormat": "{{switch}} in",
           "refId": "A"
         }
@@ -204,7 +219,7 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "sum by (switch) (rate(os10_interface_out_bytes_total{interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}[5m]) * 8)",
+          "expr": "sum by (switch) (rate(os10_interface_out_bytes_total{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}[5m]) * 8)",
           "legendFormat": "{{switch}} out",
           "refId": "A"
         }
@@ -265,30 +280,37 @@
       "id": 30,
       "type": "table",
       "title": "Interface Status",
-      "description": "Ethernet ports, port-channels, and VTI links across all switches. Use column sort to find downed ports.",
+      "description": "Ethernet ports, port-channels, and VTI links across all switches. Click an interface name to add it to the port traffic graph below.",
       "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}",
+          "expr": "max by (switch, interface, port) (os10_interface_up{port=~\"$interface|.+\",interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\".+\"})",
           "instant": true,
           "format": "table",
           "legendFormat": "",
           "refId": "A"
         },
         {
-          "expr": "rate(os10_interface_in_bytes_total{interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}[5m]) * 8",
+          "expr": "max by (switch, interface, port) (rate(os10_interface_in_bytes_total{port=~\"$interface|.+\",interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\".+\"}[5m]) * 8)",
           "instant": true,
           "format": "table",
           "legendFormat": "",
           "refId": "B"
         },
         {
-          "expr": "rate(os10_interface_out_bytes_total{interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}[5m]) * 8",
+          "expr": "max by (switch, interface, port) (rate(os10_interface_out_bytes_total{port=~\"$interface|.+\",interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\".+\"}[5m]) * 8)",
           "instant": true,
           "format": "table",
           "legendFormat": "",
           "refId": "C"
+        },
+        {
+          "expr": "max by (switch, interface, port) (os10_interface_speed_bps{port=~\"$interface|.+\",interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\".+\"})",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "",
+          "refId": "D"
         }
       ],
       "transformations": [
@@ -296,15 +318,25 @@
         {
           "id": "organize",
           "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true },
             "renameByName": {
               "Value #A": "Status",
               "Value #B": "In (bps)",
               "Value #C": "Out (bps)",
+              "Value #D": "Link Speed",
               "switch": "Switch",
               "interface": "Interface",
-              "Time": ""
+              "port": "port"
             },
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true }
+            "indexByName": {
+              "interface": 0,
+              "switch": 1,
+              "Value #A": 2,
+              "Value #D": 3,
+              "Value #B": 4,
+              "Value #C": 5,
+              "port": 6
+            }
           }
         },
         {
@@ -343,8 +375,86 @@
           {
             "matcher": { "id": "byName", "options": "Out (bps)" },
             "properties": [{ "id": "unit", "value": "bps" }, { "id": "decimals", "value": 0 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Link Speed" },
+            "properties": [{ "id": "unit", "value": "bps" }, { "id": "decimals", "value": 0 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Interface" },
+            "properties": [{
+              "id": "links",
+              "value": [{
+                "title": "Add to port traffic graph",
+                "url": "/d/crown-dell-switches?${__url_time_range}&${switch:queryparam}&${interface:queryparam}&var-interface=${__data.fields[\"port\"]}",
+                "targetBlank": false
+              }]
+            }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "port" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
           }
         ]
+      }
+    },
+    {
+      "id": 40,
+      "type": "row",
+      "title": "Port Traffic — click interface names in the table above to add to graph",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "In",
+      "description": "Click an interface name in the Interface Status table to select it. Use the Interface dropdown to add more.",
+      "gridPos": { "x": 0, "y": 29, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(os10_interface_in_bytes_total{port=~\"$interface\",port!=\"\"}[5m]) * 8",
+          "legendFormat": "{{port}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "Out",
+      "gridPos": { "x": 12, "y": 29, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(os10_interface_out_bytes_total{port=~\"$interface\",port!=\"\"}[5m]) * 8",
+          "legendFormat": "{{port}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
       }
     }
   ]

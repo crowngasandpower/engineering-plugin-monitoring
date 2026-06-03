@@ -28,6 +28,7 @@ Metrics:
   os10_interface_out_errors_total   egress error frames (counter)
   os10_interface_in_discards_total  ingress discarded frames (counter)
   os10_interface_out_discards_total egress discarded frames (counter)
+  os10_interface_speed_bps          negotiated link speed in bits/s (gauge)
   os10_system_uptime_seconds        system uptime in seconds (gauge)
   os10_scrape_success               1 if last RESTCONF fetch succeeded (gauge)
 """
@@ -201,6 +202,7 @@ async def metrics() -> Response:
     out_err_s: list[tuple[str, float]] = []
     in_disc_s: list[tuple[str, float]] = []
     out_disc_s: list[tuple[str, float]] = []
+    speed_s: list[tuple[str, float]] = []
     uptime_s: list[tuple[str, float]] = []
     scrape_s: list[tuple[str, float]] = []
 
@@ -215,7 +217,7 @@ async def metrics() -> Response:
             uptime_s.append((sw_lb, res["uptime"]))
         for iface in res["interfaces"]:
             iname = iface.get("name", "")
-            lb = f'switch="{sw.name}",interface="{iname}"'
+            lb = f'switch="{sw.name}",interface="{iname}",port="{sw.name}/{iname}"'
             oper = iface.get("oper-status", "down")
             up_s.append((lb, 1.0 if oper == "up" else 0.0))
             stats = iface.get("statistics", {})
@@ -225,6 +227,9 @@ async def metrics() -> Response:
             out_err_s.append((lb, float(_int(stats.get("out-errors", 0)))))
             in_disc_s.append((lb, float(_int(stats.get("in-discards", 0)))))
             out_disc_s.append((lb, float(_int(stats.get("out-discards", 0)))))
+            speed = iface.get("speed")
+            if speed is not None:
+                speed_s.append((lb, float(_int(speed))))
 
     blocks = [
         fmt_block("os10_interface_up", "1 if interface oper-status is up.", "gauge", up_s),
@@ -234,6 +239,7 @@ async def metrics() -> Response:
         fmt_block("os10_interface_out_errors_total", "Total egress error frames.", "counter", out_err_s),
         fmt_block("os10_interface_in_discards_total", "Total ingress discarded frames.", "counter", in_disc_s),
         fmt_block("os10_interface_out_discards_total", "Total egress discarded frames.", "counter", out_disc_s),
+        fmt_block("os10_interface_speed_bps", "Negotiated link speed in bits per second.", "gauge", speed_s),
         fmt_block("os10_system_uptime_seconds", "Switch system uptime in seconds.", "gauge", uptime_s),
         fmt_block("os10_scrape_success", "1 if the last RESTCONF fetch from this switch succeeded.", "gauge", scrape_s),
     ]

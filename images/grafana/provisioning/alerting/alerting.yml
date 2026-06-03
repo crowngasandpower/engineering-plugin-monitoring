@@ -1420,7 +1420,7 @@ groups:
                 - evaluator:
                     type: gt
                     params:
-                      - 85
+                      - 90
               refId: threshold
 
       - uid: idrac-exhaust-temp
@@ -1962,4 +1962,236 @@ groups:
                     type: gt
                     params:
                       - 200
+              refId: threshold
+
+  - orgId: 1
+    name: Certificates
+    folder: Infrastructure Alerts/Certificates
+    interval: 5m
+    rules:
+      - uid: cert-expiring-soon
+        title: Certificate Expiring Soon
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Certificate expiring in less than 30 days"
+          description: "{{ $labels.name }} ({{ $labels.instance }}) expires on {{ $labels.not_after }}"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(probe_ssl_earliest_cert_expiry{job="cert_probe"} - time()) / 86400'
+              refId: A
+          - refId: days
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: days
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: days
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 30
+              refId: threshold
+
+      - uid: cert-expiring-critical
+        title: Certificate Expiring — Critical
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "Certificate expiring in less than 3 days"
+          description: "{{ $labels.name }} ({{ $labels.instance }}) expires on {{ $labels.not_after }}"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(probe_ssl_earliest_cert_expiry{job="cert_probe"} - time()) / 86400'
+              refId: A
+          - refId: days
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: days
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: days
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 3
+              refId: threshold
+
+      - uid: cert-probe-failure
+        title: Certificate Probe Failed
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "TLS probe failed for {{ $labels.name }}"
+          description: "Blackbox cannot complete a TLS handshake to {{ $labels.instance }} — cert may be unreachable or misconfigured"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'probe_success{job="cert_probe"}'
+              refId: A
+          - refId: success
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: success
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: success
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: cert-revoked
+        title: Certificate Revoked
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "Certificate revoked: {{ $labels.name }}"
+          description: "OCSP check reports {{ $labels.name }} ({{ $labels.url }}) as revoked — immediate action required"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'cert_ocsp_status{job="cert_custom"}'
+              refId: A
+          - refId: status
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: status
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: status
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: cert-weak-signature
+        title: Certificate Uses Weak Signature (SHA-1)
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Weak certificate signature: {{ $labels.name }}"
+          description: "{{ $labels.name }} ({{ $labels.url }}) uses SHA-1 or MD5 — should be replaced with a SHA-256 certificate"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'cert_chain_has_sha1{job="cert_custom"}'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
               refId: threshold

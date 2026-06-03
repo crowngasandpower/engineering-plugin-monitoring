@@ -131,7 +131,9 @@ services:
     - 9515:9169
     restart: unless-stopped
   blackbox-exporter:
-    image: prom/blackbox-exporter:latest
+    build:
+      context: .
+      dockerfile: blackbox-exporter/Dockerfile
     container_name: monitoring-blackbox
     cap_add:
       - NET_RAW
