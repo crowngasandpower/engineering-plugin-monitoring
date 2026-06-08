@@ -36,16 +36,26 @@ policies:
       - grafana_folder
       - alertname
     routes:
+      # oncall=Platform alerts escalate to PagerDuty after a 10-minute acknowledgment window.
+      # Time-based routing (business-hours vs out-of-hours) should be configured in
+      # PagerDuty's escalation policy — Grafana 13 removed active_time_intervals from
+      # notification policy routes (muteTimes/mute_time_intervals still exists for silencing).
       - receiver: PagerDuty
         matchers:
           - oncall = Platform
         group_by:
           - grafana_folder
           - alertname
-        group_wait: 30s
-        group_interval: 2m
+        group_wait: 10m
+        group_interval: 5m
         repeat_interval: 4h
 
+# Severity convention:
+#   warning  — proactive, team-facing (disk >80%, cert <30d, etc.)   → desktop only
+#   high     — serious degradation, service still up (disk >90%, etc.) → desktop only
+#   critical — service down / loss of service                          → desktop + PagerDuty
+#              requires oncall=Platform label to trigger PagerDuty route
+#
 # Alert rule groups are NOT defined here.
 # They are provisioned via the Grafana API by provision-alerts.py at container
 # startup, reading from alert-rules.yml. This allows live UI editing in Grafana 13

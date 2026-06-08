@@ -8,6 +8,7 @@ Per-device setup:
   1. Set the hostname on the firewall — this becomes the site ID and metrics label.
   2. Set POC_CONTAINERS to the IP of poc-containers if it differs from the default.
   3. Optionally set FETCH_SOURCE_IP if the default route can't reach poc-containers.
+     This IP is also used as the default source for pings unless overridden in the API.
 
 The script auto-registers itself in the API on first run. No manual API config needed.
 """
@@ -129,7 +130,7 @@ if not config:
     raise SystemExit("could not fetch config from API")
 
 source    = config["source"]
-source_ip = config.get("source_ip")
+source_ip = config.get("source_ip") or FETCH_SOURCE_IP
 
 for t in config["targets"]:
     ping_target(t["ip"], t["name"], source, t.get("source_ip") or source_ip)

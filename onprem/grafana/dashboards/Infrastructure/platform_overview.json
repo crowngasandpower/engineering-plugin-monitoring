@@ -106,7 +106,7 @@
   "timezone": "browser",
   "title": "Platform Overview",
   "uid": "vms",
-  "version": 10,
+  "version": 14,
   "weekStart": "",
   "panels": [
     {
@@ -541,40 +541,78 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [
-            { "options": { "0": { "color": "green", "index": 0, "text": "None" } }, "type": "value" }
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 1 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
             ]
           },
           "noValue": "0"
         },
         "overrides": []
       },
-      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 1 },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
       "id": 210,
       "links": [
-        { "title": "Certificate Monitoring", "url": "/d/cert-mon", "targetBlank": false }
+        {
+          "title": "Certificate Monitoring",
+          "url": "/d/cert-mon",
+          "targetBlank": false
+        }
       ],
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
           "editorMode": "code",
           "expr": "count(probe_ssl_earliest_cert_expiry{job=\"cert_probe\"} - time() < 30 * 86400) or vector(0)",
           "legendFormat": "Certs Expiring",
@@ -1061,11 +1099,165 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 12,
+        "w": 4,
         "x": 12,
         "y": 9
       },
       "id": 151,
+      "links": [
+        {
+          "title": "View iDRAC",
+          "url": "/d/idrac-crown?var-instance=hq-dc-svr1-r660-idrac.crowngp.local&var-instance=hq-dc-svr2-r660-idrac.crowngp.local&var-instance=hq-dc-svr3-r660-idrac.crowngp.local&var-instance=hq-dc-svr7-r660-idrac.crowngp.local",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max(idrac_sensors_temperature{name=~\"System Board Inlet Temp\", instance=~\"hq-dc-svr1-.*|hq-dc-svr2-.*|hq-dc-svr3-.*|hq-dc-svr7-.*\"})",
+          "legendFormat": "HO Highest IDRAC Temp",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "HO Highest IDRAC Temp",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "celsius",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 28
+              },
+              {
+                "color": "red",
+                "value": 32
+              }
+            ]
+          },
+          "noValue": "N/A"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 9
+      },
+      "id": 300,
+      "links": [
+        {
+          "title": "View iDRAC",
+          "url": "/d/idrac-crown?var-instance=hq-dc-svr4-r540-idrac.crowngp.local&var-instance=hq-dc-svr5-r540-idrac.crowngp.local&var-instance=hq-dc-svr6-r540-idrac.crowngp.local&var-instance=hq-dc-svr8-r750xs-idrac.crowngp.local",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max(idrac_sensors_temperature{name=~\"System Board Inlet Temp\", instance=~\"hq-dc-svr4-.*|hq-dc-svr5-.*|hq-dc-svr6-.*|hq-dc-svr8-.*\"})",
+          "legendFormat": "ZEN Highest IDRAC Temp",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "ZEN Highest IDRAC Temp",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "celsius",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 28
+              },
+              {
+                "color": "red",
+                "value": 32
+              }
+            ]
+          },
+          "noValue": "N/A"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 9
+      },
+      "id": 301,
       "links": [
         {
           "title": "View Temperatures",
@@ -1094,13 +1286,13 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(max by(sensor)(room_temperature_celsius) or max by(instance)(idrac_sensors_temperature{name=~\"System Board Inlet Temp\"}))",
-          "legendFormat": "Highest Temperature",
+          "expr": "max(max by(sensor)(room_temperature_celsius))",
+          "legendFormat": "Highest Room Temp",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Highest Temperature",
+      "title": "Highest Server Room Temp",
       "type": "stat"
     },
     {
@@ -1379,10 +1571,6 @@
               {
                 "color": "orange",
                 "value": 1
-              },
-              {
-                "color": "red",
-                "value": 3
               }
             ]
           },
@@ -1393,7 +1581,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 8,
+        "w": 4,
         "x": 16,
         "y": 13
       },
@@ -1433,6 +1621,78 @@
         }
       ],
       "title": "VM Disk Capacity (>80%)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 13
+      },
+      "id": 311,
+      "links": [
+        {
+          "title": "View VM Disk Detail",
+          "url": "/d/vm-disk-capacity",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(\n  max by(host)(\n    (1 - (node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} / node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"})) * 100 > 90\n  )\n  or\n  max by(host)(\n    (1 - (windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} / windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"})) * 100 > 90\n  )\n)\nor vector(0)",
+          "instant": true,
+          "legendFormat": "Hosts >90%",
+          "refId": "A"
+        }
+      ],
+      "title": "VM Disk Capacity (>90%)",
       "type": "stat"
     },
     {
@@ -1744,7 +2004,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum(unifi_device_up == 0) or vector(0)",
+          "expr": "count(unifi_device_up == 0) or vector(0)",
           "legendFormat": "Devices Offline",
           "range": true,
           "refId": "A"
@@ -1820,8 +2080,8 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(unifi_wan_packet_loss_percent) or vector(0)",
-          "legendFormat": "Max WAN Packet Loss",
+          "expr": "max(increase(unifi_wan_probe_drops_total[$__rate_interval])) or vector(0)",
+          "legendFormat": "Max WAN Probe Drops",
           "range": true,
           "refId": "A"
         }
@@ -2007,14 +2267,14 @@
       "panels": [
         {
           "gridPos": {
-            "h": 5,
+            "h": 8,
             "w": 24,
             "x": 0,
             "y": 27
           },
           "id": 159,
           "options": {
-            "content": "## Suppressing alerts from this dashboard\n\nCertain stat panels on this dashboard (**Powered Off**, **Active Alerts**, **Backups Overdue**) can be configured to ignore specific VMs or alerts that are known/intentional.\n\n**Manage suppressions:** open [http://poc-containers:9511/suppress](http://poc-containers:9511/suppress) \u2014 the page lists all current suppressions and has a form to add or remove them.\n\n| Panel | Category | Identifier |\n|---|---|---|\n| Powered Off | `powered_off` | VM name (e.g. `my-vm-01`) |\n| Backups Overdue | `backup_overdue` | VM name (e.g. `my-vm-01`) |\n| Active Alerts | `active_alert` | Alert name (e.g. `HostHighCPU`) |\n\nChanges take effect within 30 seconds (next dashboard refresh).",
+            "content": "## Suppressing alerts from this dashboard\n\nCertain stat panels on this dashboard (**Powered Off**, **Active Alerts**, **Backups Overdue**) can be configured to ignore specific VMs or alerts that are known/intentional.\n\n**Manage suppressions:** open [http://poc-containers:9511/suppress](http://poc-containers:9511/suppress) -- the page lists all current suppressions and has a form to add or remove them.\n\n| Panel | Category | Identifier |\n|---|---|---|\n| Powered Off | `powered_off` | VM name (e.g. `my-vm-01`) |\n| Backups Overdue | `backup_overdue` | VM name (e.g. `my-vm-01`) |\n| Active Alerts | `active_alert` | Alert name (e.g. `HostHighCPU`) |\n\nChanges take effect within 30 seconds (next dashboard refresh).\n\n---\n\n## UniFi Device Exemptions\n\nDevices can be excluded from the **network-unifi-offline** alert and hidden from the Device Status table in the UniFi Site Detail dashboard when offline. Use the dropdown in the **UniFi Device Exemptions** section at [http://poc-containers:9511/suppress](http://poc-containers:9511/suppress).\n\nChanges take effect within 60 seconds.",
             "mode": "markdown"
           },
           "title": "",

@@ -17,6 +17,12 @@ scrape_configs:
     static_configs:
       - targets: ['exemption-api:8000']
 
+  - job_name: 'unifi_exempt'
+    scrape_interval: 60s
+    metrics_path: /unifi/metrics
+    static_configs:
+      - targets: ['exemption-api:8000']
+
   - job_name: 'genus'
     scrape_interval: 30s
     static_configs:

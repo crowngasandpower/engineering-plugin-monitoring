@@ -21,6 +21,8 @@ groups:
         execErrState: Error
         labels:
           severity: warning
+        annotations:
+          summary: "Server room temperature is {{ $values.temp_c.Value | printf \"%.1f\" }}°C (warning: 29.5°C, critical: 30°C) — check cooling"
         data:
           - refId: A
             relativeTimeRange:
@@ -50,9 +52,10 @@ groups:
               expression: temp_c
               conditions:
                 - evaluator:
-                    type: gt
+                    type: within_range
                     params:
                       - 29.5
+                      - 30
               refId: threshold
 
       - uid: room-temp-critical
@@ -63,6 +66,8 @@ groups:
         execErrState: Error
         labels:
           severity: critical
+        annotations:
+          summary: "Server room temperature is {{ $values.temp_c.Value | printf \"%.1f\" }}°C (threshold: 30°C) — take immediate action"
         data:
           - refId: A
             relativeTimeRange:
@@ -433,8 +438,7 @@ groups:
         noDataState: OK
         execErrState: Error
         labels:
-          severity: critical
-          oncall: "Platform"
+          severity: high
         annotations:
           summary: "Cluster {{ $labels.vmwcluster }} CPU is {{ $values.pct_surplus.Value | printf \"%.1f\" }}% above HA failover headroom"
         data:
@@ -479,8 +483,7 @@ groups:
         noDataState: OK
         execErrState: Error
         labels:
-          severity: critical
-          oncall: "Platform"
+          severity: high
         annotations:
           summary: "Cluster {{ $labels.vmwcluster }} memory is {{ $values.pct_surplus.Value | printf \"%.1f\" }}% above HA failover headroom"
         data:
@@ -524,10 +527,55 @@ groups:
         noDataState: OK
         execErrState: Error
         labels:
+          severity: high
+        annotations:
+          summary: "Datastore {{ $labels.ds }} has {{ $values.free_pct.Value | printf \"%.1f\" }}% free space remaining (warning: <20%, critical: <5%)"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: min by (ds,vcenter)(vmware_datastore_free / vmware_datastore_capacity * 100 * on(dsmo,vcenter) group_left(ds) max by (dsmo,vcenter,ds)(vmware_datastore_info))
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 5
+                      - 20
+              refId: threshold
+
+      - uid: vcenter-datastore-space-critical
+        title: vCenter Datastore Space Critical
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
           severity: critical
           oncall: "Platform"
         annotations:
-          summary: "Datastore {{ $labels.ds }} has {{ $values.free_pct.Value | printf \"%.1f\" }}% free space remaining"
+          summary: "Datastore {{ $labels.ds }} is over 95% full — {{ $values.free_pct.Value | printf \"%.1f\" }}% free"
         data:
           - refId: A
             relativeTimeRange:
@@ -559,7 +607,7 @@ groups:
                 - evaluator:
                     type: lt
                     params:
-                      - 20
+                      - 5
               refId: threshold
 
       - uid: vcenter-host-mem-balloon
@@ -570,7 +618,6 @@ groups:
         execErrState: Error
         labels:
           severity: warning
-          oncall: "Platform"
         annotations:
           summary: "Host {{ $labels.host }} memory balloon at {{ $values.pct_ballooned.Value | printf \"%.1f\" }}% — host under memory pressure"
         data:
@@ -614,8 +661,7 @@ groups:
         noDataState: OK
         execErrState: Error
         labels:
-          severity: critical
-          oncall: "Platform"
+          severity: high
         annotations:
           summary: "Host {{ $labels.host }} VMs are swapping to disk — {{ $values.pct_swapped.Value | printf \"%.1f\" }}% of memory swapped"
         data:
@@ -660,7 +706,6 @@ groups:
         execErrState: Error
         labels:
           severity: warning
-          oncall: "Platform"
         annotations:
           summary: "Host {{ $labels.host }} CPU ready at {{ $values.pct_ready.Value | printf \"%.1f\" }}% — VMs waiting for CPU time"
         data:
@@ -711,6 +756,8 @@ groups:
         execErrState: Error
         labels:
           severity: warning
+        annotations:
+          summary: "Server intake temperature elevated on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C (warning: 29.5°C, critical: 30°C)"
         data:
           - refId: A
             relativeTimeRange:
@@ -740,15 +787,16 @@ groups:
               expression: temp_c
               conditions:
                 - evaluator:
-                    type: gt
+                    type: within_range
                     params:
                       - 29.5
+                      - 30
               refId: threshold
 
       - uid: server-intake-temp-critical
         title: Server Intake Temp Critical
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -799,7 +847,7 @@ groups:
       - uid: idrac-cpu-health
         title: iDRAC CPU Health Degraded
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -844,7 +892,7 @@ groups:
       - uid: idrac-psu-health
         title: iDRAC PSU Health Degraded
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -934,7 +982,7 @@ groups:
       - uid: idrac-fan-health
         title: iDRAC Fan Health Degraded
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -1024,7 +1072,7 @@ groups:
       - uid: idrac-storage-drive-health
         title: iDRAC Storage Drive Health Degraded
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -1069,7 +1117,7 @@ groups:
       - uid: idrac-storage-controller-health
         title: iDRAC Storage Controller Health Degraded
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -1114,7 +1162,7 @@ groups:
       - uid: idrac-storage-volume-health
         title: iDRAC Storage Volume Health Degraded
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -1207,7 +1255,7 @@ groups:
       - uid: idrac-system-health
         title: iDRAC System Health Degraded
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -1477,7 +1525,7 @@ groups:
       - uid: idrac-memory-health
         title: iDRAC Memory Health Degraded
         condition: threshold
-        for: 0s
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
@@ -1532,6 +1580,8 @@ groups:
         execErrState: Error
         labels:
           severity: critical
+        annotations:
+          summary: "Genus database is unreachable — billing system may be affected"
         data:
           - refId: A
             relativeTimeRange:
@@ -1574,6 +1624,8 @@ groups:
         execErrState: Error
         labels:
           severity: warning
+        annotations:
+          summary: "Genus hub file has not been updated for over 3 hours — industry data exchange may be stalled"
         data:
           - refId: A
             relativeTimeRange:
@@ -1616,6 +1668,8 @@ groups:
         execErrState: Error
         labels:
           severity: warning
+        annotations:
+          summary: "Genus replica lag exceeds 1 second — reporting and read queries may be stale"
         data:
           - refId: A
             relativeTimeRange:
@@ -1658,6 +1712,8 @@ groups:
         execErrState: Error
         labels:
           severity: warning
+        annotations:
+          summary: "eWelcome has failed jobs in the queue — welcome packs may not be sending"
         data:
           - refId: A
             relativeTimeRange:
@@ -1705,6 +1761,8 @@ groups:
         execErrState: Error
         labels:
           severity: warning
+        annotations:
+          summary: "EPS pricing queue has a job waiting over 1 hour — check for stuck jobs"
         data:
           - refId: A
             relativeTimeRange:
@@ -1939,8 +1997,55 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Certificate expiring in less than 30 days"
+          summary: "Certificate {{ $labels.name }} expiring in {{ $values.days.Value | printf \"%.0f\" }} days (warning: <30d, critical: <3d)"
           description: "{{ $labels.name }} ({{ $labels.instance }}) expires on {{ $labels.not_after }}"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(probe_ssl_earliest_cert_expiry{job="cert_probe"} - time()) / 86400'
+              refId: A
+          - refId: days
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: days
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: days
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 3
+                      - 30
+              refId: threshold
+
+      - uid: cert-expired
+        title: Certificate Expired
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "Certificate has expired: {{ $labels.name }} ({{ $labels.instance }})"
+          description: "{{ $labels.name }} expired on {{ $labels.not_after }} — services using this certificate will fail TLS handshakes"
         data:
           - refId: A
             relativeTimeRange:
@@ -1972,7 +2077,7 @@ groups:
                 - evaluator:
                     type: lt
                     params:
-                      - 30
+                      - 0
               refId: threshold
 
       - uid: cert-expiring-critical
@@ -1985,7 +2090,7 @@ groups:
           severity: critical
           oncall: Platform
         annotations:
-          summary: "Certificate expiring in less than 3 days"
+          summary: "Certificate {{ $labels.name }} expiring in {{ $values.days.Value | printf \"%.0f\" }} days — less than 3 days remaining"
           description: "{{ $labels.name }} ({{ $labels.instance }}) expires on {{ $labels.not_after }}"
         data:
           - refId: A
@@ -2016,8 +2121,9 @@ groups:
               expression: days
               conditions:
                 - evaluator:
-                    type: lt
+                    type: within_range
                     params:
+                      - 0
                       - 3
               refId: threshold
 
@@ -2085,7 +2191,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'cert_ocsp_status{job="cert_custom"}'
+              expr: 'cert_ocsp_status{job="cert_custom"} == 1'
               refId: A
           - refId: status
             relativeTimeRange:
@@ -2155,4 +2261,1274 @@ groups:
                     type: gt
                     params:
                       - 0
+              refId: threshold
+
+  - orgId: 1
+    name: Linux
+    folder: Infrastructure Alerts/Linux
+    interval: 1m
+    rules:
+      - uid: linux-disk-warning
+        title: Linux Disk Space Warning
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free (warning: <20%, critical: <10%)"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd",device!~".*:.*|//.*"} / node_filesystem_size_bytes{job="node",fstype!~"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd",device!~".*:.*|//.*"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 10
+                      - 20
+              refId: threshold
+
+      - uid: linux-disk-critical
+        title: Linux Disk Space Critical
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free — filesystem near full"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd",device!~".*:.*|//.*"} / node_filesystem_size_bytes{job="node",fstype!~"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd",device!~".*:.*|//.*"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: linux-inode-warning
+        title: Linux Disk Inode Exhaustion
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Inodes on {{ $labels.mountpoint }} ({{ $labels.instance }}) are {{ $values.free_pct.Value | printf \"%.1f\" }}% free"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_filesystem_files_free{job="node",fstype!~"tmpfs|overlay|squashfs|devtmpfs"} / node_filesystem_files{job="node",fstype!~"tmpfs|overlay|squashfs|devtmpfs"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: linux-cpu-warning
+        title: Linux High CPU Usage
+        condition: threshold
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU on {{ $labels.instance }} at {{ $values.cpu_pct.Value | printf \"%.1f\" }}% — sustained high load"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(1 - avg by (instance)(rate(node_cpu_seconds_total{job="node",mode="idle"}[5m]))) * 100'
+              refId: A
+          - refId: cpu_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: cpu_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: cpu_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 90
+              refId: threshold
+
+      - uid: linux-memory-warning
+        title: Linux High Memory Usage
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has {{ $values.avail_pct.Value | printf \"%.1f\" }}% memory available"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} * 100'
+              refId: A
+          - refId: avail_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: avail_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: avail_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: linux-iowait-warning
+        title: Linux High IO Wait
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} IO wait at {{ $values.iowait_pct.Value | printf \"%.1f\" }}% — storage may be bottlenecking"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'avg by (instance)(rate(node_cpu_seconds_total{job="node",mode="iowait"}[5m])) * 100'
+              refId: A
+          - refId: iowait_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: iowait_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: iowait_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 30
+              refId: threshold
+
+      - uid: linux-load-warning
+        title: Linux High System Load
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} load average {{ $values.load_ratio.Value | printf \"%.2f\" }}× CPU count"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_load5{job="node"} / count by (instance)(node_cpu_seconds_total{job="node",mode="idle"})'
+              refId: A
+          - refId: load_ratio
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: load_ratio
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: load_ratio
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 2
+              refId: threshold
+
+      - uid: linux-ntp-warning
+        title: Linux NTP Clock Drift
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} clock offset {{ $values.offset_s.Value | printf \"%.3f\" }}s — NTP sync may have failed"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'abs(node_timex_offset_seconds{job="node"})'
+              refId: A
+          - refId: offset_s
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: offset_s
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: offset_s
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0.1
+              refId: threshold
+
+  - orgId: 1
+    name: Windows
+    folder: Infrastructure Alerts/Windows
+    interval: 1m
+    rules:
+      - uid: windows-disk-warning
+        title: Windows Disk Space Warning
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Drive {{ $labels.volume }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free (warning: <20%, critical: <10%)"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'windows_logical_disk_free_bytes{job="windows",volume!~"HarddiskVolume.*|_Total",type!="4"} / windows_logical_disk_size_bytes{job="windows",volume!~"HarddiskVolume.*|_Total",type!="4"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 10
+                      - 20
+              refId: threshold
+
+      - uid: windows-disk-critical
+        title: Windows Disk Space Critical
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: "Drive {{ $labels.volume }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free — filesystem near full"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'windows_logical_disk_free_bytes{job="windows",volume!~"HarddiskVolume.*|_Total",type!="4"} / windows_logical_disk_size_bytes{job="windows",volume!~"HarddiskVolume.*|_Total",type!="4"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: windows-cpu-warning
+        title: Windows High CPU Usage
+        condition: threshold
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU on {{ $labels.instance }} at {{ $values.cpu_pct.Value | printf \"%.1f\" }}% — sustained high load"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(1 - avg by (instance)(rate(windows_cpu_time_total{job="windows",mode="idle"}[5m]))) * 100'
+              refId: A
+          - refId: cpu_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: cpu_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: cpu_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 90
+              refId: threshold
+
+      - uid: windows-memory-warning
+        title: Windows High Memory Usage
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has {{ $values.avail_pct.Value | printf \"%.1f\" }}% memory available"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'windows_memory_available_bytes{job="windows"} / windows_cs_physical_memory_bytes{job="windows"} * 100'
+              refId: A
+          - refId: avail_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: avail_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: avail_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+  - orgId: 1
+    name: Network
+    folder: Infrastructure Alerts/Network
+    interval: 1m
+    rules:
+      - uid: network-wan-latency
+        title: WAN High Latency
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "WAN latency at {{ $values.latency_ms.Value | printf \"%.0f\" }}ms — internet connection degraded"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_wan_latency_ms{job="unifi_local"}'
+              refId: A
+          - refId: latency_ms
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: latency_ms
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: latency_ms
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 150
+              refId: threshold
+
+      - uid: network-wan-packetloss-warning
+        title: WAN Packet Loss Warning
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "WAN packet loss at {{ $values.loss_pct.Value | printf \"%.1f\" }}% (warning: >5%, critical: >15%)"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_wan_packet_loss_percent{job="unifi_local"}'
+              refId: A
+          - refId: loss_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: loss_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: loss_pct
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 5
+                      - 15
+              refId: threshold
+
+      - uid: network-wan-packetloss-critical
+        title: WAN Packet Loss Critical
+        condition: threshold
+        for: 3m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "WAN packet loss at {{ $values.loss_pct.Value | printf \"%.1f\" }}% — internet connection severely degraded"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_wan_packet_loss_percent{job="unifi_local"}'
+              refId: A
+          - refId: loss_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: loss_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: loss_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 15
+              refId: threshold
+
+      - uid: network-wan-unreachable
+        title: UniFi Controller Unreachable
+        condition: threshold
+        for: 3m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "UniFi controller scrape failing — network monitoring blind"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_scrape_success{job="unifi_local"}'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: network-unifi-offline
+        title: UniFi Device Offline
+        condition: threshold
+        for: 3m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $values.offline_count.Value | printf \"%.0f\" }} UniFi device(s) offline — check the UniFi dashboard for details"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count(unifi_device_up{job="unifi_local"} == 0 unless on(device) unifi_device_exempt)'
+              refId: A
+          - refId: offline_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: offline_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: offline_count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: network-site-ping-down
+        title: Site Ping Failing
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "{{ $labels.source }} cannot reach {{ $values.down_count.Value | printf \"%.0f\" }} ping target(s) — remote site connectivity may be lost"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count by(source) (site_ping_success == 0)'
+              refId: A
+          - refId: down_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: down_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: down_count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: network-switch-down
+        title: Switch Interface Down
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $values.down_count.Value | printf \"%.0f\" }} switch interface(s) are down — check the Switch dashboard for details"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count((os10_interface_up{job="dell_os10",interface!~"Management.*"} == 0) and (max_over_time(os10_interface_up{job="dell_os10",interface!~"Management.*"}[24h]) == 1))'
+              refId: A
+          - refId: down_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: down_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: down_count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: network-switch-unreachable
+        title: Switch Unreachable
+        condition: threshold
+        for: 3m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "Dell OS10 switch {{ $labels.instance }} is not responding to scrapes"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'up{job="dell_os10"}'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: network-switch-errors
+        title: Switch Interface High Errors
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Interface {{ $labels.interface }} on {{ $labels.instance }} receiving {{ $values.err_rate.Value | printf \"%.1f\" }} errors/s"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(os10_interface_in_errors_total{job="dell_os10"}[5m])'
+              refId: A
+          - refId: err_rate
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: err_rate
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: err_rate
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 10
+              refId: threshold
+
+  - orgId: 1
+    name: Containers
+    folder: Infrastructure Alerts/Containers
+    interval: 1m
+    rules:
+      - uid: container-crash-loop
+        title: Container Crash Looping
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} has restarted {{ $values.restarts.Value | printf \"%.0f\" }} times in 10 minutes"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'increase(container_restart_count{job="cadvisor",name!=""}[10m])'
+              refId: A
+          - refId: restarts
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: restarts
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: restarts
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 3
+              refId: threshold
+
+      - uid: container-memory-limit
+        title: Container Memory Near Limit
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} using {{ $values.mem_pct.Value | printf \"%.1f\" }}% of its memory limit"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'container_memory_usage_bytes{job="cadvisor",name!=""} / container_spec_memory_limit_bytes{job="cadvisor",name!="",container_spec_memory_limit_bytes>0} * 100'
+              refId: A
+          - refId: mem_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: mem_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: mem_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 90
+              refId: threshold
+
+      - uid: container-cpu-throttle
+        title: Container CPU Throttling
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} is {{ $values.throttle_pct.Value | printf \"%.1f\" }}% CPU throttled"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(container_cpu_cfs_throttled_periods_total{job="cadvisor",name!=""}[5m]) / rate(container_cpu_cfs_periods_total{job="cadvisor",name!=""}[5m]) * 100'
+              refId: A
+          - refId: throttle_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: throttle_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: throttle_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 50
+              refId: threshold
+
+  - orgId: 1
+    name: HTTP
+    folder: Application
+    interval: 1m
+    rules:
+      - uid: http-app-down
+        title: Application HTTP Down
+        condition: threshold
+        for: 3m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "HTTP probe failing for {{ $labels.instance }} — application may be down"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'probe_success{job="blackbox"}'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: http-app-slow
+        title: Application HTTP Slow Response
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} responding in {{ $values.duration_s.Value | printf \"%.2f\" }}s — above 3s threshold"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'probe_duration_seconds{job="blackbox"}'
+              refId: A
+          - refId: duration_s
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: duration_s
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: duration_s
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 3
+              refId: threshold
+
+  - orgId: 1
+    name: MySQL
+    folder: Application
+    interval: 1m
+    rules:
+      - uid: mysql-connections-high
+        title: MySQL Connections High
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} MySQL connections at {{ $values.conn_pct.Value | printf \"%.1f\" }}% of max_connections"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'mysql_global_status_threads_connected{job="mysql"} / mysql_global_variables_max_connections{job="mysql"} * 100'
+              refId: A
+          - refId: conn_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: conn_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: conn_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 80
+              refId: threshold
+
+      - uid: mysql-slow-queries
+        title: MySQL Slow Query Spike
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} MySQL slow queries at {{ $values.qps.Value | printf \"%.1f\" }}/s"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(mysql_global_status_slow_queries{job="mysql"}[5m])'
+              refId: A
+          - refId: qps
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: qps
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: qps
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 5
               refId: threshold

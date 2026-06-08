@@ -1,19 +1,21 @@
 """
 Generate crown_monitoring.ico — Crown Gas & Power monitoring tray app icon.
 
-Design: dark navy circle, gold crown (3 peaks), green ECG pulse line.
+Design: CG&P logo (blue flame + red lightning bolt) on a navy circle,
+        with a green ECG pulse line as the monitoring twist.
 Produces a multi-resolution ICO (16 / 32 / 48 / 64 / 128 / 256 px).
 """
 
 from PIL import Image, ImageDraw
 
 
-NAVY   = (13,  31,  60)
-NAVY_B = (28,  60, 100)
-GOLD   = (210, 155,  20)
-GOLD_L = (245, 200,  55)
-GREEN  = (76,  195,  80)
-WHITE  = (255, 255, 255)
+NAVY    = (13,  31,  60)
+NAVY_B  = (28,  60, 100)
+BLUE_D  = (20,  80, 185)   # flame dark blue
+BLUE_L  = (80, 155, 230)   # flame highlight
+RED_D   = (195,  25,  25)  # bolt dark red
+RED_L   = (230,  70,  50)  # bolt highlight
+GREEN   = (76,  195,  80)  # monitoring pulse
 
 
 def _icon(size: int) -> Image.Image:
@@ -25,51 +27,80 @@ def _icon(size: int) -> Image.Image:
         return (round(x * s), round(y * s))
 
     # ── background circle ──────────────────────────────────────────────────
-    m = max(1, round(s * 0.03))
-    bw = max(1, s // 28)
+    m  = max(1, round(s * 0.03))
+    bw = max(1, s // 30)
     d.ellipse([m, m, s - m, s - m], fill=NAVY, outline=NAVY_B, width=bw)
 
-    # ── crown ──────────────────────────────────────────────────────────────
-    # Three-peaked crown polygon
-    crown = [
-        p(0.13, 0.70),   # bottom-left
-        p(0.13, 0.44),   # left wall
-        p(0.27, 0.26),   # left peak
-        p(0.38, 0.43),   # valley
-        p(0.50, 0.16),   # centre peak
-        p(0.62, 0.43),   # valley
-        p(0.73, 0.26),   # right peak
-        p(0.87, 0.44),   # right wall
-        p(0.87, 0.70),   # bottom-right
+    # ── blue flame (teardrop, tip slightly right of centre) ────────────────
+    flame = [
+        p(0.54, 0.11),   # tip
+        p(0.68, 0.24),   # upper right
+        p(0.74, 0.38),   # right
+        p(0.72, 0.52),   # lower right
+        p(0.62, 0.62),   # bottom right curve
+        p(0.50, 0.65),   # bottom centre
+        p(0.38, 0.62),   # bottom left curve
+        p(0.28, 0.52),   # lower left
+        p(0.26, 0.38),   # left
+        p(0.32, 0.24),   # upper left
     ]
-    ow = max(1, s // 22)
-    d.polygon(crown, fill=GOLD, outline=GOLD_L, width=ow)
+    d.polygon(flame, fill=BLUE_D)
 
-    # Base band beneath crown
-    bx0, by0 = p(0.13, 0.70)
-    bx1, by1 = p(0.87, 0.80)
-    d.rectangle([bx0, by0, bx1, by1], fill=GOLD, outline=GOLD_L, width=ow)
+    # inner highlight — lighter blue, shifted slightly toward tip
+    if s >= 32:
+        inner = [
+            p(0.54, 0.18),
+            p(0.63, 0.28),
+            p(0.67, 0.40),
+            p(0.64, 0.51),
+            p(0.54, 0.57),
+            p(0.46, 0.57),
+            p(0.36, 0.51),
+            p(0.33, 0.40),
+            p(0.37, 0.28),
+            p(0.46, 0.18),
+        ]
+        d.polygon(inner, fill=BLUE_L)
 
-    # Jewel dots on crown (omit at tiny sizes)
+    # ── red lightning bolt (pointing down, overlaps flame base) ───────────
+    # Two-stroke zigzag bolt:  top-right → middle-left → bottom-right
+    bolt = [
+        p(0.62, 0.46),   # top-right start
+        p(0.42, 0.63),   # middle-left notch (top stroke end)
+        p(0.52, 0.63),   # notch corner (bridge)
+        p(0.38, 0.84),   # bottom tip
+        p(0.58, 0.67),   # bottom-left inner
+        p(0.48, 0.67),   # bridge inner
+        p(0.66, 0.52),   # back to top inner
+    ]
+    d.polygon(bolt, fill=RED_D)
+
+    # bolt highlight
     if s >= 48:
-        r = max(2, s // 20)
-        for cx, cy in [(0.27, 0.30), (0.50, 0.22), (0.73, 0.30)]:
-            x, y = p(cx, cy)
-            d.ellipse([x - r, y - r, x + r, y + r], fill=WHITE)
+        bolt_hi = [
+            p(0.59, 0.48),
+            p(0.45, 0.62),
+            p(0.50, 0.62),
+            p(0.41, 0.79),
+            p(0.54, 0.67),
+            p(0.49, 0.67),
+            p(0.62, 0.53),
+        ]
+        d.polygon(bolt_hi, fill=RED_L)
 
-    # ── monitoring pulse line ──────────────────────────────────────────────
-    # ECG-style heartbeat cutting across the crown base
-    pulse = [
-        p(0.10, 0.75),
-        p(0.30, 0.75),
-        p(0.38, 0.62),   # up
-        p(0.46, 0.84),   # down
-        p(0.54, 0.75),   # back
-        p(0.90, 0.75),
-    ]
-    lw = max(2, s // 18)
-    for i in range(len(pulse) - 1):
-        d.line([pulse[i], pulse[i + 1]], fill=GREEN, width=lw)
+    # ── green monitoring ECG pulse (bottom of circle) ──────────────────────
+    if s >= 32:
+        pulse = [
+            p(0.10, 0.88),
+            p(0.28, 0.88),
+            p(0.36, 0.76),
+            p(0.44, 0.96),
+            p(0.52, 0.88),
+            p(0.90, 0.88),
+        ]
+        lw = max(2, s // 20)
+        for i in range(len(pulse) - 1):
+            d.line([pulse[i], pulse[i + 1]], fill=GREEN, width=lw)
 
     return img
 

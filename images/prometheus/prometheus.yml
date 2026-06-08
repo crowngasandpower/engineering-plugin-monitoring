@@ -37,6 +37,9 @@ scrape_configs:
       - targets: ['eps-worker-1']
         labels:
           host: eps-worker-1
+      - targets: ['apps-swarm-1']
+        labels:
+          host: apps-swarm-1
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
@@ -391,6 +394,13 @@ scrape_configs:
     scrape_interval: 5m
     scrape_timeout: 4m
     metrics_path: /cert/metrics
+    static_configs:
+      - targets: ['192.168.164.184:9511']
+
+  # UniFi device exemptions — managed via http://poc-containers:9511/unifi
+  - job_name: 'unifi_exempt'
+    scrape_interval: 60s
+    metrics_path: /unifi/metrics
     static_configs:
       - targets: ['192.168.164.184:9511']
 

@@ -30,6 +30,23 @@
         "hide": 0,
         "skipUrlSync": false,
         "description": "Filter VMs by name (partial match, case-insensitive)"
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "PCC52D03280B7034C"
+        },
+        "definition": "SELECT COALESCE(string_agg(identifier, '|'), '^$') FROM platform_suppressions WHERE category = 'backup_overdue'",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "suppressed_overdue_backup",
+        "options": [],
+        "query": "SELECT COALESCE(string_agg(identifier, '|'), '^$') FROM platform_suppressions WHERE category = 'backup_overdue'",
+        "refresh": 2,
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
@@ -284,7 +301,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count((time() - vcenter_vm_last_backup_timestamp) >= 604800)",
+          "expr": "count(time() - vcenter_vm_last_backup_timestamp{vm_name!~\"${suppressed_overdue_backup}\"} >= 604800) or vector(0)",
           "instant": true,
           "range": false,
           "legendFormat": "",
@@ -427,6 +444,47 @@
                 "value": 180
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Suppressed"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "": {
+                        "text": "No",
+                        "color": "green",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "value",
+                    "options": {
+                      "Yes": {
+                        "text": "Yes",
+                        "color": "orange",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background-solid"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
           }
         ]
       },
@@ -461,26 +519,49 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "(time() - vcenter_vm_last_backup_timestamp) / 86400 >= 7",
+          "expr": "label_replace((time() - vcenter_vm_last_backup_timestamp{vm_name=~\"${suppressed_overdue_backup}\"}) / 86400 >= 7, \"suppressed\", \"Yes\", \"vm_name\", \".*\")",
           "format": "table",
           "instant": true,
           "legendFormat": "",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "label_replace((time() - vcenter_vm_last_backup_timestamp{vm_name!~\"${suppressed_overdue_backup}\"}) / 86400 >= 7, \"suppressed\", \"No\", \"vm_name\", \".*\")",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "",
+          "refId": "B"
         }
       ],
       "transformations": [
         {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "vm_name",
+                "suppressed",
+                "Value"
+              ]
+            }
+          }
+        },
+        {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "instance": true,
-              "job": true
-            },
             "renameByName": {
               "vm_name": "VM",
-              "Value": "Days Since Backup"
+              "Value": "Days Since Backup",
+              "suppressed": "Suppressed"
             }
           }
         }

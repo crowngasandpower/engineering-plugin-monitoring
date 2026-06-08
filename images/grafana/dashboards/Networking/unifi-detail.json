@@ -3,7 +3,7 @@
   "title": "UniFi Site Detail",
   "tags": ["infrastructure", "network", "unifi"],
   "schemaVersion": 39,
-  "version": 14,
+  "version": 17,
   "refresh": "1m",
   "time": { "from": "now-3h", "to": "now" },
   "timezone": "browser",
@@ -356,11 +356,11 @@
       "gridPos": { "x": 0, "y": 32, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
-        { "expr": "unifi_device_up{site=~\"$site\"}", "instant": true, "format": "table", "refId": "A" },
-        { "expr": "unifi_device_uptime_seconds{site=~\"$site\"}", "instant": true, "format": "table", "refId": "B" },
-        { "expr": "unifi_device_clients{site=~\"$site\"}", "instant": true, "format": "table", "refId": "C" },
-        { "expr": "unifi_device_cpu_percent{site=~\"$site\"}", "instant": true, "format": "table", "refId": "D" },
-        { "expr": "unifi_device_memory_percent{site=~\"$site\"}", "instant": true, "format": "table", "refId": "E" }
+        { "expr": "unifi_device_up{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "A" },
+        { "expr": "unifi_device_uptime_seconds{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "B" },
+        { "expr": "unifi_device_clients{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "C" },
+        { "expr": "unifi_device_cpu_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "D" },
+        { "expr": "unifi_device_memory_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "E" }
       ],
       "transformations": [
         { "id": "merge", "options": {} },
@@ -418,15 +418,25 @@
       }
     },
     {
+      "id": 42,
+      "type": "text",
+      "title": "",
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 2 },
+      "options": {
+        "mode": "markdown",
+        "content": "[Manage device exemptions →](http://poc-containers:9511/suppress) — devices listed there are hidden from this table when offline and excluded from the UniFi offline alert."
+      }
+    },
+    {
       "id": 41,
       "type": "timeseries",
       "title": "Device CPU & Memory",
       "description": "CPU and memory utilisation per device. Only devices that expose these metrics will appear.",
-      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 8 },
+      "gridPos": { "x": 0, "y": 42, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
-        { "expr": "unifi_device_cpu_percent{site=~\"$site\"}", "legendFormat": "{{site}} / {{device}} CPU", "refId": "A" },
-        { "expr": "unifi_device_memory_percent{site=~\"$site\"}", "legendFormat": "{{site}} / {{device}} Mem", "refId": "B" }
+        { "expr": "unifi_device_cpu_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "legendFormat": "{{site}} / {{device}} CPU", "refId": "A" },
+        { "expr": "unifi_device_memory_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "legendFormat": "{{site}} / {{device}} Mem", "refId": "B" }
       ],
       "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
       "fieldConfig": {
@@ -444,7 +454,7 @@
       "type": "table",
       "title": "Switch Ports",
       "description": "All switch ports across selected sites. Filter by site/device using the variable above.",
-      "gridPos": { "x": 0, "y": 48, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 50, "w": 24, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "unifi_port_up{site=~\"$site\",device=~\"$device\",port_name=~\"$port|.+\"}", "instant": true, "format": "table", "refId": "A" },
@@ -498,7 +508,7 @@
       "id": 59,
       "type": "row",
       "title": "Port Traffic — select Site → Device → click port names below to add to graph",
-      "gridPos": { "x": 0, "y": 58, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 60, "w": 24, "h": 1 },
       "collapsed": false,
       "panels": []
     },
@@ -507,7 +517,7 @@
       "type": "timeseries",
       "title": "In",
       "description": "Click a port name in the Switch Ports table to select it. To show multiple ports, hold Ctrl and click in the Port dropdown.",
-      "gridPos": { "x": 0, "y": 59, "w": 12, "h": 10 },
+      "gridPos": { "x": 0, "y": 61, "w": 12, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "rate(unifi_port_rx_bytes_total{site=~\"$site\", device=~\"$device\", port_name=~\"$port\"}[5m]) * 8", "legendFormat": "{{port_name}}", "refId": "A" }
@@ -522,7 +532,7 @@
       "id": 61,
       "type": "timeseries",
       "title": "Out",
-      "gridPos": { "x": 12, "y": 59, "w": 12, "h": 10 },
+      "gridPos": { "x": 12, "y": 61, "w": 12, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "rate(unifi_port_tx_bytes_total{site=~\"$site\", device=~\"$device\", port_name=~\"$port\"}[5m]) * 8", "legendFormat": "{{port_name}}", "refId": "A" }

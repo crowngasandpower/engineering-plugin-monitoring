@@ -38,7 +38,7 @@ Metrics:
   unifi_wan_uptime_seconds         WAN link uptime in seconds
   unifi_wan_rx_bytes_rate          WAN current receive rate in bytes/s
   unifi_wan_tx_bytes_rate          WAN current transmit rate in bytes/s
-  unifi_wan_packet_loss_percent    WAN packet loss percentage
+  unifi_wan_probe_drops_total      cumulative failed WAN probe packets (counter)
   unifi_site_clients               total connected clients by subsystem (wlan/lan)
   unifi_vpn_tunnels_active         count of active VPN tunnels at this site
   unifi_scrape_success             1 if last fetch from this controller succeeded
@@ -51,7 +51,7 @@ from dataclasses import dataclass
 import httpx
 from fastapi import FastAPI, Response
 
-app = FastAPI(title="Crown UniFi Local Exporter", version="0.4.1")
+app = FastAPI(title="Crown UniFi Local Exporter", version="0.5.0")
 
 TIMEOUT = float(os.environ.get("UNIFI_TIMEOUT", "15"))
 
@@ -263,14 +263,8 @@ def _process(ctrl: Controller, res: dict, acc: dict) -> None:
                 acc["wan_tx_rate"].append((site_lb, _num(wan_data[key])))
                 break
 
-        availability = wan_uptime_stats.get("availability")
-        if availability is not None:
-            acc["wan_loss"].append((site_lb, round(100.0 - float(availability), 2)))
-        else:
-            for key in ("drops", "packet_loss", "loss"):
-                if www_data.get(key) is not None:
-                    acc["wan_loss"].append((site_lb, _num(www_data[key])))
-                    break
+        if www_data.get("drops") is not None:
+            acc["wan_drops"].append((site_lb, _num(www_data["drops"])))
 
     wg_active = res.get("wg_active", 0)
     if vpn_health is not None or wg_active > 0:
@@ -286,7 +280,7 @@ async def metrics() -> Response:
         "port_rx_err": [], "port_tx_err": [], "port_poe": [],
         "radio_ch": [], "radio_cu": [], "radio_clients": [],
         "wan_latency": [], "wan_uptime": [], "wan_rx_rate": [], "wan_tx_rate": [],
-        "wan_loss": [], "vpn_active": [],
+        "wan_drops": [], "vpn_active": [],
         "site_clients": [], "scrape": [],
     }
 
@@ -315,7 +309,7 @@ async def metrics() -> Response:
         fmt_block("unifi_wan_uptime_seconds", "WAN link uptime in seconds.", "gauge", acc["wan_uptime"]),
         fmt_block("unifi_wan_rx_bytes_rate", "WAN current receive rate in bytes/s.", "gauge", acc["wan_rx_rate"]),
         fmt_block("unifi_wan_tx_bytes_rate", "WAN current transmit rate in bytes/s.", "gauge", acc["wan_tx_rate"]),
-        fmt_block("unifi_wan_packet_loss_percent", "WAN packet loss percentage reported by gateway.", "gauge", acc["wan_loss"]),
+        fmt_block("unifi_wan_probe_drops_total", "Cumulative failed WAN probe packets reported by the gateway.", "counter", acc["wan_drops"]),
         fmt_block("unifi_vpn_tunnels_active", "Count of established VPN tunnels at this site.", "gauge", acc["vpn_active"]),
         fmt_block("unifi_site_clients", "Total connected clients per subsystem.", "gauge", acc["site_clients"]),
         fmt_block("unifi_scrape_success", "1 if last fetch from this controller succeeded.", "gauge", acc["scrape"]),
@@ -336,8 +330,12 @@ async def debug() -> dict:
         for ctrl in CONTROLLERS:
             res = await _fetch_controller(client, ctrl)
             vpn_health_sub = next((s for s in res["health"] if s.get("subsystem") == "vpn"), None)
+            wan_sub = next((s for s in res["health"] if s.get("subsystem") == "wan"), {})
+            www_sub = next((s for s in res["health"] if s.get("subsystem") == "www"), {})
             out[ctrl.name] = {
                 "ok": res["ok"],
+                "wan_health": wan_sub,
+                "www_health": www_sub,
                 "vpn_health_subsystem": vpn_health_sub,
                 "wg_status": res.get("wg_status", ""),
                 "wg_active_computed": res.get("wg_active", 0),

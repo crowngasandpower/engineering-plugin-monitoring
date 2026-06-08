@@ -1301,6 +1301,27 @@
                   "fixedColor": "#FF9830",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "group": "A",
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
               }
             ]
           },
@@ -1680,6 +1701,17 @@
           "legendFormat": "Usage",
           "range": true,
           "refId": "usage_pct"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "avg(rate(node_cpu_seconds_total{mode=\"iowait\", job=\"node\", host=~\"$vm\"}[15m])) / avg(rate(node_cpu_seconds_total{job=\"node\", host=~\"$vm\"}[15m])) * 100",
+          "legendFormat": "iowait",
+          "range": true,
+          "refId": "iowait"
         }
       ],
       "title": "CPU Usage & Load Average",
