@@ -19,6 +19,7 @@ SD_FILE = '/sd/linux-hosts.json'
 WINDOWS_SD_FILE = '/sd/windows-hosts.json'
 PUSHGATEWAY_URL = os.environ.get('PUSHGATEWAY_URL', 'http://pushgateway:9091')
 POLL_INTERVAL = int(os.environ.get('POLL_INTERVAL_SECONDS', '60'))
+SAFE_HOSTNAME_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._-]{0,62}$')
 
 
 def connect():
@@ -103,8 +104,9 @@ def poll():
                     port = NODE_EXPORTER_PORT
                     target_list = linux_targets
                 if ip:
+                    target_addr = hostname if (hostname and SAFE_HOSTNAME_RE.match(hostname)) else ip
                     target_list.append({
-                        'targets': [f'{hostname or ip}:{port}'],
+                        'targets': [f'{target_addr}:{port}'],
                         'labels': {'host': vm.name},
                     })
                 else:

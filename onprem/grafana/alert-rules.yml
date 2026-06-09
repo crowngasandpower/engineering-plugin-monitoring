@@ -4,11 +4,8 @@
 #
 # Live-edit contract:
 #   - Edit a rule in the Grafana UI → takes effect immediately.
-#   - Container restart → this file wins, UI edits are overwritten.
+#   - Container restart or redeploy → this file wins, UI edits are overwritten.
 #   - To make a change permanent → edit this file and raise a PR.
-#
-# NOTE: folder names here use the flat on-prem structure (e.g. "Temperature").
-# The images/ version uses the nested AWS structure (e.g. "Infrastructure Alerts/Temperature").
 
 groups:
   - orgId: 1
@@ -26,9 +23,6 @@ groups:
           severity: warning
         annotations:
           summary: "Server room temperature is {{ $values.temp_c.Value | printf \"%.1f\" }}°C (warning: 29.5°C, critical: 30°C) — check cooling"
-          __dashboardUid__: "server-room-temperature"
-          __panelId__: "4"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/server-room-temperature?viewPanel=4"
         data:
           - refId: A
             relativeTimeRange:
@@ -74,9 +68,6 @@ groups:
           severity: critical
         annotations:
           summary: "Server room temperature is {{ $values.temp_c.Value | printf \"%.1f\" }}°C (threshold: 30°C) — take immediate action"
-          __dashboardUid__: "server-room-temperature"
-          __panelId__: "4"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/server-room-temperature?viewPanel=4"
         data:
           - refId: A
             relativeTimeRange:
@@ -114,21 +105,18 @@ groups:
   - orgId: 1
     name: SAN
     folder: Hardware
-    interval: 30s
+    interval: 1m
     rules:
       - uid: powerstore-major-alert
         title: PowerStore Major Alert
         condition: threshold
-        for: 0s
+        for: 2m
         noDataState: OK
         execErrState: Error
         labels:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "powerstore-crown"
-          __panelId__: "49"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/powerstore-crown?viewPanel=49"
           summary: "PowerStore has {{ $values.alert_count.Value | printf \"%.0f\" }} active Major/Critical alert(s)"
         data:
           - refId: A
@@ -174,9 +162,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "powerstore-crown"
-          __panelId__: "2"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/powerstore-crown?viewPanel=2"
           summary: "PowerStore {{ $labels.appliance_id }} physical capacity at {{ $values.pct_used.Value | printf \"%.1f\" }}% used (threshold: 75%)"
         data:
           - refId: A
@@ -222,9 +207,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "powerstore-crown"
-          __panelId__: "42"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/powerstore-crown?viewPanel=42"
           summary: "PowerStore drive {{ $labels.name }} on {{ $labels.appliance_id }} has {{ $values.pct_remaining.Value | printf \"%.1f\" }}% endurance remaining"
         data:
           - refId: A
@@ -270,18 +252,15 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "powerstore-crown"
-          __panelId__: "41"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/powerstore-crown?viewPanel=41"
           summary: "PowerStore ETH port {{ $labels.eth_port_id }} on appliance {{ $labels.appliance_id }} link is down"
         data:
           - refId: A
             relativeTimeRange:
-              from: 86400
+              from: 604800
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: powerstore_eth_port_is_link_up == 0 and on(appliance_id, eth_port_id) (max_over_time(powerstore_eth_port_is_link_up[1d]) == 1)
+              expr: powerstore_eth_port_is_link_up == 0 and on(appliance_id, eth_port_id) (max_over_time(powerstore_eth_port_is_link_up[7d]) == 1)
               refId: A
           - refId: link_up
             relativeTimeRange:
@@ -318,9 +297,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "powerstore-crown"
-          __panelId__: "41"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/powerstore-crown?viewPanel=41"
           summary: "PowerStore ETH port {{ $labels.eth_port_id }} on appliance {{ $labels.appliance_id }} has sustained packet errors: {{ $values.errors_per_sec.Value | printf \"%.0f\" }}/s"
         data:
           - refId: A
@@ -366,9 +342,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "powerstore-crown"
-          __panelId__: "49"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/powerstore-crown?viewPanel=49"
           summary: "PowerStore metro session {{ $labels.id }} is not Engaged (state={{ $values.state.Value | printf \"%.0f\" }}: 0=Initializing 1=Disengaged 2=Engaged 3=WitnessInvalid 4=FailedInit 5=Unconfiguring)"
         data:
           - refId: A
@@ -415,9 +388,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "powerstore-crown"
-          __panelId__: "49"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/powerstore-crown?viewPanel=49"
           summary: "PowerStore metro witness {{ $labels.name }} is not OK (state={{ $values.state.Value | printf \"%.0f\" }}: 0=OK 1=PartiallyConnected 2=Disconnected 3=Deleting 4=Initializing)"
         data:
           - refId: A
@@ -470,9 +440,6 @@ groups:
         labels:
           severity: high
         annotations:
-          __dashboardUid__: "VMwExClV"
-          __panelId__: "14"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/VMwExClV?viewPanel=14"
           summary: "Cluster {{ $labels.vmwcluster }} CPU is {{ $values.pct_surplus.Value | printf \"%.1f\" }}% above HA failover headroom"
         data:
           - refId: A
@@ -518,9 +485,6 @@ groups:
         labels:
           severity: high
         annotations:
-          __dashboardUid__: "VMwExClV"
-          __panelId__: "16"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/VMwExClV?viewPanel=16"
           summary: "Cluster {{ $labels.vmwcluster }} memory is {{ $values.pct_surplus.Value | printf \"%.1f\" }}% above HA failover headroom"
         data:
           - refId: A
@@ -565,9 +529,6 @@ groups:
         labels:
           severity: high
         annotations:
-          __dashboardUid__: "VMwExDsV"
-          __panelId__: "36"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/VMwExDsV?viewPanel=36"
           summary: "Datastore {{ $labels.ds }} has {{ $values.free_pct.Value | printf \"%.1f\" }}% free space remaining (warning: <20%, critical: <5%)"
         data:
           - refId: A
@@ -614,9 +575,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "VMwExDsV"
-          __panelId__: "36"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/VMwExDsV?viewPanel=36"
           summary: "Datastore {{ $labels.ds }} is over 95% full — {{ $values.free_pct.Value | printf \"%.1f\" }}% free"
         data:
           - refId: A
@@ -661,9 +619,6 @@ groups:
         labels:
           severity: warning
         annotations:
-          __dashboardUid__: "VMwExHoV"
-          __panelId__: "16"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/VMwExHoV?viewPanel=16"
           summary: "Host {{ $labels.host }} memory balloon at {{ $values.pct_ballooned.Value | printf \"%.1f\" }}% — host under memory pressure"
         data:
           - refId: A
@@ -708,9 +663,6 @@ groups:
         labels:
           severity: high
         annotations:
-          __dashboardUid__: "VMwExHoV"
-          __panelId__: "16"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/VMwExHoV?viewPanel=16"
           summary: "Host {{ $labels.host }} VMs are swapping to disk — {{ $values.pct_swapped.Value | printf \"%.1f\" }}% of memory swapped"
         data:
           - refId: A
@@ -755,9 +707,6 @@ groups:
         labels:
           severity: warning
         annotations:
-          __dashboardUid__: "VMwExHoV"
-          __panelId__: "14"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/VMwExHoV?viewPanel=14"
           summary: "Host {{ $labels.host }} CPU ready at {{ $values.pct_ready.Value | printf \"%.1f\" }}% — VMs waiting for CPU time"
         data:
           - refId: A
@@ -809,9 +758,6 @@ groups:
           severity: warning
         annotations:
           summary: "Server intake temperature elevated on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C (warning: 29.5°C, critical: 30°C)"
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "22"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=22"
         data:
           - refId: A
             relativeTimeRange:
@@ -857,9 +803,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "22"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=22"
           summary: "Server intake temperature critical on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C (threshold: 30°C)"
         data:
           - refId: A
@@ -911,9 +854,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "4"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=4"
           summary: "CPU health degraded on {{ $labels.instance }}"
         data:
           - refId: A
@@ -959,9 +899,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "12"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=12"
           summary: "PSU {{ $labels.id }} health degraded on {{ $labels.instance }}"
         data:
           - refId: A
@@ -1007,9 +944,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "14"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=14"
           summary: "PSU {{ $labels.id }} on {{ $labels.instance }} receiving no input power"
         data:
           - refId: A
@@ -1055,9 +989,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "32"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=32"
           summary: "Fan {{ $labels.name }} health degraded on {{ $labels.instance }}"
         data:
           - refId: A
@@ -1103,9 +1034,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "31"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=31"
           summary: "Fan {{ $labels.name }} on {{ $labels.instance }} running at low RPM: {{ $values.rpm.Value | printf \"%.0f\" }} RPM"
         data:
           - refId: A
@@ -1151,9 +1079,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "41"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=41"
           summary: "Storage drive {{ $labels.id }} health degraded on {{ $labels.instance }}"
         data:
           - refId: A
@@ -1199,9 +1124,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "42"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=42"
           summary: "Storage controller {{ $labels.id }} health degraded on {{ $labels.instance }}"
         data:
           - refId: A
@@ -1247,9 +1169,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "43"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=43"
           summary: "Storage volume {{ $labels.id }} health degraded on {{ $labels.instance }}"
         data:
           - refId: A
@@ -1295,9 +1214,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "2"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=2"
           summary: "Server {{ $labels.instance }} is unexpectedly powered off"
         data:
           - refId: A
@@ -1346,9 +1262,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "3"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=3"
           summary: "System health degraded on {{ $labels.instance }}.{{ with $values.cpu }}{{ if gt .Value 0.0 }} CPU unhealthy.{{ end }}{{ end }}{{ with $values.psu }}{{ if gt .Value 0.0 }} PSU unhealthy.{{ end }}{{ end }}{{ with $values.fan }}{{ if gt .Value 0.0 }} Fan unhealthy.{{ end }}{{ end }}{{ with $values.stor }}{{ if gt .Value 0.0 }} Storage unhealthy.{{ end }}{{ end }}{{ with $values.mem }}{{ if gt .Value 0.0 }} Memory unhealthy.{{ end }}{{ end }} Check iDRAC console for full details."
         data:
           - refId: A
@@ -1484,9 +1397,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "21"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=21"
           summary: "CPU temperature high on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C"
         data:
           - refId: A
@@ -1519,7 +1429,7 @@ groups:
                 - evaluator:
                     type: gt
                     params:
-                      - 85
+                      - 90
               refId: threshold
 
       - uid: idrac-exhaust-temp
@@ -1532,9 +1442,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "52"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=52"
           summary: "Exhaust temperature high on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C"
         data:
           - refId: A
@@ -1580,18 +1487,15 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "51"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=51"
           summary: "NIC {{ $labels.id }} on adapter {{ $labels.adapter_id }} lost link on {{ $labels.instance }}"
         data:
           - refId: A
             relativeTimeRange:
-              from: 86400
+              from: 604800
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: idrac_network_port_link_up == 0 and on(instance, adapter_id, id) (max_over_time(idrac_network_port_link_up[1d]) == 1)
+              expr: idrac_network_port_link_up == 0 and on(instance, adapter_id, id) (max_over_time(idrac_network_port_link_up[7d]) == 1)
               refId: A
           - refId: link_up
             relativeTimeRange:
@@ -1628,9 +1532,6 @@ groups:
           severity: critical
           oncall: "Platform"
         annotations:
-          __dashboardUid__: "idrac-crown"
-          __panelId__: "44"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/idrac-crown?viewPanel=44"
           summary: "Memory module {{ $labels.id }} health degraded on {{ $labels.instance }}"
         data:
           - refId: A
@@ -1681,9 +1582,6 @@ groups:
           severity: critical
         annotations:
           summary: "Genus database is unreachable — billing system may be affected"
-          __dashboardUid__: "infrastructure"
-          __panelId__: "16"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/infrastructure?viewPanel=16"
         data:
           - refId: A
             relativeTimeRange:
@@ -1728,9 +1626,6 @@ groups:
           severity: warning
         annotations:
           summary: "Genus hub file has not been updated for over 3 hours — industry data exchange may be stalled"
-          __dashboardUid__: "genus-details"
-          __panelId__: "21"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/genus-details?viewPanel=21"
         data:
           - refId: A
             relativeTimeRange:
@@ -1775,9 +1670,6 @@ groups:
           severity: warning
         annotations:
           summary: "Genus replica lag exceeds 1 second — reporting and read queries may be stale"
-          __dashboardUid__: "genus-details"
-          __panelId__: "22"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/genus-details?viewPanel=22"
         data:
           - refId: A
             relativeTimeRange:
@@ -1822,9 +1714,6 @@ groups:
           severity: warning
         annotations:
           summary: "eWelcome has failed jobs in the queue — welcome packs may not be sending"
-          __dashboardUid__: "infrastructure"
-          __panelId__: "10"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/infrastructure?viewPanel=10"
         data:
           - refId: A
             relativeTimeRange:
@@ -1874,9 +1763,6 @@ groups:
           severity: warning
         annotations:
           summary: "EPS pricing queue has a job waiting over 1 hour — check for stuck jobs"
-          __dashboardUid__: "infrastructure"
-          __panelId__: "1"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/infrastructure?viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -1925,9 +1811,6 @@ groups:
         labels:
           severity: critical
         annotations:
-          __dashboardUid__: "infrastructure"
-          __panelId__: "103"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/infrastructure?viewPanel=103"
           summary: "Supervisor worker {{ $labels.app }}/{{ $labels.worker }} is FATAL on {{ $labels.host }} (auto-restart failed)"
         data:
           - refId: A
@@ -1972,9 +1855,6 @@ groups:
         labels:
           severity: critical
         annotations:
-          __dashboardUid__: "infrastructure"
-          __panelId__: "15"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/infrastructure?viewPanel=15"
           summary: "Cannot SSH to {{ $labels.host }} to check supervisor workers"
         data:
           - refId: A
@@ -2019,9 +1899,6 @@ groups:
         labels:
           severity: warning
         annotations:
-          __dashboardUid__: "infrastructure"
-          __panelId__: "15"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/infrastructure?viewPanel=15"
           summary: "Supervisor health check has not run for {{ $labels.host }} in over 15 minutes"
         data:
           - refId: A
@@ -2071,9 +1948,6 @@ groups:
         labels:
           severity: critical
         annotations:
-          __dashboardUid__: "infrastructure"
-          __panelId__: "2"
-          runbook_url: "http://grafana.poc.crowngasandpower.co.uk/d/infrastructure?viewPanel=2"
           summary: "Laravel error rate exceeded 200 in 5 minutes (deadlocks excluded)"
         data:
           - refId: A
@@ -3154,7 +3028,7 @@ groups:
                 - evaluator:
                     type: gt
                     params:
-                      - 0
+                      - 1
               refId: threshold
 
       - uid: network-site-ping-down

@@ -164,6 +164,13 @@ def _page(msg: str) -> HTMLResponse:
 </body>
 </html>""")
 
+
+def _js(v: str) -> str:
+    """Escape a value for safe embedding in a JS single-quoted string inside an HTML double-quoted attribute.
+    Handles JS-level escaping (backslash, single quote, newlines) then HTML-level escaping (", <, >, &)."""
+    s = str(v).replace("\\", "\\\\").replace("'", "\\'").replace("\r", "").replace("\n", " ")
+    return html.escape(s)
+
 @app.get("/exempt/add")
 def add_exempt(host: str = Query(...), reason: str = Query(default="")):
     with get_conn() as conn:
@@ -224,23 +231,23 @@ def suppress_list():
 
     rows_html = "".join(
         f"<tr>"
-        f"<td>{CATEGORY_LABELS.get(r[0], r[0])}</td>"
-        f"<td>{r[1]}</td>"
-        f"<td>{r[2] or ''}</td>"
+        f"<td>{CATEGORY_LABELS.get(r[0], html.escape(r[0]))}</td>"
+        f"<td>{html.escape(r[1])}</td>"
+        f"<td>{html.escape(r[2] or '')}</td>"
         f"<td>{r[3].strftime('%Y-%m-%d %H:%M') if r[3] else ''}</td>"
-        f"<td><a href='/suppress/remove?category={r[0]}&identifier={r[1]}' "
-        f"onclick=\"return confirm('Remove {r[1]}?')\">Remove</a></td>"
+        f"<td><a href='/suppress/remove?category={urllib.parse.quote(r[0])}&identifier={urllib.parse.quote(r[1])}' "
+        f"onclick=\"return confirm('Remove {_js(r[1])}?')\">Remove</a></td>"
         f"</tr>"
         for r in rows
     ) or "<tr><td colspan='5' style='color:#888'>No suppressions configured</td></tr>"
 
     unifi_rows_html = "".join(
         f"<tr>"
-        f"<td>{r[0]}</td>"
-        f"<td>{r[1] or ''}</td>"
+        f"<td>{html.escape(r[0])}</td>"
+        f"<td>{html.escape(r[1] or '')}</td>"
         f"<td>{r[2].strftime('%Y-%m-%d %H:%M') if r[2] else ''}</td>"
         f"<td><a href='/unifi/remove?device={urllib.parse.quote(r[0])}' "
-        f"onclick=\"return confirm('Remove {r[0]}?')\">Remove</a></td>"
+        f"onclick=\"return confirm('Remove {_js(r[0])}?')\">Remove</a></td>"
         f"</tr>"
         for r in unifi_rows
     ) or "<tr><td colspan='4' style='color:#888'>No exemptions configured</td></tr>"
@@ -248,7 +255,7 @@ def suppress_list():
     exempted_devices = {r[0] for r in unifi_rows}
     all_devices = _get_unifi_devices()
     device_options = "".join(
-        f'<option value="{d}">{d}</option>'
+        f'<option value="{html.escape(d)}">{html.escape(d)}</option>'
         for d in all_devices
         if d not in exempted_devices
     ) or '<option value="" disabled>No devices found — check Prometheus</option>'
@@ -348,6 +355,12 @@ def connectivity_add(
     name: str = Query(...),
     category: str = Query(default="general"),
 ):
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ip must be a valid IP address (IPv4 or IPv6)")
+    if addr.is_loopback or addr.is_link_local:
+        raise HTTPException(status_code=400, detail="Loopback and link-local addresses are not permitted")
     with get_conn() as conn:
         conn.cursor().execute(
             """INSERT INTO connectivity_checks(ip, name, category)
@@ -374,12 +387,12 @@ def connectivity_list():
 
     rows_html = "".join(
         f"<tr>"
-        f"<td>{r[1]}</td>"
-        f"<td>{r[2]}</td>"
-        f"<td>{r[0]}</td>"
+        f"<td>{html.escape(r[1])}</td>"
+        f"<td>{html.escape(r[2])}</td>"
+        f"<td>{html.escape(r[0])}</td>"
         f"<td>{r[3].strftime('%Y-%m-%d %H:%M') if r[3] else ''}</td>"
-        f"<td><a href='/connectivity/remove?ip={r[0]}' "
-        f"onclick=\"return confirm('Remove {r[1]}?')\">Remove</a></td>"
+        f"<td><a href='/connectivity/remove?ip={urllib.parse.quote(r[0])}' "
+        f"onclick=\"return confirm('Remove {_js(r[1])}?')\">Remove</a></td>"
         f"</tr>"
         for r in rows
     ) or "<tr><td colspan='5' style='color:#888'>No checks configured</td></tr>"
@@ -567,15 +580,15 @@ def ping_sources_list():
 
     rows_html = "".join(
         f"<tr>"
-        f"<td>{r[0]}</td>"
-        f"<td>{r[1]}</td>"
-        f"<td>{r[2] or '<span style=\"color:#aaa\">not set</span>'}</td>"
+        f"<td>{html.escape(r[0])}</td>"
+        f"<td>{html.escape(r[1])}</td>"
+        f"<td>{html.escape(r[2]) if r[2] else '<span style=\"color:#aaa\">not set</span>'}</td>"
         f"<td>{r[3].strftime('%Y-%m-%d %H:%M') if r[3] else ''}</td>"
         f"<td>"
-        f"<a href='#add-form' onclick=\"prefill('{r[0]}','{r[1]}','{r[2] or ''}')\">Edit</a>"
+        f"<a href='#add-form' onclick=\"prefill('{_js(r[0])}','{_js(r[1])}','{_js(r[2] or '')}')\">Edit</a>"
         f" &nbsp; "
-        f"<a href='/ping/sources/remove?site_id={r[0]}' "
-        f"onclick=\"return confirm('Remove {r[0]}?')\">Remove</a>"
+        f"<a href='/ping/sources/remove?site_id={urllib.parse.quote(r[0])}' "
+        f"onclick=\"return confirm('Remove {_js(r[0])}?')\">Remove</a>"
         f"</td>"
         f"</tr>"
         for r in rows
@@ -657,6 +670,12 @@ def ping_add(
     site_filter: str = Query(default="all"),
     source_ip: str = Query(default=""),
 ):
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ip must be a valid IP address (IPv4 or IPv6)")
+    if addr.is_loopback or addr.is_link_local:
+        raise HTTPException(status_code=400, detail="Loopback and link-local addresses are not permitted")
     with get_conn() as conn:
         conn.cursor().execute(
             """INSERT INTO ping_targets(ip, name, category, site_filter, source_ip)
@@ -680,6 +699,12 @@ def ping_save(
     old_ip: str = Query(default=""),
     old_site_filter: str = Query(default=""),
 ):
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ip must be a valid IP address (IPv4 or IPv6)")
+    if addr.is_loopback or addr.is_link_local:
+        raise HTTPException(status_code=400, detail="Loopback and link-local addresses are not permitted")
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("SELECT source FROM ping_sources")
@@ -750,15 +775,15 @@ def ping_list():
 
     rows_html = "".join(
         f"<tr>"
-        f"<td>{r[3]}</td>"
-        f"<td>{r[4] or ''}</td>"
-        f"<td>{r[1]}</td>"
-        f"<td>{r[0]}</td>"
+        f"<td>{html.escape(r[3])}</td>"
+        f"<td>{html.escape(r[4] or '')}</td>"
+        f"<td>{html.escape(r[1])}</td>"
+        f"<td>{html.escape(r[0])}</td>"
         f"<td>{r[5].strftime('%Y-%m-%d %H:%M') if r[5] else ''}</td>"
         f"<td>"
-        f"<a href='#target-form' onclick=\"prefill('{r[0]}','{r[1]}','{r[2]}','{r[3]}','{r[4] or ''}','{r[3]}')\">Edit</a>"
+        f"<a href='#target-form' onclick=\"prefill('{_js(r[0])}','{_js(r[1])}','{_js(r[2])}','{_js(r[3])}','{_js(r[4] or '')}','{_js(r[3])}')\">Edit</a>"
         f" &nbsp; "
-        f"<a href='/ping/remove?ip={r[0]}&site_filter={urllib.parse.quote(r[3])}' onclick=\"return confirm('Remove {r[1]}?')\">Remove</a>"
+        f"<a href='/ping/remove?ip={urllib.parse.quote(r[0])}&site_filter={urllib.parse.quote(r[3])}' onclick=\"return confirm('Remove {_js(r[1])}?')\">Remove</a>"
         f"</td>"
         f"</tr>"
         for r in rows
@@ -819,7 +844,7 @@ def ping_list():
   <label>Source filter
     <select id="f-site_filter" name="site_filter">
       <option value="all">all — probed from HQ blackbox</option>
-      {"".join(f'<option value="{s[0]}">{s[0]} ({s[1]}) — probe script</option>' for s in probe_sources)}
+      {"".join(f'<option value="{html.escape(s[0])}">{html.escape(s[0])} ({html.escape(s[1])}) — probe script</option>' for s in probe_sources)}
     </select>
     <span class="hint">Controls which probe checks this target — <a href="/ping/sources">manage sources</a></span>
   </label>
@@ -1122,8 +1147,8 @@ def cert_scan():
         if not r["check_success"]:
             rows_html += (
                 f"<tr style='background:#fff3e0'>"
-                f"<td>{r['name']}</td><td>{r['team']}</td>"
-                f"<td><code>{r['url']}</code></td>"
+                f"<td>{html.escape(r['name'])}</td><td>{html.escape(r['team'])}</td>"
+                f"<td><code>{html.escape(r['url'])}</code></td>"
                 f"<td colspan='5' style='color:#c62828'>&#x2715; TLS connection failed</td>"
                 f"</tr>"
             )
@@ -1138,13 +1163,13 @@ def cert_scan():
 
         rows_html += (
             f"<tr>"
-            f"<td>{r['name']}</td>"
-            f"<td>{r['team']}</td>"
-            f"<td><code>{r['url']}</code></td>"
-            f"<td>{r['subject_cn']}</td>"
-            f"<td>{r['issuer_cn']}</td>"
-            f"<td>{r['not_after']}</td>"
-            f"<td style='color:{days_color};font-weight:bold'>{days_str}</td>"
+            f"<td>{html.escape(r['name'])}</td>"
+            f"<td>{html.escape(r['team'])}</td>"
+            f"<td><code>{html.escape(r['url'])}</code></td>"
+            f"<td>{html.escape(r['subject_cn'])}</td>"
+            f"<td>{html.escape(r['issuer_cn'])}</td>"
+            f"<td>{html.escape(r['not_after'])}</td>"
+            f"<td style='color:{days_color};font-weight:bold'>{html.escape(days_str)}</td>"
             f"<td style='color:{ocsp_color}'>{ocsp_text}</td>"
             f"<td>{sha1_cell}</td>"
             f"</tr>"
@@ -1193,15 +1218,15 @@ def cert_list():
 
     rows_html = "".join(
         f"<tr>"
-        f"<td>{r[1]}</td>"
-        f"<td>{r[2]}</td>"
-        f"<td><code>{r[0]}</code></td>"
+        f"<td>{html.escape(r[1])}</td>"
+        f"<td>{html.escape(r[2])}</td>"
+        f"<td><code>{html.escape(r[0])}</code></td>"
         f"<td>{r[3].strftime('%Y-%m-%d %H:%M') if r[3] else ''}</td>"
         f"<td>"
-        f"<a href='#add-form' onclick=\"prefill('{r[0].replace(chr(39), '')}','{r[1].replace(chr(39), '')}','{r[2]}')\">Edit</a>"
+        f"<a href='#add-form' onclick=\"prefill('{_js(r[0])}','{_js(r[1])}','{_js(r[2])}')\">Edit</a>"
         f" &nbsp; "
         f"<a href='/cert/remove?url={urllib.parse.quote(r[0])}' "
-        f"onclick=\"return confirm('Remove {r[1]}?')\">Remove</a>"
+        f"onclick=\"return confirm('Remove {_js(r[1])}?')\">Remove</a>"
         f"</td>"
         f"</tr>"
         for r in rows
