@@ -24,29 +24,41 @@ scrape_configs:
 
   - job_name: 'node'
     scrape_interval: 15s
-    static_configs:
-      - targets: ['apps-prod-1']
-        labels:
-          host: apps-prod-1
-      - targets: ['apps-prod-2']
-        labels:
-          host: apps-prod-2
-      - targets: ['apps-prod-mysql']
-        labels:
-          host: apps-prod-mysql
-      - targets: ['eps-worker-1']
-        labels:
-          host: eps-worker-1
-      - targets: ['apps-swarm-1']
-        labels:
-          host: apps-swarm-1
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/vcenter/linux-targets
+        refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
+      # Strip .crowngp.local suffix so instance label stays short (apps-prod-1 not apps-prod-1.crowngp.local)
+      - source_labels: [instance]
+        regex: '^([^.]+)\.crowngp\.local$'
+        target_label: instance
+        replacement: '$1'
       - source_labels: [__address__]
         regex: (.+)
         target_label: __metrics_path__
         replacement: /$1/node/metrics
+      - target_label: __address__
+        replacement: 192.168.164.184:9550
+
+  - job_name: 'windows'
+    scrape_interval: 30s
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/vcenter/windows-targets
+        refresh_interval: 60s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      # Strip .crowngp.local suffix so instance label stays short
+      - source_labels: [instance]
+        regex: '^([^.]+)\.crowngp\.local$'
+        target_label: instance
+        replacement: '$1'
+      - source_labels: [__address__]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /$1/windows/metrics
       - target_label: __address__
         replacement: 192.168.164.184:9550
 

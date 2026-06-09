@@ -194,10 +194,14 @@ services:
       DB_NAME: monitoring
       DB_USER: monitoring
       DB_PASSWORD: monitoring
+      SD_DIR: /sd
+    volumes:
+      - powerstore_sd:/sd:ro
     ports:
       - "9511:8000"
     depends_on:
       - monitoring-postgres
+      - vcenter-sd
     restart: unless-stopped
 
   unifi-exporter:

@@ -19,6 +19,8 @@ from cryptography.x509.oid import AuthorityInformationAccessOID
 
 app = FastAPI(title="Exemption API")
 
+SD_DIR = os.environ.get("SD_DIR", "/sd")
+
 DB_CONFIG = dict(
     host=os.environ.get("DB_HOST", "monitoring-postgres"),
     port=int(os.environ.get("DB_PORT", 5432)),
@@ -1250,6 +1252,39 @@ function prefill(url, name, team) {{
 </script>
 </body>
 </html>""")
+
+
+# ── vCenter Service Discovery ────────────────────────────────────────────────
+# Reads the SD files written by the vcenter-sd container and exposes them as
+# Prometheus HTTP SD endpoints. AWS Prometheus polls these so it can scrape
+# dynamically-discovered hosts through the metrics proxy without hardcoding
+# any static targets.
+
+def _vcenter_sd_response(sd_file: str):
+    try:
+        with open(sd_file) as f:
+            entries = json.load(f)
+    except FileNotFoundError:
+        return JSONResponse([])
+    result = []
+    for entry in entries:
+        for raw_target in entry.get("targets", []):
+            # Strip the port — the proxy path encodes the host only; nginx appends the exporter port
+            host = raw_target.rsplit(":", 1)[0]
+            result.append({"targets": [host], "labels": entry.get("labels", {})})
+    return JSONResponse(result)
+
+
+@app.get("/vcenter/linux-targets")
+def vcenter_linux_targets():
+    """Prometheus HTTP SD — Linux node exporter targets discovered by vcenter-sd."""
+    return _vcenter_sd_response(os.path.join(SD_DIR, "linux-hosts.json"))
+
+
+@app.get("/vcenter/windows-targets")
+def vcenter_windows_targets():
+    """Prometheus HTTP SD — Windows exporter targets discovered by vcenter-sd."""
+    return _vcenter_sd_response(os.path.join(SD_DIR, "windows-hosts.json"))
 
 
 # ── UniFi Device Exemptions ───────────────────────────────────────────────────
