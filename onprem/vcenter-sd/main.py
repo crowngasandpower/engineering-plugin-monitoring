@@ -104,7 +104,12 @@ def poll():
                     port = NODE_EXPORTER_PORT
                     target_list = linux_targets
                 if ip:
-                    target_addr = hostname if (hostname and SAFE_HOSTNAME_RE.match(hostname)) else ip
+                    if hostname and SAFE_HOSTNAME_RE.match(hostname):
+                        target_addr = hostname
+                    else:
+                        if hostname:
+                            print(f'Unsafe hostname {hostname!r} for VM {vm.name!r} — using IP {ip}')
+                        target_addr = ip
                     target_list.append({
                         'targets': [f'{target_addr}:{port}'],
                         'labels': {'host': vm.name},

@@ -133,6 +133,20 @@ docker compose -f onprem/collectors-compose.yml -p monitoring-collectors up -d
 > re-clone deliberately, preserving the `monitoring` project name and the git-ignored
 > `data/` and `.env` files.
 
+### Post-deploy checklist (first deploy of this branch)
+
+After the AWS images are redeployed and the on-prem stack is restarted:
+
+1. **Clean up old Grafana folders** — the dashboard restructure renames folders
+   (Application → Applications, ESXi → VMware, Infrastructure → Platform, SAN/Temperature/iDRAC → Hardware).
+   Grafana creates the new folders automatically on startup but leaves the old empty folders in place.
+   Delete them manually: Dashboards → browse to each old folder → Delete.
+
+2. **Verify container alerts** — confirm the three container alert rules
+   (`container-crash-loop`, `container-memory-limit`, `container-cpu-throttle`) are
+   evaluating in Grafana Alerting. They use `job="integrations/cadvisor"` and `id!="/"`;
+   check that firing conditions are met in Explore before relying on them.
+
 ## MCP plugin
 
 `plugin.json` (v2.0.0) is mounted by the MCP server, which proxies:

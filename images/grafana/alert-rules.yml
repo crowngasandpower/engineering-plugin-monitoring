@@ -3231,7 +3231,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'increase(container_restart_count{job="integrations/cadvisor",name!=""}[10m])'
+              expr: 'increase(container_restart_count{job="integrations/cadvisor",id!="/"}[10m])'
               refId: A
           - refId: restarts
             relativeTimeRange:
@@ -3275,7 +3275,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'container_memory_usage_bytes{job="integrations/cadvisor",name!=""} / container_spec_memory_limit_bytes{job="integrations/cadvisor",name!="",container_spec_memory_limit_bytes>0} * 100'
+              expr: 'container_memory_usage_bytes{job="integrations/cadvisor",id!="/"} / container_spec_memory_limit_bytes{job="integrations/cadvisor",id!="/",container_spec_memory_limit_bytes>0} * 100'
               refId: A
           - refId: mem_pct
             relativeTimeRange:
@@ -3319,7 +3319,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'rate(container_cpu_cfs_throttled_periods_total{job="integrations/cadvisor",name!=""}[5m]) / rate(container_cpu_cfs_periods_total{job="integrations/cadvisor",name!=""}[5m]) * 100'
+              expr: 'rate(container_cpu_cfs_throttled_periods_total{job="integrations/cadvisor",id!="/"}[5m]) / rate(container_cpu_cfs_periods_total{job="integrations/cadvisor",id!="/"}[5m]) * 100'
               refId: A
           - refId: throttle_pct
             relativeTimeRange:
