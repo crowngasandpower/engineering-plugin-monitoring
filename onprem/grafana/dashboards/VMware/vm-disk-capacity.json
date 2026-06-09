@@ -106,7 +106,7 @@
                   "mode": "absolute",
                   "steps": [
                     { "color": "green", "value": 0 },
-                    { "color": "orange", "value": 70 },
+                    { "color": "orange", "value": 80 },
                     { "color": "red", "value": 90 }
                   ]
                 }

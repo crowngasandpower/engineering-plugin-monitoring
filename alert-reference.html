@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crown Gas &amp; Power — Monitoring Alert Reference</title>
+<style>
+  :root {
+    --crown-blue: #003366;
+    --crown-mid: #0056a3;
+    --crown-light: #e8f0f8;
+    --sev-critical-pd: #7b1010;
+    --sev-critical-pd-bg: #fff0f0;
+    --sev-critical: #8b2500;
+    --sev-critical-bg: #fff5f0;
+    --sev-high: #7a4000;
+    --sev-high-bg: #fff8ee;
+    --sev-warning: #5a4a00;
+    --sev-warning-bg: #fffce8;
+    --text: #1a1a2e;
+    --muted: #5a6070;
+    --border: #d0d7e3;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: #f5f7fa;
+    padding: 32px 40px 60px;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--crown-blue);
+    padding-bottom: 16px;
+    margin-bottom: 28px;
+  }
+  .page-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--crown-blue);
+    letter-spacing: -0.3px;
+  }
+  .page-header .subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .page-header .meta {
+    text-align: right;
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    padding: 14px 18px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .legend-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+  }
+  .legend-item .badge { flex-shrink: 0; }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 28px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .section-header {
+    background: var(--crown-blue);
+    color: white;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-header h2 {
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+  }
+  .section-header .rule-count {
+    font-size: 11px;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+
+  /* ── Table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  thead th {
+    background: var(--crown-light);
+    color: var(--crown-blue);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 7px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr {
+    border-bottom: 1px solid #eaecf2;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #f8f9fc; }
+  td {
+    padding: 8px 14px;
+    vertical-align: middle;
+  }
+  td.alert-name {
+    font-weight: 500;
+    color: var(--text);
+    width: 30%;
+  }
+  td.fires-when {
+    color: var(--muted);
+    width: 40%;
+    font-size: 12px;
+  }
+  td.for-col {
+    width: 7%;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  td.sev-col { width: 23%; }
+
+  /* ── Severity badges ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+  }
+  .badge-critical-pd {
+    background: var(--sev-critical-pd-bg);
+    color: var(--sev-critical-pd);
+    border: 1px solid #f5c0c0;
+  }
+  .badge-critical {
+    background: var(--sev-critical-bg);
+    color: var(--sev-critical);
+    border: 1px solid #f9cdb8;
+  }
+  .badge-high {
+    background: var(--sev-high-bg);
+    color: var(--sev-high);
+    border: 1px solid #f5ddb0;
+  }
+  .badge-warning {
+    background: var(--sev-warning-bg);
+    color: var(--sev-warning);
+    border: 1px solid #ede9a0;
+  }
+  .pd-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 5px;
+    letter-spacing: 0.3px;
+    vertical-align: middle;
+  }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    padding: 16px 20px;
+    background: var(--crown-blue);
+    border-radius: 8px;
+    color: white;
+  }
+  .summary-stat {
+    text-align: center;
+    min-width: 80px;
+  }
+  .summary-stat .num {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    display: block;
+  }
+  .summary-stat .lbl {
+    font-size: 11px;
+    opacity: 0.75;
+    margin-top: 3px;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .summary-divider {
+    width: 1px;
+    background: rgba(255,255,255,0.2);
+    align-self: stretch;
+  }
+
+  /* ── Routing note ── */
+  .routing-note {
+    margin-bottom: 28px;
+    padding: 14px 18px;
+    background: white;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--crown-mid);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .routing-note strong { color: var(--crown-blue); }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; padding: 20px 24px 40px; font-size: 11px; }
+    .section { break-inside: avoid; box-shadow: none; }
+    .section-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .summary-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pd-pill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── PAGE HEADER ── -->
+<div class="page-header">
+  <div>
+    <h1>Crown Gas &amp; Power — Monitoring Alert Reference</h1>
+    <div class="subtitle">Grafana alerting — all configured rules, severities, and notification routes</div>
+  </div>
+  <div class="meta">
+    <div><strong>Generated</strong> June 2025</div>
+    <div><strong>Stack</strong> Grafana 13 · Prometheus · Alertmanager</div>
+    <div><strong>Notification gateway</strong> PagerDuty (oncall: Platform label)</div>
+  </div>
+</div>
+
+<!-- ── SUMMARY ── -->
+<div class="summary-bar">
+  <div class="summary-stat"><span class="num">73</span><span class="lbl">Total Rules</span></div>
+  <div class="summary-divider"></div>
+  <div class="summary-stat"><span class="num">26</span><span class="lbl">PagerDuty</span></div>
+  <div class="summary-divider"></div>
+  <div class="summary-stat"><span class="num">7</span><span class="lbl">Critical Only</span></div>
+  <div class="summary-divider"></div>
+  <div class="summary-stat"><span class="num">3</span><span class="lbl">High</span></div>
+  <div class="summary-divider"></div>
+  <div class="summary-stat"><span class="num">37</span><span class="lbl">Warning</span></div>
+  <div class="summary-divider"></div>
+  <div class="summary-stat"><span class="num">14</span><span class="lbl">Groups</span></div>
+</div>
+
+<!-- ── ROUTING NOTE ── -->
+<div class="routing-note">
+  <strong>Severity routing</strong> &nbsp;·&nbsp;
+  <strong>Warning / High / Critical (no label)</strong> — desktop tray app only.
+  &nbsp;<strong>Critical + <code>oncall: Platform</code></strong> — desktop tray app <em>and</em> PagerDuty after a <strong>10-minute acknowledgment window</strong>. Silencing an alert in Grafana before the window elapses prevents PagerDuty from firing.
+  Acknowledged alerts in PagerDuty repeat every <strong>4 hours</strong> until resolved.
+  &nbsp;<strong>Maintenance mode</strong> — silences <code>oncall = Platform</code> for a chosen duration; all desktop alerts remain visible.
+</div>
+
+<!-- ── LEGEND ── -->
+<div class="legend">
+  <div class="legend-title">Severity key</div>
+  <div class="legend-item"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span>&nbsp; Desktop + PagerDuty (after 10 min window)</div>
+  <div class="legend-item"><span class="badge badge-critical">CRITICAL</span>&nbsp; Desktop only — red indicator</div>
+  <div class="legend-item"><span class="badge badge-high">HIGH</span>&nbsp; Desktop only — red indicator, no PagerDuty</div>
+  <div class="legend-item"><span class="badge badge-warning">WARNING</span>&nbsp; Desktop only — amber indicator</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TEMPERATURE
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Temperature</h2>
+    <span class="rule-count">2 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Room Temperature Warning</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">Probe temperature above warning threshold</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Room Temperature Critical</td>
+        <td class="sev-col"><span class="badge badge-critical">CRITICAL</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">Probe temperature at critical level</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SAN
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>SAN — Dell PowerStore</h2>
+    <span class="rule-count">7 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">PowerStore Major Alert</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">Array reports a major-severity alert</td>
+      </tr>
+      <tr>
+        <td class="alert-name">PowerStore Capacity High</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Storage pool capacity running low</td>
+      </tr>
+      <tr>
+        <td class="alert-name">PowerStore Drive Wear Low</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">SSD wear life remaining below threshold</td>
+      </tr>
+      <tr>
+        <td class="alert-name">PowerStore ETH Port Link Down</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">A network port on the array is down</td>
+      </tr>
+      <tr>
+        <td class="alert-name">PowerStore ETH Port Errors</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">High error rate on array NIC</td>
+      </tr>
+      <tr>
+        <td class="alert-name">PowerStore Metro Replication Not Engaged</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Metro synchronous replication has dropped</td>
+      </tr>
+      <tr>
+        <td class="alert-name">PowerStore Metro Witness Not OK</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">Witness appliance unreachable</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     ESXi / vCenter
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>ESXi / vCenter</h2>
+    <span class="rule-count">7 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">vCenter Cluster CPU HA Headroom Exceeded</td>
+        <td class="sev-col"><span class="badge badge-high">HIGH</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Cluster CPU % exceeds HA admission control threshold</td>
+      </tr>
+      <tr>
+        <td class="alert-name">vCenter Cluster Memory HA Headroom Exceeded</td>
+        <td class="sev-col"><span class="badge badge-high">HIGH</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Cluster RAM % exceeds HA admission control threshold</td>
+      </tr>
+      <tr>
+        <td class="alert-name">vCenter Datastore Space Low</td>
+        <td class="sev-col"><span class="badge badge-high">HIGH</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Datastore &lt; 20% free</td>
+      </tr>
+      <tr>
+        <td class="alert-name">vCenter Datastore Space Critical</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Datastore &gt; 95% used (&lt; 5% remaining)</td>
+      </tr>
+      <tr>
+        <td class="alert-name">vCenter Host Memory Balloon Active</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Guest memory ballooning active on a host</td>
+      </tr>
+      <tr>
+        <td class="alert-name">vCenter Host Memory Swapping</td>
+        <td class="sev-col"><span class="badge badge-high">HIGH</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Guest swap I/O occurring (memory over-commitment)</td>
+      </tr>
+      <tr>
+        <td class="alert-name">vCenter Host CPU Ready High</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">VMs waiting for CPU time (CPU contention)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     iDRAC
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>iDRAC — Dell Servers</h2>
+    <span class="rule-count">16 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Server Intake Temp Warning</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">Intake temperature above warning threshold</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Server Intake Temp Critical</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">Intake temperature at critical level</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC CPU Health Degraded</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">CPU component health status ≠ OK</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC PSU Health Degraded</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">Power supply health status ≠ OK</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC PSU Power Loss</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">A PSU has lost mains input power</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC Fan Health Degraded</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">Fan health status ≠ OK</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC Fan RPM Low</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">Fan RPM below minimum safe threshold</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC Storage Drive Health Degraded</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">Disk health ≠ OK — predictive failure or worse</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC Storage Controller Health Degraded</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">RAID controller health status ≠ OK</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC Storage Volume Health Degraded</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">RAID virtual disk degraded or failed</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC Server Powered Off</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">Server power state = off (unexpected)</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC System Health Degraded</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">Overall system health rollup ≠ OK</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC CPU Temperature High</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">CPU temperature sensor above threshold</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC Exhaust Temperature High</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Exhaust air temperature above threshold</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC NIC Link Down</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Network interface link state = down</td>
+      </tr>
+      <tr>
+        <td class="alert-name">iDRAC Memory Health Degraded</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">DIMM health status ≠ OK</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     INFRASTRUCTURE
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Infrastructure — Crown Apps / Genus</h2>
+    <span class="rule-count">4 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Genus DB Down</td>
+        <td class="sev-col"><span class="badge badge-critical">CRITICAL</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">Genus replica database is unreachable</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Hub File Age Over 3 Hours</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Industry hub file has not been processed in over 3 hours</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Replica Lag Over 1 Second</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">Genus DB replica replication lag &gt; 1 second</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Ewelcome Queue Failures</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">Ewelcome job queue has failed jobs</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     EPS PRICING
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>EPS Pricing</h2>
+    <span class="rule-count">1 rule</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Oldest Quote in Queue Over 1 Hour</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">A pricing job has been queued for more than 1 hour</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SUPERVISOR WORKERS
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Supervisor Workers</h2>
+    <span class="rule-count">3 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Supervisor Worker FATAL</td>
+        <td class="sev-col"><span class="badge badge-critical">CRITICAL</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">A supervisor-managed process is in FATAL state</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Supervisor Host Unreachable</td>
+        <td class="sev-col"><span class="badge badge-critical">CRITICAL</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Supervisor health scrape failing for a host</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Supervisor Check Stale</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">15m</td>
+        <td class="fires-when">Supervisor health check data has gone stale</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     APPLICATION ERRORS
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Application Errors</h2>
+    <span class="rule-count">1 rule</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Laravel Error Rate Spike</td>
+        <td class="sev-col"><span class="badge badge-critical">CRITICAL</span></td>
+        <td class="for-col">0s</td>
+        <td class="fires-when">Application error rate spikes above threshold</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     CERTIFICATES
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Certificates</h2>
+    <span class="rule-count">6 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Certificate Expiring Soon</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">0s</td>
+        <td class="fires-when">Certificate expires in &lt; 30 days</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Certificate Expiring — Critical</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">0s</td>
+        <td class="fires-when">Certificate expires in &lt; 7 days</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Certificate Expired</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">0s</td>
+        <td class="fires-when">Certificate has already expired (days remaining &lt; 0)</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Certificate Probe Failed</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">TLS probe cannot connect to the endpoint</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Certificate Revoked</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">0s</td>
+        <td class="fires-when">Certificate appears on a revocation list (CRL/OCSP)</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Certificate Uses Weak Signature (SHA-1)</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">0s</td>
+        <td class="fires-when">Certificate chain contains a SHA-1 signature</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     LINUX
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Linux — node_exporter</h2>
+    <span class="rule-count">8 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Linux Disk Space Warning</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Filesystem &lt; 20% free</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Linux Disk Space Critical</td>
+        <td class="sev-col"><span class="badge badge-critical">CRITICAL</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Filesystem &lt; 10% free</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Linux Disk Inode Exhaustion</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Inodes &lt; 10% free</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Linux High CPU Usage</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">15m</td>
+        <td class="fires-when">CPU &gt; 90% sustained (5-minute rate)</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Linux High Memory Usage</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Available RAM &lt; 10%</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Linux High IO Wait</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">CPU iowait &gt; 30% — storage may be bottlenecking</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Linux High System Load</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">5-minute load average / CPU count &gt; 2.0</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Linux NTP Clock Drift</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Clock offset &gt; 0.1 seconds — NTP sync may have failed</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     WINDOWS
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Windows — windows_exporter</h2>
+    <span class="rule-count">4 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Windows Disk Space Warning</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Drive &lt; 20% free</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Windows Disk Space Critical</td>
+        <td class="sev-col"><span class="badge badge-critical">CRITICAL</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Drive &lt; 10% free</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Windows High CPU Usage</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">15m</td>
+        <td class="fires-when">CPU &gt; 90% sustained (5-minute rate)</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Windows High Memory Usage</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Available RAM &lt; 10%</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     NETWORK
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Network — UniFi &amp; Dell OS10</h2>
+    <span class="rule-count">9 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">WAN High Latency</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">WAN ping latency &gt; 150ms</td>
+      </tr>
+      <tr>
+        <td class="alert-name">WAN Packet Loss Warning</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">WAN packet loss &gt; 5%</td>
+      </tr>
+      <tr>
+        <td class="alert-name">WAN Packet Loss Critical</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">3m</td>
+        <td class="fires-when">WAN packet loss &gt; 15% — severely degraded</td>
+      </tr>
+      <tr>
+        <td class="alert-name">UniFi Controller Unreachable</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">3m</td>
+        <td class="fires-when">UniFi scrape failing — network monitoring blind</td>
+      </tr>
+      <tr>
+        <td class="alert-name">UniFi Device Offline</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">3m</td>
+        <td class="fires-when">An AP or switch reports offline in UniFi</td>
+      </tr>
+      <tr>
+        <td class="alert-name">VPN Tunnel Down</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Active VPN tunnel count drops to zero</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Switch Interface Down</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">2m</td>
+        <td class="fires-when">OS10 switch port link state = down</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Switch Unreachable</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">3m</td>
+        <td class="fires-when">Dell OS10 switch not responding to Prometheus scrapes</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Switch Interface High Errors</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Interface error rate &gt; 10 errors/s</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     CONTAINERS
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>Containers — cAdvisor</h2>
+    <span class="rule-count">3 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Container Crash Looping</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">0s</td>
+        <td class="fires-when">Container restarts &gt; 3 in the last 10 minutes</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Container Memory Near Limit</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Memory usage &gt; 90% of the container's configured limit</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Container CPU Throttling</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">&gt; 50% of CPU scheduling periods are throttled</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     HTTP
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>HTTP — Blackbox Exporter</h2>
+    <span class="rule-count">2 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">Application HTTP Down</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">3m</td>
+        <td class="fires-when">HTTP probe failing for a monitored endpoint</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Application HTTP Slow Response</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Response time &gt; 3 seconds sustained</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MYSQL
+═══════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <h2>MySQL</h2>
+    <span class="rule-count">2 rules</span>
+  </div>
+  <table>
+    <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="alert-name">MySQL Connections High</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Active connections &gt; 80% of max_connections</td>
+      </tr>
+      <tr>
+        <td class="alert-name">MySQL Slow Query Spike</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Slow query rate &gt; 5 per second</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="text-align:center; margin-top:40px; font-size:11px; color:#8a93a8;">
+  Crown Gas &amp; Power &nbsp;·&nbsp; Infrastructure Monitoring &nbsp;·&nbsp; Grafana 13 / Prometheus / PagerDuty
+</div>
+
+</body>
+</html>

@@ -356,11 +356,11 @@
       "gridPos": { "x": 0, "y": 32, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
-        { "expr": "unifi_device_up{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "A" },
-        { "expr": "unifi_device_uptime_seconds{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "B" },
-        { "expr": "unifi_device_clients{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "C" },
-        { "expr": "unifi_device_cpu_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "D" },
-        { "expr": "unifi_device_memory_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "instant": true, "format": "table", "refId": "E" }
+        { "expr": "(unifi_device_up{site=~\"$site\"} unless on(device) unifi_device_exempt) or ((1 - unifi_device_up{site=~\"$site\"}) * on(device) group_left() unifi_device_exempt + 1)", "instant": true, "format": "table", "refId": "A" },
+        { "expr": "unifi_device_uptime_seconds{site=~\"$site\"}", "instant": true, "format": "table", "refId": "B" },
+        { "expr": "unifi_device_clients{site=~\"$site\"}", "instant": true, "format": "table", "refId": "C" },
+        { "expr": "unifi_device_cpu_percent{site=~\"$site\"}", "instant": true, "format": "table", "refId": "D" },
+        { "expr": "unifi_device_memory_percent{site=~\"$site\"}", "instant": true, "format": "table", "refId": "E" }
       ],
       "transformations": [
         { "id": "merge", "options": {} },
@@ -393,8 +393,8 @@
             "matcher": { "id": "byName", "options": "Status" },
             "properties": [
               { "id": "custom.displayMode", "value": "color-background" },
-              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } },
-              { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Online" }, "0": { "text": "Offline" } } }] }
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }, { "color": "orange", "value": 2 }] } },
+              { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Online" }, "0": { "text": "Offline" }, "2": { "text": "Offline (Suppressed)" } } }] }
             ]
           },
           { "matcher": { "id": "byName", "options": "Uptime" }, "properties": [{ "id": "unit", "value": "s" }] },
@@ -424,7 +424,7 @@
       "gridPos": { "x": 0, "y": 40, "w": 24, "h": 2 },
       "options": {
         "mode": "markdown",
-        "content": "[Manage device exemptions →](http://poc-containers:9511/suppress) — devices listed there are hidden from this table when offline and excluded from the UniFi offline alert."
+        "content": "[Manage device exemptions →](http://poc-containers:9511/suppress) — devices listed there are shown as **Offline (Suppressed)** in this table when offline, and excluded from the UniFi offline alert and the platform offline count."
       }
     },
     {

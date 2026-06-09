@@ -1936,7 +1936,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(unifi_device_up == 0) or vector(0)",
+          "expr": "count(unifi_device_up == 0 unless on(device) unifi_device_exempt) or vector(0)",
           "legendFormat": "Devices Offline",
           "range": true,
           "refId": "A"

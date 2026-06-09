@@ -13,7 +13,7 @@
 groups:
   - orgId: 1
     name: Temperature
-    folder: Temperature
+    folder: Hardware
     interval: 1m
     rules:
       - uid: room-temp-warning
@@ -113,7 +113,7 @@ groups:
 
   - orgId: 1
     name: SAN
-    folder: SAN
+    folder: Hardware
     interval: 30s
     rules:
       - uid: powerstore-major-alert
@@ -455,7 +455,7 @@ groups:
 
   - orgId: 1
     name: ESXi
-    folder: ESXi
+    folder: VMware
     interval: 1m
     rules:
       # Threshold gt:5 = alert when usage exceeds HA headroom by more than 5%.
@@ -795,7 +795,7 @@ groups:
 
   - orgId: 1
     name: iDRAC
-    folder: iDRAC
+    folder: Hardware
     interval: 1m
     rules:
       # Warning only — Teams notification is sufficient; critical rule pages PagerDuty
@@ -1668,7 +1668,7 @@ groups:
 
   - orgId: 1
     name: Infrastructure
-    folder: Infrastructure
+    folder: Platform
     interval: 1m
     rules:
       - uid: genus-db-down
@@ -1861,7 +1861,7 @@ groups:
 
   - orgId: 1
     name: EPS Pricing
-    folder: Application
+    folder: Applications
     interval: 1m
     rules:
       - uid: oldest-in-queue
@@ -1913,7 +1913,7 @@ groups:
 
   - orgId: 1
     name: Supervisor Workers
-    folder: Application
+    folder: Applications
     interval: 1m
     rules:
       - uid: supervisor-worker-fatal
@@ -2059,7 +2059,7 @@ groups:
 
   - orgId: 1
     name: Application Errors
-    folder: Application
+    folder: Applications
     interval: 5m
     rules:
       - uid: laravel-error-rate-spike
@@ -2111,7 +2111,7 @@ groups:
 
   - orgId: 1
     name: Certificates
-    folder: Certificates
+    folder: Platform
     interval: 5m
     rules:
       - uid: cert-expiring-soon
@@ -2391,7 +2391,7 @@ groups:
 
   - orgId: 1
     name: Linux
-    folder: Linux
+    folder: Platform
     interval: 1m
     rules:
       - uid: linux-disk-warning
@@ -2749,7 +2749,7 @@ groups:
 
   - orgId: 1
     name: Windows
-    folder: Windows
+    folder: Platform
     interval: 1m
     rules:
       - uid: windows-disk-warning
@@ -2931,7 +2931,7 @@ groups:
 
   - orgId: 1
     name: Network
-    folder: Network
+    folder: Networking
     interval: 1m
     rules:
       - uid: network-wan-latency
@@ -3337,7 +3337,7 @@ groups:
 
   - orgId: 1
     name: Containers
-    folder: Containers
+    folder: Platform
     interval: 1m
     rules:
       - uid: container-crash-loop
@@ -3474,7 +3474,7 @@ groups:
 
   - orgId: 1
     name: HTTP
-    folder: Application
+    folder: Applications
     interval: 1m
     rules:
       - uid: http-app-down
@@ -3568,7 +3568,7 @@ groups:
 
   - orgId: 1
     name: MySQL
-    folder: Application
+    folder: Applications
     interval: 1m
     rules:
       - uid: mysql-connections-high

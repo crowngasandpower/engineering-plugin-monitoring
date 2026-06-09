@@ -1250,12 +1250,13 @@ def _poll(icon: pystray.Icon) -> None:
                         lb  = alert.get("labels", {})
                         sev = lb.get("severity", "warning")
                         prefix = f"[{profile.get('name', '')}] " if len(profiles) > 1 else ""
-                        _notify(
-                            f"{prefix}{'CRITICAL' if sev == 'critical' else 'Warning'}: "
-                            f"{lb.get('alertname', 'Alert')}",
-                            alert.get("annotations", {}).get("summary")
-                            or lb.get("instance", ""),
-                        )
+                        if settings.get().get("toast_notifications", True):
+                            _notify(
+                                f"{prefix}{'CRITICAL' if sev == 'critical' else 'Warning'}: "
+                                f"{lb.get('alertname', 'Alert')}",
+                                alert.get("annotations", {}).get("summary")
+                                or lb.get("instance", ""),
+                            )
                 previous_per[i] = current
 
         # Tray icon reflects worst state across all profiles
@@ -1426,6 +1427,14 @@ def main() -> None:
             _stop_flashing()
             i.icon = _make_icon("red")
 
+    def _toast_text(_i):
+        return ("Enable Toasts" if not settings.get().get("toast_notifications", True)
+                else "Disable Toasts")
+
+    def _toast_toggle(_i, _t):
+        s = settings.get()
+        settings.save_global(toast_notifications=not s.get("toast_notifications", True))
+
     def _quit(i, _t):
         i.stop()
         root.after(0, root.quit)
@@ -1455,6 +1464,7 @@ def main() -> None:
             pystray.Menu.SEPARATOR,
             item(_flash_pause_text,     _flash_pause_toggle),
             item(_flash_enabled_text,   _flash_enabled_toggle),
+            item(_toast_text,           _toast_toggle),
             pystray.Menu.SEPARATOR,
             item("Settings",            _settings),
             item("Open Grafana",        _open_g),

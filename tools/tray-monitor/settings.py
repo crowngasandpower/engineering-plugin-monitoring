@@ -19,10 +19,11 @@ PROFILE_DEFAULTS: dict = {
 }
 
 DEFAULTS: dict = {
-    "profiles":          [dict(PROFILE_DEFAULTS)],
-    "active_profile":    0,
-    "poll_interval":     30,
-    "flash_on_critical": True,
+    "profiles":            [dict(PROFILE_DEFAULTS)],
+    "active_profile":      0,
+    "poll_interval":       30,
+    "flash_on_critical":   True,
+    "toast_notifications": True,
 }
 
 _DIR  = Path(os.environ.get("APPDATA", ".")) / "CrownMonitoring"
