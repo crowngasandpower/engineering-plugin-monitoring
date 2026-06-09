@@ -1,7 +1,10 @@
 import base64
 import datetime
+import html
+import ipaddress
 import json
 import os
+import re
 import socket
 import ssl
 import urllib.parse
@@ -45,11 +48,17 @@ def _get_unifi_sites() -> list[str]:
 
 
 def _get_unifi_devices() -> list[str]:
-    """Fetch all known UniFi device names from Prometheus label values."""
+    """Fetch all known UniFi device names directly from the unifi-local-exporter metrics."""
     try:
-        url = "http://prometheus:9090/api/v1/label/device/values?match[]=unifi_device_up"
-        with urllib.request.urlopen(url, timeout=3) as r:
-            return sorted(json.loads(r.read()).get("data", []))
+        with urllib.request.urlopen("http://unifi-local-exporter:3000/metrics", timeout=3) as r:
+            body = r.read().decode()
+        devices = set()
+        for line in body.splitlines():
+            if line.startswith("unifi_device_up{"):
+                m = re.search(r'device="([^"]+)"', line)
+                if m:
+                    devices.add(m.group(1))
+        return sorted(devices)
     except Exception:
         return []
 
@@ -162,7 +171,7 @@ def add_exempt(host: str = Query(...), reason: str = Query(default="")):
             "INSERT INTO exporter_exempt(hostname, reason) VALUES (%s, %s) ON CONFLICT(hostname) DO NOTHING",
             (host, reason),
         )
-    return _page(f"✓ <strong>{host}</strong> exempted from exporter count.")
+    return _page(f"✓ <strong>{html.escape(host)}</strong> exempted from exporter count.")
 
 @app.get("/exempt/remove")
 def remove_exempt(host: str = Query(...)):
@@ -170,7 +179,7 @@ def remove_exempt(host: str = Query(...)):
         conn.cursor().execute(
             "DELETE FROM exporter_exempt WHERE hostname = %s", (host,)
         )
-    return _page(f"✓ <strong>{host}</strong> removed from exemption list.")
+    return _page(f"✓ <strong>{html.escape(host)}</strong> removed from exemption list.")
 
 @app.get("/suppress/add")
 def suppress_add(
@@ -188,7 +197,7 @@ def suppress_add(
             (category, identifier, reason),
         )
     label = CATEGORY_LABELS[category]
-    return _page(f"✓ <strong>{identifier}</strong> suppressed from <strong>{label}</strong>.")
+    return _page(f"✓ <strong>{html.escape(identifier)}</strong> suppressed from <strong>{html.escape(label)}</strong>.")
 
 @app.get("/suppress/remove")
 def suppress_remove(category: str = Query(...), identifier: str = Query(...)):
@@ -200,7 +209,7 @@ def suppress_remove(category: str = Query(...), identifier: str = Query(...)):
             (category, identifier),
         )
     label = CATEGORY_LABELS[category]
-    return _page(f"✓ <strong>{identifier}</strong> removed from <strong>{label}</strong> suppressions.")
+    return _page(f"✓ <strong>{html.escape(identifier)}</strong> removed from <strong>{html.escape(label)}</strong> suppressions.")
 
 @app.get("/suppress", response_class=HTMLResponse)
 def suppress_list():
@@ -346,14 +355,14 @@ def connectivity_add(
                ON CONFLICT(ip) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category""",
             (ip, name, category),
         )
-    return _page(f"✓ <strong>{name}</strong> ({ip}) added to connectivity checks.")
+    return _page(f"✓ <strong>{html.escape(name)}</strong> ({html.escape(ip)}) added to connectivity checks.")
 
 
 @app.get("/connectivity/remove")
 def connectivity_remove(ip: str = Query(...)):
     with get_conn() as conn:
         conn.cursor().execute("DELETE FROM connectivity_checks WHERE ip = %s", (ip,))
-    return _page(f"✓ {ip} removed from connectivity checks.")
+    return _page(f"✓ {html.escape(ip)} removed from connectivity checks.")
 
 
 @app.get("/connectivity", response_class=HTMLResponse)
@@ -516,14 +525,14 @@ def ping_sources_add(
                  source_ip = EXCLUDED.source_ip""",
             (site_id, source, source_ip or None),
         )
-    return _page(f"✓ Firewall <strong>{site_id}</strong> → <strong>{source}</strong> saved.")
+    return _page(f"✓ Firewall <strong>{html.escape(site_id)}</strong> → <strong>{html.escape(source)}</strong> saved.")
 
 
 @app.get("/ping/sources/remove")
 def ping_sources_remove(site_id: str = Query(...)):
     with get_conn() as conn:
         conn.cursor().execute("DELETE FROM ping_sources WHERE site_id = %s", (site_id,))
-    return _page(f"✓ Source <strong>{site_id}</strong> removed.")
+    return _page(f"✓ Source <strong>{html.escape(site_id)}</strong> removed.")
 
 
 @app.get("/ping/sources/import-unifi")
@@ -544,7 +553,7 @@ def ping_sources_import_unifi():
             if cur.rowcount:
                 added.append(site)
     if added:
-        return _page(f"✓ Imported {len(added)} UniFi source(s): <strong>{', '.join(added)}</strong>. "
+        return _page(f"✓ Imported {len(added)} UniFi source(s): <strong>{html.escape(', '.join(added))}</strong>. "
                      f"Set a source IP for each if needed.")
     return _page("No new sources to import — all UniFi sites already registered.")
 
@@ -658,7 +667,7 @@ def ping_add(
                  source_ip = EXCLUDED.source_ip""",
             (ip, name, category, site_filter, source_ip or None),
         )
-    return _page(f"✓ <strong>{name}</strong> ({ip}) added to ping targets.")
+    return _page(f"✓ <strong>{html.escape(name)}</strong> ({html.escape(ip)}) added to ping targets.")
 
 
 @app.get("/ping/save")
@@ -691,7 +700,7 @@ def ping_save(
                  source_ip = EXCLUDED.source_ip""",
             (ip, name, category, site_filter, source_ip or None),
         )
-    return _page(f"✓ <strong>{name}</strong> ({ip}) saved.")
+    return _page(f"✓ <strong>{html.escape(name)}</strong> ({html.escape(ip)}) saved.")
 
 
 def _pushgateway_delete(source: str, target: str):
@@ -724,7 +733,7 @@ def ping_remove(ip: str = Query(...), site_filter: str = Query(...)):
             sources = []
     for source in sources:
         _pushgateway_delete(source, name)
-    return _page(f"✓ {name} ({ip}) removed from ping targets.")
+    return _page(f"✓ {html.escape(name)} ({html.escape(ip)}) removed from ping targets.")
 
 
 @app.get("/ping", response_class=HTMLResponse)
@@ -1058,6 +1067,14 @@ def cert_add(
 ):
     if not url.startswith("https://"):
         raise HTTPException(status_code=400, detail="URL must start with https://")
+    hostname = urllib.parse.urlparse(url).hostname or ""
+    try:
+        ipaddress.ip_address(hostname)
+        raise HTTPException(status_code=400, detail="IP addresses are not permitted — use a fully-qualified hostname")
+    except ValueError:
+        pass
+    if "." not in hostname:
+        raise HTTPException(status_code=400, detail="URL must use a fully-qualified hostname (e.g. portal.crowngasandpower.co.uk)")
     with get_conn() as conn:
         conn.cursor().execute(
             """INSERT INTO cert_targets(url, name, team)
@@ -1065,14 +1082,14 @@ def cert_add(
                ON CONFLICT(url) DO UPDATE SET name = EXCLUDED.name, team = EXCLUDED.team""",
             (url, name, team),
         )
-    return _page(f"✓ <strong>{name}</strong> (<code>{url}</code>) added to certificate monitoring.")
+    return _page(f"✓ <strong>{html.escape(name)}</strong> (<code>{html.escape(url)}</code>) added to certificate monitoring.")
 
 
 @app.get("/cert/remove")
 def cert_remove(url: str = Query(...)):
     with get_conn() as conn:
         conn.cursor().execute("DELETE FROM cert_targets WHERE url = %s", (url,))
-    return _page(f"✓ <code>{url}</code> removed from certificate monitoring.")
+    return _page(f"✓ <code>{html.escape(url)}</code> removed from certificate monitoring.")
 
 
 @app.get("/cert/scan", response_class=HTMLResponse)
@@ -1315,14 +1332,14 @@ def unifi_add(device: str = Query(...), reason: str = Query(default="")):
             "INSERT INTO unifi_exempt(device, reason) VALUES (%s, %s) ON CONFLICT(device) DO NOTHING",
             (device, reason),
         )
-    return _page(f"✓ <strong>{device}</strong> exempted from UniFi offline alerts.")
+    return _page(f"✓ <strong>{html.escape(device)}</strong> exempted from UniFi offline alerts.")
 
 
 @app.get("/unifi/remove")
 def unifi_remove(device: str = Query(...)):
     with get_conn() as conn:
         conn.cursor().execute("DELETE FROM unifi_exempt WHERE device = %s", (device,))
-    return _page(f"✓ <strong>{device}</strong> removed from UniFi exemptions.")
+    return _page(f"✓ <strong>{html.escape(device)}</strong> removed from UniFi exemptions.")
 
 
 @app.get("/unifi", response_class=HTMLResponse)

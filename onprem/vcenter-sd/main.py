@@ -19,8 +19,6 @@ SD_FILE = '/sd/linux-hosts.json'
 WINDOWS_SD_FILE = '/sd/windows-hosts.json'
 PUSHGATEWAY_URL = os.environ.get('PUSHGATEWAY_URL', 'http://pushgateway:9091')
 POLL_INTERVAL = int(os.environ.get('POLL_INTERVAL_SECONDS', '60'))
-CADVISOR_PORT = int(os.environ.get('CADVISOR_PORT', '8080'))
-CADVISOR_SD_FILE = '/sd/cadvisor-hosts.json'
 
 
 def connect():
@@ -75,7 +73,6 @@ def poll():
         # Build custom-field key → name map once per poll
         field_map = {f.key: f.name for f in content.customFieldsManager.field}
         backup_key = next((k for k, n in field_map.items() if n == 'Rubrik_LastBackup'), None)
-        docker_key = next((k for k, n in field_map.items() if n == 'docker_host'), None)
 
         # Pass 1: backup times + powered-off for every VM in vCenter
         backup_times = {}
@@ -92,7 +89,7 @@ def poll():
                         break
 
         # Pass 2: service-discovery targets for all powered-on VMs
-        linux_targets, windows_targets, cadvisor_targets, no_ip = [], [], [], []
+        linux_targets, windows_targets, no_ip = [], [], []
         for vm in collect_all_vms(content):
                 if vm.runtime.powerState != 'poweredOn':
                     continue
@@ -113,25 +110,14 @@ def poll():
                 else:
                     no_ip.append(vm.name)
 
-                if docker_key is not None and ip:
-                    for cv in vm.customValue:
-                        if cv.key == docker_key and cv.value.lower() == 'true':
-                            cadvisor_targets.append({
-                                'targets': [f'{hostname or ip}:{CADVISOR_PORT}'],
-                                'labels': {'host': vm.name},
-                            })
-                            break
-
         with open(SD_FILE, 'w') as f:
             json.dump(linux_targets, f, indent=2)
         with open(WINDOWS_SD_FILE, 'w') as f:
             json.dump(windows_targets, f, indent=2)
-        with open(CADVISOR_SD_FILE, 'w') as f:
-            json.dump(cadvisor_targets, f, indent=2)
 
         host_datastores = collect_host_datastores(content)
 
-        print(f'SD updated: {len(linux_targets)} Linux, {len(windows_targets)} Windows, {len(cadvisor_targets)} cAdvisor, {len(no_ip)} no IP, {len(powered_off)} powered off, {len(backup_times)} backup times, {len(host_datastores)} host-datastore pairs')
+        print(f'SD updated: {len(linux_targets)} Linux, {len(windows_targets)} Windows, {len(no_ip)} no IP, {len(powered_off)} powered off, {len(backup_times)} backup times, {len(host_datastores)} host-datastore pairs')
         _push_metrics(no_ip, powered_off, backup_times, host_datastores)
 
     except Exception as e:
