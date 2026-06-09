@@ -464,7 +464,7 @@ def ping_metrics():
         "# TYPE ping_source_registered gauge",
     ]
     for (source,) in source_rows:
-        lines.append(f'ping_source_registered{{source="{source}"}} 1')
+        lines.append(f'ping_source_registered{{source="{_escape_label(source)}"}} 1')
     lines += [
         "",
         "# HELP ping_target_configured Ping target configured in the API",
@@ -473,7 +473,7 @@ def ping_metrics():
     for ip, name, category, site_filter in target_rows:
         for source in [s.strip() for s in site_filter.split(",")]:
             lines.append(
-                f'ping_target_configured{{source="{source}",target="{name}",dst="{ip}",category="{category}"}} 1'
+                f'ping_target_configured{{source="{_escape_label(source)}",target="{_escape_label(name)}",dst="{_escape_label(ip)}",category="{_escape_label(category)}"}} 1'
             )
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
@@ -529,6 +529,8 @@ def ping_sources_add(
     source: str = Query(...),
     source_ip: str = Query(default=""),
 ):
+    if source_ip and not re.match(r'^[a-zA-Z0-9._:/-]{1,64}$', source_ip):
+        raise HTTPException(status_code=400, detail="source_ip must be an IP address or interface name (e.g. 192.168.1.1 or eth1)")
     with get_conn() as conn:
         conn.cursor().execute(
             """INSERT INTO ping_sources(site_id, source, source_ip)
