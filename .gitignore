@@ -7,3 +7,7 @@ __pycache__/
 onprem/data/
 onprem/powerstore-monitor/
 onprem/docker-compose.override.yml
+
+# tray-monitor build artefacts
+tools/tray-monitor/build/
+tools/tray-monitor/dist/
