@@ -19,7 +19,7 @@ services:
     container_name: monitoring-metrics-proxy
     restart: unless-stopped
     volumes:
-      - ./metrics-proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./metrics-proxy-nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
       - "9550:9550"   # metrics scrape router (AWS Prometheus → on-prem exporters)
       - "9551:9551"   # loki push proxy (app-host log shippers → AWS Loki via ALB)
