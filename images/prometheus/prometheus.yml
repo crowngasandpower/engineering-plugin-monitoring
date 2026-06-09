@@ -2,30 +2,38 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
 scrape_configs:
   - job_name: 'pushgateway'
     honor_labels: true
     static_configs:
-      - targets: ['192.168.164.184:9501']
+      - targets: ['pushgateway:9091']
 
   - job_name: 'genus'
     scrape_interval: 30s
     static_configs:
-      - targets: ['192.168.164.184:9507']
+      - targets: ['genus-monitor:3000']
 
-  # Weather exporter — outside temperature for the server-room dashboards.
-  # The on-prem compose maps weather-exporter 9522:3000 (9520 was taken by
-  # crown-mcp-diff-harness-api).
+  # Weather exporter — Open-Meteo polled per scrape. Hit rate at 60s is
+  # 1,440/day/location, comfortably under the 10k/day free-tier cap.
   - job_name: 'weather'
     scrape_interval: 60s
     scrape_timeout: 15s
     static_configs:
-      - targets: ['192.168.164.184:9522']
+      - targets: ['weather-exporter:3000']
+
+  - job_name: 'cadvisor'
+    scrape_interval: 15s
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/cadvisor-hosts.json']
+        refresh_interval: 30s
 
   - job_name: 'node'
     scrape_interval: 15s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/vcenter/linux-targets
+      - url: http://exemption-api:8000/vcenter/linux-targets
         refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
@@ -45,7 +53,7 @@ scrape_configs:
   - job_name: 'windows'
     scrape_interval: 30s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/vcenter/windows-targets
+      - url: http://exemption-api:8000/vcenter/windows-targets
         refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
@@ -66,7 +74,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 55s
     static_configs:
-      - targets: ['192.168.164.184:9515']
+      - targets: ['vmware-exporter:9169']
 
   - job_name: 'idrac'
     scrape_interval: 60s
@@ -87,28 +95,17 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: 192.168.164.184:9516
+        replacement: idrac-exporter:9348
 
+  # PowerStore — SD file written by powerstore-exporter at startup.
+  # To add a new SAN: set POWERSTORE_N_* in .env and restart powerstore-exporter.
+  # Prometheus picks up the updated file within 30 seconds, no restart needed.
   - job_name: 'powerstore_cluster'
     scrape_interval: 15m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -118,23 +115,9 @@ scrape_configs:
   - job_name: 'powerstore_appliance'
     scrape_interval: 5m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -144,23 +127,9 @@ scrape_configs:
   - job_name: 'powerstore_capacity'
     scrape_interval: 15m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -170,23 +139,9 @@ scrape_configs:
   - job_name: 'powerstore_hardware'
     scrape_interval: 10m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -196,23 +151,9 @@ scrape_configs:
   - job_name: 'powerstore_volume'
     scrape_interval: 5m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -222,23 +163,9 @@ scrape_configs:
   - job_name: 'powerstore_volumeGroup'
     scrape_interval: 5m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -248,23 +175,9 @@ scrape_configs:
   - job_name: 'powerstore_port'
     scrape_interval: 5m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -274,23 +187,9 @@ scrape_configs:
   - job_name: 'powerstore_nas'
     scrape_interval: 5m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -300,23 +199,9 @@ scrape_configs:
   - job_name: 'powerstore_file'
     scrape_interval: 5m
     scrape_timeout: 3m
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -326,23 +211,9 @@ scrape_configs:
   - job_name: 'powerstore_alert'
     scrape_interval: 1m
     scrape_timeout: 30s
-    static_configs:
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN1-P500T.crowngp.local
-          array_name: HQ-DC-SAN1-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN2-P500T.crowngp.local
-          array_name: HQ-DC-SAN2-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN3-P500T.crowngp.local
-          array_name: HQ-DC-SAN3-P500T
-      - targets: ['192.168.164.184:9521']
-        labels:
-          array_ip: HQ-DC-SAN4-P500T.crowngp.local
-          array_name: HQ-DC-SAN4-P500T
+    file_sd_configs:
+      - files: ['/etc/prometheus/sd/powerstore.json']
+        refresh_interval: 30s
     relabel_configs:
       - source_labels: [array_ip]
         regex: (.+)
@@ -362,21 +233,21 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 30s
     static_configs:
-      - targets: ['192.168.164.184:9526']
+      - targets: ['unifi-exporter:3000']
 
   # UniFi local controllers — per-device metrics via direct API
   - job_name: 'unifi_local'
     scrape_interval: 60s
     scrape_timeout: 45s
     static_configs:
-      - targets: ['192.168.164.184:9525']
+      - targets: ['unifi-local-exporter:3000']
 
   # Dell OS10 switches — RESTCONF API
   - job_name: 'dell_os10'
     scrape_interval: 60s
     scrape_timeout: 30s
     static_configs:
-      - targets: ['192.168.164.184:9523']
+      - targets: ['dell-os10-exporter:3000']
 
   # Certificate monitoring — TLS expiry via blackbox https_cert module.
   # Targets managed via http://poc-containers:9511/cert
@@ -387,7 +258,7 @@ scrape_configs:
     scrape_interval: 5m
     scrape_timeout: 30s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/cert/targets
+      - url: http://exemption-api:8000/cert/targets
         refresh_interval: 1m
     relabel_configs:
       - source_labels: [__address__]
@@ -399,7 +270,7 @@ scrape_configs:
       - source_labels: [team]
         target_label: team
       - target_label: __address__
-        replacement: 192.168.164.184:9514
+        replacement: blackbox-exporter:9115
 
   # Certificate monitoring — OCSP revocation, chain validation, cert metadata.
   - job_name: 'cert_custom'
@@ -407,14 +278,22 @@ scrape_configs:
     scrape_timeout: 4m
     metrics_path: /cert/metrics
     static_configs:
-      - targets: ['192.168.164.184:9511']
+      - targets: ['exemption-api:8000']
 
-  # UniFi device exemptions — managed via http://poc-containers:9511/unifi
+  # UniFi device exemptions — managed via http://poc-containers:9511/suppress
   - job_name: 'unifi_exempt'
     scrape_interval: 60s
     metrics_path: /unifi/metrics
     static_configs:
-      - targets: ['192.168.164.184:9511']
+      - targets: ['exemption-api:8000']
+
+  # Ping target registry — exposes configured targets as a gauge so the
+  # dashboard can show them as DOWN before a site script has pushed any data.
+  - job_name: 'ping_targets_config'
+    scrape_interval: 30s
+    metrics_path: /ping/metrics
+    static_configs:
+      - targets: ['exemption-api:8000']
 
   # Ad-hoc connectivity checks — managed via http://poc-containers:9511/connectivity
   - job_name: 'connectivity_check'
@@ -424,7 +303,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 10s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/connectivity/targets
+      - url: http://exemption-api:8000/connectivity/targets
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]
@@ -432,7 +311,7 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: 192.168.164.184:9514
+        replacement: blackbox-exporter:9115
 
   # Ping targets — managed via http://poc-containers:9511/ping
   - job_name: 'ping_targets'
@@ -442,7 +321,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 10s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/ping/targets
+      - url: http://exemption-api:8000/ping/targets
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]
@@ -450,7 +329,7 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: 192.168.164.184:9514
+        replacement: blackbox-exporter:9115
 
   - job_name: 'blackbox'
     metrics_path: /probe
@@ -498,7 +377,7 @@ scrape_configs:
         regex: https://([^.]+)\.apps\.crown
         target_label: app
       - target_label: __address__
-        replacement: 192.168.164.184:9514
+        replacement: blackbox-exporter:9115
 
   - job_name: nginx
     static_configs:
@@ -557,4 +436,4 @@ scrape_configs:
         regex: https://([^.]+)\.crowngasandpower\.co\.uk
         target_label: app
       - target_label: __address__
-        replacement: 192.168.164.184:9514
+        replacement: blackbox-exporter:9115
