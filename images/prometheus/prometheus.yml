@@ -8,13 +8,11 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9501']
 
-  # Rust pricing worker on k3s — scraped via its MetalLB/traefik ingress (valid LE cert).
-  - job_name: 'rustpricing'
-    scheme: https
-    metrics_path: /metrics
-    scrape_interval: 15s
-    static_configs:
-      - targets: ['rust-pricing.apps.cgp3.co.uk']
+  # NOTE: rust pricing worker metrics are NOT scraped here. The worker lives on
+  # the k3s .195 subnet which the AWS Prometheus cannot route over the VPN
+  # (all pull targets are .164 / apps-prod). Instead the on-prem Alloy on
+  # poc-containers scrapes the worker ingress and remote_writes the series in.
+  # See onprem/alloy/alloy.config (prometheus.scrape "rustpricing").
 
   - job_name: 'genus'
     scrape_interval: 30s
