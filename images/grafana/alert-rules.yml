@@ -2945,7 +2945,7 @@ groups:
       - uid: network-wan-unreachable
         title: UniFi Controller Unreachable
         condition: threshold
-        for: 3m
+        for: 0m
         noDataState: Alerting
         execErrState: Error
         labels:
@@ -3120,6 +3120,51 @@ groups:
                       - 0
               refId: threshold
 
+      - uid: network-switch-exporter-down
+        title: Switch Exporter Unreachable
+        condition: threshold
+        for: 3m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "Dell OS10 exporter is not responding to Prometheus scrapes ({{ $labels.instance }})"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'up{job="dell_os10"}'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
       - uid: network-switch-unreachable
         title: Switch Unreachable
         condition: threshold
@@ -3130,7 +3175,7 @@ groups:
           severity: critical
           oncall: Platform
         annotations:
-          summary: "Dell OS10 switch {{ $labels.instance }} is not responding to scrapes"
+          summary: "Dell OS10 switch {{ $labels.switch }} is not responding to RESTCONF API"
         data:
           - refId: A
             relativeTimeRange:
@@ -3138,7 +3183,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'up{job="dell_os10"}'
+              expr: 'os10_scrape_success{job="dell_os10"}'
               refId: A
           - refId: val
             relativeTimeRange:

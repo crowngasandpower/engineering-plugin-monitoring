@@ -16,6 +16,19 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9507']
 
+  # Docker container metrics — Alloy scrapes cAdvisor and remote_writes to a
+  # local relay Prometheus (:9528). AWS Prometheus federates from the relay so
+  # the pull architecture is preserved end-to-end.
+  - job_name: 'cadvisor'
+    scrape_interval: 60s
+    honor_labels: true
+    metrics_path: /federate
+    params:
+      'match[]':
+        - '{job="integrations/cadvisor"}'
+    static_configs:
+      - targets: ['192.168.164.184:9528']
+
   # Weather exporter — Open-Meteo polled per scrape. Hit rate at 60s is
   # 1,440/day/location, comfortably under the 10k/day free-tier cap.
   - job_name: 'weather'

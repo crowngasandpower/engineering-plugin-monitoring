@@ -133,6 +133,91 @@ docker compose -f onprem/collectors-compose.yml -p monitoring-collectors up -d
 > re-clone deliberately, preserving the `monitoring` project name and the git-ignored
 > `data/` and `.env` files.
 
+### Alloy (cAdvisor container metrics)
+
+Alloy runs as a standalone `docker run` container on poc-containers (not part of the
+main compose stack). It scrapes Docker container metrics via the embedded cAdvisor
+library and remote_writes to a local Prometheus relay (`monitoring-prometheus-relay`
+on `:9528`). AWS Prometheus then federates from the relay.
+
+**Install / reinstall Alloy on a host:**
+
+```bash
+# 1. Write the config (path must match the volume mount below)
+cat > /home/docker/engineering-plugin-monitoring/onprem/alloy/alloy.config << 'EOF'
+prometheus.exporter.cadvisor "docker" {
+  docker_only      = true
+  disabled_metrics = [
+    "advtcp", "cpuLoad", "cpu_topology", "cpuset", "diskIO",
+    "hugetlb", "memory_numa", "oom_event", "percpu", "perf_event",
+    "process", "referenced_memory", "resctrl", "sched", "tcp", "udp",
+  ]
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = prometheus.exporter.cadvisor.docker.targets
+  forward_to      = [prometheus.relabel.add_labels.receiver]
+  scrape_interval = "60s"
+}
+
+prometheus.relabel "add_labels" {
+  forward_to = [prometheus.remote_write.relay.receiver]
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/cadvisor"
+  }
+  rule {
+    target_label = "host"
+    replacement  = "poc-containers"   # change per host
+  }
+}
+
+prometheus.remote_write "relay" {
+  endpoint {
+    url = "http://192.168.164.184:9528/api/v1/write"
+  }
+}
+EOF
+
+# 2. Start (or recreate) the Alloy container
+docker stop monitoring-alloy 2>/dev/null; docker rm monitoring-alloy 2>/dev/null
+docker run -d \
+  --name monitoring-alloy \
+  --restart unless-stopped \
+  -v /home/docker/engineering-plugin-monitoring/onprem/alloy:/etc/alloy:ro \
+  -v /:/rootfs:ro \
+  -v /var/run:/var/run:ro \
+  -v /sys:/sys:ro \
+  -v /var/lib/docker/:/var/lib/docker:ro \
+  -v /dev/disk/:/dev/disk:ro \
+  -p 9527:12345 \
+  grafana/alloy:latest \
+  run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/alloy.config
+```
+
+**Adding Alloy to a new Docker host:**
+- Change `host = "poc-containers"` in the relabel rule to the new host's name
+- Point `prometheus.remote_write.relay.endpoint.url` at `http://192.168.164.184:9528/api/v1/write`
+- No changes needed to Prometheus or the relay — the federation query picks up all hosts automatically
+
+**Prometheus relay** (must be running on poc-containers for Alloy to have anywhere to write):
+
+```bash
+docker run -d \
+  --name monitoring-prometheus-relay \
+  --restart unless-stopped \
+  -p 9528:9090 \
+  prom/prometheus:latest \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.retention.time=15m \
+  --web.enable-remote-write-receiver \
+  --storage.tsdb.path=/prometheus
+```
+
+Once the collectors compose stack is deployed (`collectors-compose.yml`), both Alloy and
+the relay will be managed by compose instead of bare `docker run`.
+
 ### Post-deploy checklist (first deploy of this branch)
 
 After the AWS images are redeployed and the on-prem stack is restarted:

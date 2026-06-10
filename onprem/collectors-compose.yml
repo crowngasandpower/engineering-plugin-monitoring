@@ -4,11 +4,13 @@
 # committed definition. They are NOT part of the legacy `monitoring` compose
 # project — they bridge the on-prem estate to the AWS monitoring stack:
 #
-#   metrics-proxy : :9550  scrape path-router  — AWS Prometheus PULLS on-prem
-#                                                 exporters through this over the VPN
-#                   :9551  loki push-proxy     — app-host log shippers PUSH through
-#                                                 here → https://tools.cgp3.co.uk → ALB → Loki
-#   alloy         : cAdvisor docker-container metrics → remote_write to Prometheus
+#   metrics-proxy  : :9550  scrape path-router  — AWS Prometheus PULLS on-prem
+#                                                  exporters through this over the VPN
+#                    :9551  loki push-proxy     — app-host log shippers PUSH through
+#                                                  here → https://tools.cgp3.co.uk → ALB → Loki
+#   alloy          : cAdvisor docker-container metrics → remote_write to prometheus-relay
+#   prometheus-relay: :9528  remote_write receiver — Alloy pushes here; AWS Prometheus
+#                                                  federates from /federate
 #
 # Deploy:  docker compose -p monitoring-collectors up -d
 # (kept project-separate from the legacy `monitoring` stack on the same host)
@@ -28,10 +30,7 @@ services:
     image: grafana/alloy:latest
     container_name: monitoring-alloy
     restart: unless-stopped
-    command: ["run", "/etc/alloy/alloy.config"]
-    environment:
-      # Label applied to every cAdvisor series so AWS Prometheus can group by host
-      ALLOY_HOST_LABEL: "${ALLOY_HOST_LABEL:-poc-containers}"
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/alloy.config"]
     volumes:
       - ./alloy:/etc/alloy:ro
       - /:/rootfs:ro
@@ -41,3 +40,15 @@ services:
       - /dev/disk/:/dev/disk:ro
     ports:
       - "9527:12345"  # Alloy UI / metrics
+
+  prometheus-relay:
+    image: prom/prometheus:latest
+    container_name: monitoring-prometheus-relay
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15m
+      - --web.enable-remote-write-receiver
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9528:9090"  # federation endpoint for AWS Prometheus
