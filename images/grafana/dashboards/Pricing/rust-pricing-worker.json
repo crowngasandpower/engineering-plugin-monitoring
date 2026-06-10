@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -9,15 +11,34 @@
     {
       "title": "Active Quotes",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "targets": [{ "expr": "rustpricing_active_quotes", "refId": "A" }],
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rustpricing_active_quotes",
+          "refId": "A"
+        }
+      ],
       "fieldConfig": {
         "defaults": {
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 3 },
-              { "color": "red", "value": 10 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
             ]
           }
         }
@@ -26,21 +47,54 @@
     {
       "title": "Quotes Processed (Total)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "targets": [{ "expr": "rustpricing_quotes_processed", "refId": "A" }],
-      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" } } }
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rustpricing_quotes_processed",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      }
     },
     {
       "title": "Quotes Failed (Total)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "targets": [{ "expr": "rustpricing_quotes_failed", "refId": "A" }],
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rustpricing_quotes_failed",
+          "refId": "A"
+        }
+      ],
       "fieldConfig": {
         "defaults": {
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
             ]
           }
         }
@@ -49,16 +103,35 @@
     {
       "title": "Active Workers",
       "type": "gauge",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "targets": [{ "expr": "rustpricing_active_workers", "refId": "A" }],
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rustpricing_active_workers",
+          "refId": "A"
+        }
+      ],
       "fieldConfig": {
         "defaults": {
           "max": 12,
           "thresholds": {
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 8 },
-              { "color": "red", "value": 11 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 8
+              },
+              {
+                "color": "red",
+                "value": 11
+              }
             ]
           }
         }
@@ -67,36 +140,145 @@
     {
       "title": "Active Quotes Over Time",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
       "targets": [
-        { "expr": "rustpricing_active_quotes", "legendFormat": "Active Quotes", "refId": "A" }
+        {
+          "expr": "rustpricing_active_quotes",
+          "legendFormat": "Active Quotes",
+          "refId": "A"
+        }
       ],
-      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 20 } } }
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 20
+          }
+        }
+      }
     },
     {
       "title": "Quotes Processed Rate",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
       "targets": [
-        { "expr": "rate(rustpricing_quotes_processed[5m]) * 60", "legendFormat": "Quotes/min", "refId": "A" },
-        { "expr": "rate(rustpricing_quotes_failed[5m]) * 60", "legendFormat": "Failed/min", "refId": "B" }
+        {
+          "expr": "rate(rustpricing_quotes_processed[5m]) * 60",
+          "legendFormat": "Quotes/min",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(rustpricing_quotes_failed[5m]) * 60",
+          "legendFormat": "Failed/min",
+          "refId": "B"
+        }
       ],
-      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 10 } } }
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      }
     },
     {
       "title": "Workers Over Time",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
       "targets": [
-        { "expr": "rustpricing_active_workers", "legendFormat": "Active", "refId": "A" },
-        { "expr": "rustpricing_target_workers", "legendFormat": "Target", "refId": "B" }
+        {
+          "expr": "rustpricing_active_workers",
+          "legendFormat": "Active",
+          "refId": "A"
+        },
+        {
+          "expr": "rustpricing_target_workers",
+          "legendFormat": "Target",
+          "refId": "B"
+        }
       ]
+    },
+    {
+      "title": "Queue Depth (in-flight quotes)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "rustpricing_queue_depth",
+          "legendFormat": "Queue Depth",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 20
+          }
+        }
+      }
+    },
+    {
+      "title": "Time to Process (seconds)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "rustpricing_avg_quote_seconds",
+          "legendFormat": "Avg",
+          "refId": "A"
+        },
+        {
+          "expr": "rustpricing_last_quote_seconds",
+          "legendFormat": "Last",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10
+          }
+        }
+      }
     }
   ],
   "schemaVersion": 39,
-  "tags": ["pricing", "rust"],
-  "templating": { "list": [] },
-  "time": { "from": "now-3h", "to": "now" },
+  "tags": [
+    "pricing",
+    "rust"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
   "title": "Rust Pricing Worker",
   "uid": "rust-pricing-worker"
 }
