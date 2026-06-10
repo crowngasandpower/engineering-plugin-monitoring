@@ -8,11 +8,17 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9501']
 
-  # NOTE: rust pricing worker metrics are NOT scraped here. The worker lives on
-  # the k3s .195 subnet which the AWS Prometheus cannot route over the VPN
-  # (all pull targets are .164 / apps-prod). Instead the on-prem Alloy on
-  # poc-containers scrapes the worker ingress and remote_writes the series in.
-  # See onprem/alloy/alloy.config (prometheus.scrape "rustpricing").
+  # Rust pricing worker (k3s, .195 subnet). The AWS Prometheus can't route .195
+  # directly, so it's pulled through the on-prem metrics-proxy (:9550) — same
+  # pattern as the node/nginx/phpfpm exporters below. The proxy location
+  # forwards to the worker's HTTPS ingress. See onprem/metrics-proxy-nginx.conf.
+  - job_name: 'rustpricing'
+    scrape_interval: 15s
+    metrics_path: /rust-pricing/metrics
+    static_configs:
+      - targets: ['192.168.164.184:9550']
+        labels:
+          instance: rust-pricing-worker
 
   - job_name: 'genus'
     scrape_interval: 30s
