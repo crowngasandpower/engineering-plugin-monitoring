@@ -548,13 +548,13 @@
       "pluginVersion": "12.4.2",
       "targets": [
         {
-          "expr": "eps_pricing_queue_depth",
+          "expr": "rustpricing_queue_depth",
           "legendFormat": "Queue",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Queue Now",
+      "title": "Rust Queue Now",
       "type": "stat"
     },
     {
@@ -576,11 +576,16 @@
                 "value": 0
               },
               {
+                "color": "yellow",
+                "value": 2
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 5
               }
             ]
-          }
+          },
+          "unit": "s"
         },
         "overrides": []
       },
@@ -612,13 +617,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "-deriv(eps_pricing_queue_depth[5m]) * 60",
-          "legendFormat": "Jobs per minute",
+          "expr": "rustpricing_avg_quote_seconds",
+          "legendFormat": "Avg seconds",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Jobs per minute",
+      "title": "Avg Process Time",
       "type": "stat"
     },
     {
@@ -770,12 +775,12 @@
       "pluginVersion": "12.4.2",
       "targets": [
         {
-          "expr": "eps_pricing_queue_depth",
+          "expr": "rustpricing_queue_depth",
           "legendFormat": "Queue Depth",
           "refId": "A"
         }
       ],
-      "title": "EPS Pricing Queue Depth",
+      "title": "Rust Pricing Queue Depth",
       "type": "timeseries"
     },
     {
