@@ -1,16 +1,15 @@
 # On-prem collectors that run on poc-containers (192.168.164.184).
 #
-# These were previously started as bare `docker run` containers with no
-# committed definition. They are NOT part of the legacy `monitoring` compose
-# project — they bridge the on-prem estate to the AWS monitoring stack:
+# They are NOT part of the legacy `monitoring` compose project — they bridge
+# the on-prem estate to the AWS monitoring stack:
 #
 #   metrics-proxy  : :9550  scrape path-router  — AWS Prometheus PULLS on-prem
 #                                                  exporters through this over the VPN
 #                    :9551  loki push-proxy     — app-host log shippers PUSH through
 #                                                  here → https://tools.cgp3.co.uk → ALB → Loki
-#   alloy          : cAdvisor docker-container metrics → remote_write to prometheus-relay
-#   prometheus-relay: :9528  remote_write receiver — Alloy pushes here; AWS Prometheus
-#                                                  federates from /federate
+#                    :9552  prometheus push-proxy — Alloy PUSHES container metrics
+#                                                  here → prometheus.mcp.local → AWS Prometheus
+#   alloy          : cAdvisor docker-container metrics → remote_write → metrics-proxy:9552
 #
 # Deploy:  docker compose -p monitoring-collectors up -d
 # (kept project-separate from the legacy `monitoring` stack on the same host)
@@ -25,6 +24,7 @@ services:
     ports:
       - "9550:9550"   # metrics scrape router (AWS Prometheus → on-prem exporters)
       - "9551:9551"   # loki push proxy (app-host log shippers → AWS Loki via ALB)
+      - "9552:9552"   # prometheus remote_write proxy (Alloy → AWS Prometheus)
 
   alloy:
     image: grafana/alloy:latest
@@ -40,15 +40,3 @@ services:
       - /dev/disk/:/dev/disk:ro
     ports:
       - "9527:12345"  # Alloy UI / metrics
-
-  prometheus-relay:
-    image: prom/prometheus:latest
-    container_name: monitoring-prometheus-relay
-    restart: unless-stopped
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.retention.time=15m
-      - --web.enable-remote-write-receiver
-      - --storage.tsdb.path=/prometheus
-    ports:
-      - "9528:9090"  # federation endpoint for AWS Prometheus

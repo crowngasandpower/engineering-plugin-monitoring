@@ -19,11 +19,12 @@ APP HOSTS                          POC-CONTAINERS (192.168.164.184)        AWS (
 apps-prod-1  .252                  ┌─────────────────────────────┐
 apps-prod-2  .207                  │ metrics-proxy (nginx)        │        ┌───────────────────────────┐
 apps-prod-mysql .206               │  :9550 scrape path-router ───┼──pull──┤ Prometheus                │
-eps-worker-1 .40                   │  :9551 loki push-proxy ◄─────┼──push──┐│  (scrapes on-prem by IP   │
-                                   │                              │        ││   over the S2S VPN)       │
- node/nginx/phpfpm/mysqld  ──pull──┤ (via :9550)                  │        │└───────────────────────────┘
+eps-worker-1 .40                   │  :9551 loki push-proxy ◄─────┼──push──┐│  (--web.enable-remote-    │
+                                   │  :9552 prom push-proxy ◄─────┼──push──┘│   write-receiver)         │
+ node/nginx/phpfpm/mysqld  ──pull──┤ (via :9550)                  │        └───────────────────────────┘
  exporters                         │                              │        │
  log shippers (apache/laravel) ──push─► :9551 ──► tools.cgp3.co.uk ─ALB─► Loki │
+ alloy (cAdvisor)          ──push─► :9552 ──────────── VPN ───────┼──────► Prometheus /api/v1/write
                                    │                              │        │┌───────────────────────────┐
                                    │ custom exporters:            │        ││ Loki  (log store)         │
                                    │  genus-monitor :9507 ────────┼──pull──┤│                           │
@@ -31,10 +32,10 @@ eps-worker-1 .40                   │  :9551 loki push-proxy ◄─────
                                    │  powerstore :9521            │        │
                                    │  idrac      :9516            │        │┌───────────────────────────┐
                                    │  vmware     :9515            │        ││ Grafana                   │
-                                   │  weather    :9520 (outside°) │        ││  dashboards + alerting    │
-                                   │  blackbox, pushgateway :9501 │        │└───────────┬───────────────┘
-                                   │  alloy → cAdvisor metrics ───┼─remote_write──────────┘
-                                   └─────────────────────────────┘                     │
+                                   │  weather    :9522 (outside°) │        ││  dashboards + alerting    │
+                                   │  blackbox, pushgateway :9501 │        └───────────────────────────┘
+                                   │  alloy → cAdvisor :9527      │
+                                   └─────────────────────────────┘
                                                                           surfaced via the "monitoring"
                                                                           MCP plugin → /grafana, /loki, /tv
 ```
@@ -57,7 +58,7 @@ on 3100 (see `engineering-tools-framework/terraform/ecs/security_groups.tf`).
 | idrac-exporter | .184:9516 | `idrac` | iDRAC hardware health/temps |
 | powerstore-exporter | .184:9521 | `powerstore_*` | SAN |
 | node/nginx/phpfpm/mysqld | via .184:9550 | `node`/`nginx`/`phpfpm`/`mysql` | per-app-host OS/web/PHP/DB |
-| alloy (cAdvisor) | remote_write → :9500 | — | docker container metrics |
+| alloy (cAdvisor) | remote_write → metrics-proxy:9552 → VPN | — | docker container metrics |
 
 ---
 
@@ -81,8 +82,7 @@ onprem/                  The poc-containers stack — a faithful copy of what ru
   error-diagnosis/ supervisor-monitor/ jenkins-proxy/ file-gateway/
   alloy/alloy.config         cAdvisor docker metrics → remote_write (standalone container)
   metrics-proxy-nginx.conf   :9550 scrape router + :9551 loki push-proxy (standalone)
-  collectors-compose.yml     run definitions for the two standalone bridge containers
-                             (alloy + metrics-proxy; project: monitoring-collectors)
+  collectors-compose.yml     alloy + metrics-proxy bridge containers (project: monitoring-collectors)
 ```
 
 > **Grafana runs on AWS only.** The on-prem Grafana (+ its auth proxy) was
@@ -135,88 +135,16 @@ docker compose -f onprem/collectors-compose.yml -p monitoring-collectors up -d
 
 ### Alloy (cAdvisor container metrics)
 
-Alloy runs as a standalone `docker run` container on poc-containers (not part of the
-main compose stack). It scrapes Docker container metrics via the embedded cAdvisor
-library and remote_writes to a local Prometheus relay (`monitoring-prometheus-relay`
-on `:9528`). AWS Prometheus then federates from the relay.
-
-**Install / reinstall Alloy on a host:**
-
-```bash
-# 1. Write the config (path must match the volume mount below)
-cat > /home/docker/engineering-plugin-monitoring/onprem/alloy/alloy.config << 'EOF'
-prometheus.exporter.cadvisor "docker" {
-  docker_only      = true
-  disabled_metrics = [
-    "advtcp", "cpuLoad", "cpu_topology", "cpuset", "diskIO",
-    "hugetlb", "memory_numa", "oom_event", "percpu", "perf_event",
-    "process", "referenced_memory", "resctrl", "sched", "tcp", "udp",
-  ]
-}
-
-prometheus.scrape "cadvisor" {
-  targets         = prometheus.exporter.cadvisor.docker.targets
-  forward_to      = [prometheus.relabel.add_labels.receiver]
-  scrape_interval = "60s"
-}
-
-prometheus.relabel "add_labels" {
-  forward_to = [prometheus.remote_write.relay.receiver]
-
-  rule {
-    target_label = "job"
-    replacement  = "integrations/cadvisor"
-  }
-  rule {
-    target_label = "host"
-    replacement  = "poc-containers"   # change per host
-  }
-}
-
-prometheus.remote_write "relay" {
-  endpoint {
-    url = "http://192.168.164.184:9528/api/v1/write"
-  }
-}
-EOF
-
-# 2. Start (or recreate) the Alloy container
-docker stop monitoring-alloy 2>/dev/null; docker rm monitoring-alloy 2>/dev/null
-docker run -d \
-  --name monitoring-alloy \
-  --restart unless-stopped \
-  -v /home/docker/engineering-plugin-monitoring/onprem/alloy:/etc/alloy:ro \
-  -v /:/rootfs:ro \
-  -v /var/run:/var/run:ro \
-  -v /sys:/sys:ro \
-  -v /var/lib/docker/:/var/lib/docker:ro \
-  -v /dev/disk/:/dev/disk:ro \
-  -p 9527:12345 \
-  grafana/alloy:latest \
-  run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/alloy.config
-```
+Alloy is managed by `collectors-compose.yml`. It scrapes Docker container metrics via the
+embedded cAdvisor library and remote_writes to `metrics-proxy:9552`, which proxies over
+the VPN to AWS Prometheus directly. AWS Prometheus must have `--web.enable-remote-write-receiver`
+set in the ECS task definition (`engineering-tools-framework/terraform/ecs/monitoring.tf`).
 
 **Adding Alloy to a new Docker host:**
+- Copy `onprem/alloy/alloy.config` to the new host
 - Change `host = "poc-containers"` in the relabel rule to the new host's name
-- Point `prometheus.remote_write.relay.endpoint.url` at `http://192.168.164.184:9528/api/v1/write`
-- No changes needed to Prometheus or the relay — the federation query picks up all hosts automatically
-
-**Prometheus relay** (must be running on poc-containers for Alloy to have anywhere to write):
-
-```bash
-docker run -d \
-  --name monitoring-prometheus-relay \
-  --restart unless-stopped \
-  -p 9528:9090 \
-  prom/prometheus:latest \
-  --config.file=/etc/prometheus/prometheus.yml \
-  --storage.tsdb.retention.time=15m \
-  --web.enable-remote-write-receiver \
-  --storage.tsdb.path=/prometheus
-```
-
-Once the collectors compose stack is deployed (`collectors-compose.yml`), both Alloy and
-the relay will be managed by compose instead of bare `docker run`.
+- Keep `prometheus.remote_write.aws.endpoint.url` pointing at `http://192.168.164.184:9552/api/v1/write`
+- Start Alloy via the collectors compose or as a standalone container mounting that config
 
 ### Post-deploy checklist (first deploy of this branch)
 
