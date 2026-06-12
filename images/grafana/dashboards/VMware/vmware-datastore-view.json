@@ -1,0 +1,977 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [
+        "vmware"
+      ],
+      "targetBlank": false,
+      "title": "VMware Dashboards",
+      "tooltip": "",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "interval": "20s",
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sort_desc(max by (ds) (\n  (vmware_datastore_capacity{vcenter=~\"$vcenter\", ds=~\"$datastore\"} - vmware_datastore_free{vcenter=~\"$vcenter\", ds=~\"$datastore\"}) / vmware_datastore_capacity{vcenter=~\"$vcenter\", ds=~\"$datastore\"} * 100\n))",
+          "instant": true,
+          "range": false,
+          "interval": "20s",
+          "legendFormat": "{{ds}}",
+          "refId": "UsedPct"
+        }
+      ],
+      "title": "Datastore Space Usage",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": 3600000,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 101,
+      "interval": "20s",
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "timezone": [
+          "browser"
+        ],
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "avg(\n  vmware_vm_datastore_totalReadLatency_average{vcenter=~\"$vcenter\"}\n  * on(vm, vcenter) group_left()\n  (count by(vm, vcenter)(vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"}) > 0)\n)",
+          "interval": "20s",
+          "legendFormat": "Read",
+          "range": true,
+          "refId": "read"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "avg(\n  vmware_vm_datastore_totalWriteLatency_average{vcenter=~\"$vcenter\"}\n  * on(vm, vcenter) group_left()\n  (count by(vm, vcenter)(vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"}) > 0)\n)",
+          "hide": false,
+          "interval": "20s",
+          "legendFormat": "Write",
+          "range": true,
+          "refId": "write"
+        }
+      ],
+      "title": "Datastore Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "$vm",
+              "url": "d/VMwExVmV/vm-view?${__url_time_range}&${datasource:queryparam}&${job:queryparam}&${vcenter:queryparam}&${datacenter:queryparam}&${dcmo:queryparam}&${dchostfolder:queryparam}&${computemo:queryparam}&${cluster:queryparam}&${clustermo:queryparam}&${host:queryparam}&${hostmo:queryparam}&var-vm=${__field.labels.vm}&var-vmmo=${__field.labels.vmmo}"
+            }
+          ],
+          "mappings": [],
+          "unit": "KiBs"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "id": 27,
+      "interval": "20s",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "topk($top,\n  sum by (vm) (\n    vmware_vm_datastore_read_average{vcenter=~\"$vcenter\"} + vmware_vm_datastore_write_average{vcenter=~\"$vcenter\"}\n  ) * on (vm) group_left() (count by (vm) (vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"}) > 0)\n)",
+          "interval": "20s",
+          "legendFormat": "{{vm}}",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Top $top VMs per Datastore Throughput",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "$vm",
+              "url": "d/VMwExVmV/vm-view?${__url_time_range}&${datasource:queryparam}&${job:queryparam}&${vcenter:queryparam}&${datacenter:queryparam}&${dcmo:queryparam}&${dchostfolder:queryparam}&${computemo:queryparam}&${cluster:queryparam}&${clustermo:queryparam}&${host:queryparam}&${hostmo:queryparam}&var-vm=${__field.labels.vm}&var-vmmo=${__field.labels.vmmo}"
+            }
+          ],
+          "mappings": [],
+          "unit": "iops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "id": 35,
+      "interval": "20s",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "topk($top,\n  sum by (vm) (\n    vmware_vm_datastore_numberReadAveraged_average{vcenter=~\"$vcenter\"} + vmware_vm_datastore_numberWriteAveraged_average{vcenter=~\"$vcenter\"}\n  ) * on (vm) group_left() (count by (vm) (vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"}) > 0)\n)",
+          "interval": "20s",
+          "legendFormat": "{{vm}}",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Top $top VMs per Datastore IO",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "$vm",
+              "url": "d/VMwExVmV/vm-view?${__url_time_range}&${datasource:queryparam}&${job:queryparam}&${vcenter:queryparam}&${datacenter:queryparam}&${dcmo:queryparam}&${dchostfolder:queryparam}&${computemo:queryparam}&${cluster:queryparam}&${clustermo:queryparam}&${host:queryparam}&${hostmo:queryparam}&var-vm=${__field.labels.vm}&var-vmmo=${__field.labels.vmmo}"
+            }
+          ],
+          "mappings": [],
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "id": 34,
+      "interval": "20s",
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "topk($top,\n  max by (vm) (vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"})\n)",
+          "hide": false,
+          "interval": "20s",
+          "legendFormat": "{{vm}}",
+          "instant": true,
+          "range": false,
+          "refId": "B"
+        }
+      ],
+      "title": "Top $top VMs Stored on Disk",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": 3600000,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "KiBs"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 20,
+      "interval": "20s",
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "timezone": [
+          "browser"
+        ],
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  vmware_vm_datastore_read_average{vcenter=~\"$vcenter\"}\n  * on(vm,vcenter) group_left()\n  (count by(vm,vcenter)(vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"}) > 0)\n)",
+          "interval": "20s",
+          "legendFormat": "Read",
+          "range": true,
+          "refId": "read"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  vmware_vm_datastore_write_average{vcenter=~\"$vcenter\"}\n  * on(vm,vcenter) group_left()\n  (count by(vm,vcenter)(vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"}) > 0)\n) * -1",
+          "hide": false,
+          "interval": "20s",
+          "legendFormat": "Write",
+          "range": true,
+          "refId": "write"
+        }
+      ],
+      "title": "Datastore Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": 3600000,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "iops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 21,
+      "interval": "20s",
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "timezone": [
+          "browser"
+        ],
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  vmware_vm_datastore_numberReadAveraged_average{vcenter=~\"$vcenter\"}\n  * on(vm,vcenter) group_left()\n  (count by(vm,vcenter)(vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"}) > 0)\n)",
+          "interval": "20s",
+          "legendFormat": "Read",
+          "range": true,
+          "refId": "read"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(\n  vmware_vm_datastore_numberWriteAveraged_average{vcenter=~\"$vcenter\"}\n  * on(vm,vcenter) group_left()\n  (count by(vm,vcenter)(vmware_vm_datastore_capacity_used{vcenter=~\"$vcenter\", dsmo=~\"$dsmo\"}) > 0)\n) * -1",
+          "hide": false,
+          "interval": "20s",
+          "legendFormat": "Write",
+          "range": true,
+          "refId": "write"
+        }
+      ],
+      "title": "Datastore IO",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "20s",
+  "revision": 1,
+  "schemaVersion": 39,
+  "tags": [
+    "vmware",
+    "datastore"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "default",
+          "value": "cdfn215lyn20wb"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(vmware_vcenter_info{},job)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Job",
+        "multi": false,
+        "name": "job",
+        "options": [],
+        "query": {
+          "query": "label_values(vmware_vcenter_info{},job)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(vmware_vcenter_info{job=\"$job\"},vcenter)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "vCenter",
+        "multi": false,
+        "name": "vcenter",
+        "options": [],
+        "query": {
+          "query": "label_values(vmware_vcenter_info{job=\"$job\"},vcenter)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(vmware_datacenter_info{vcenter=~\"$vcenter\"},dc)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Datacenter",
+        "multi": true,
+        "name": "datacenter",
+        "options": [],
+        "query": {
+          "query": "label_values(vmware_datacenter_info{vcenter=~\"$vcenter\"},dc)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(vmware_datacenter_info{vcenter=~\"$vcenter\", dc=~\"$datacenter\"},dcmo)",
+        "hide": 2,
+        "includeAll": true,
+        "label": "",
+        "multi": false,
+        "name": "dcmo",
+        "options": [],
+        "query": {
+          "query": "label_values(vmware_datacenter_info{vcenter=~\"$vcenter\", dc=~\"$datacenter\"},dcmo)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(vmware_folder_info{vcenter=~\"$vcenter\", dcmo=~\"$dcmo\", dc=\"datastore\"},foldermo)",
+        "hide": 2,
+        "includeAll": true,
+        "label": "",
+        "multi": false,
+        "name": "dcdsfolder",
+        "options": [],
+        "query": {
+          "query": "label_values(vmware_folder_info{vcenter=~\"$vcenter\", dcmo=~\"$dcmo\", dc=\"datastore\"},foldermo)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(vmware_folder_info{vcenter=~\"$vcenter\", dcmo=~\"$dcmo\", dc=\"host\"},foldermo)",
+        "hide": 2,
+        "includeAll": true,
+        "label": "",
+        "multi": false,
+        "name": "dchostfolder",
+        "options": [],
+        "query": {
+          "query": "label_values(vmware_folder_info{vcenter=~\"$vcenter\", dcmo=~\"$dcmo\", dc=\"host\"},foldermo)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(vmware_datastore_info{vcenter=~\"$vcenter\"},ds)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Datastore",
+        "multi": true,
+        "name": "datastore",
+        "options": [],
+        "query": {
+          "query": "label_values(vmware_datastore_info{vcenter=~\"$vcenter\"},ds)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(vmware_datastore_info{vcenter=~\"$vcenter\", ds=~\"$datastore\"},dsmo)",
+        "hide": 2,
+        "includeAll": true,
+        "label": "",
+        "multi": true,
+        "name": "dsmo",
+        "options": [],
+        "query": {
+          "query": "label_values(vmware_datastore_info{vcenter=~\"$vcenter\", ds=~\"$datastore\"},dsmo)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "5",
+          "value": "5"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Top",
+        "multi": false,
+        "name": "top",
+        "options": [
+          {
+            "selected": true,
+            "text": "5",
+            "value": "5"
+          },
+          {
+            "selected": false,
+            "text": "10",
+            "value": "10"
+          },
+          {
+            "selected": false,
+            "text": "20",
+            "value": "20"
+          },
+          {
+            "selected": false,
+            "text": "30",
+            "value": "30"
+          },
+          {
+            "selected": false,
+            "text": "40",
+            "value": "40"
+          },
+          {
+            "selected": false,
+            "text": "50",
+            "value": "50"
+          },
+          {
+            "selected": false,
+            "text": "100",
+            "value": "100"
+          }
+        ],
+        "query": "5,10,20,30,40,50,100",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "20s",
+      "40s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "VMware Datastore View",
+  "uid": "VMwExDsV",
+  "version": 101,
+  "weekStart": "monday",
+  "gnetId": 20879,
+  "description": "Datastore View for vmware-exporter"
+}

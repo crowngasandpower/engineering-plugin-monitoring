@@ -1,0 +1,461 @@
+{
+  "uid": "crown-dell-switches",
+  "title": "Dell OS10 Switches",
+  "tags": ["infrastructure", "network", "switches"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-3h", "to": "now" },
+  "timezone": "browser",
+  "annotations": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "switch",
+        "type": "query",
+        "label": "Switch",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": {
+          "query": "label_values(os10_scrape_success, switch)",
+          "refId": "StandardVariableQuery"
+        },
+        "current": {},
+        "options": [],
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "allValue": ".+",
+        "multi": true,
+        "hide": 0
+      },
+      {
+        "name": "interface",
+        "type": "query",
+        "label": "Interface",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(os10_interface_up, port)",
+        "refresh": 0,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "^$",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "options": [],
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Switches Reachable",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "count(os10_scrape_success{switch=~\"$switch\"} == 1)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "green", "value": 2 }
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Ports Up",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum(os10_interface_up{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"})",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Ports Down",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum(os10_interface_up{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"} == 0)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 }
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Switch Uptime",
+      "description": "Per-switch uptime. Click into the table below for detail.",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "os10_system_uptime_seconds{switch=~\"$switch\"}",
+          "instant": true,
+          "legendFormat": "{{switch}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "orientation": "auto",
+        "text": {}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 60 }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Ingress Traffic (by Switch)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum by (switch) (rate(os10_interface_in_bytes_total{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}[5m]) * 8)",
+          "legendFormat": "{{switch}} in",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Egress Traffic (by Switch)",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum by (switch) (rate(os10_interface_out_bytes_total{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"}[5m]) * 8)",
+          "legendFormat": "{{switch}} out",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Interface Errors",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "sum by (switch) (rate(os10_interface_in_errors_total{switch=~\"$switch\"}[5m]))",
+          "legendFormat": "{{switch}} in errors",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (switch) (rate(os10_interface_out_errors_total{switch=~\"$switch\"}[5m]))",
+          "legendFormat": "{{switch}} out errors",
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (switch) (rate(os10_interface_in_discards_total{switch=~\"$switch\"}[5m]))",
+          "legendFormat": "{{switch}} in discards",
+          "refId": "C"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "custom": { "lineWidth": 1, "fillOpacity": 5 },
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 30,
+      "type": "table",
+      "title": "Interface Status",
+      "description": "Ethernet ports, port-channels, and VTI links across all switches. Click an interface name to add it to the port traffic graph below.",
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "max by (switch, interface, port) (os10_interface_up{port=~\"$interface|.+\",interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\".+\"})",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (switch, interface, port) (rate(os10_interface_in_bytes_total{port=~\"$interface|.+\",interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\".+\"}[5m]) * 8)",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "",
+          "refId": "B"
+        },
+        {
+          "expr": "max by (switch, interface, port) (rate(os10_interface_out_bytes_total{port=~\"$interface|.+\",interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\".+\"}[5m]) * 8)",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "",
+          "refId": "C"
+        },
+        {
+          "expr": "max by (switch, interface, port) (os10_interface_speed_bps{port=~\"$interface|.+\",interface=~\"ethernet.*|port-channel.*|vti.*\",switch=~\".+\"})",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "",
+          "refId": "D"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true },
+            "renameByName": {
+              "Value #A": "Status",
+              "Value #B": "In (bps)",
+              "Value #C": "Out (bps)",
+              "Value #D": "Link Speed",
+              "switch": "Switch",
+              "interface": "Interface",
+              "port": "port"
+            },
+            "indexByName": {
+              "interface": 0,
+              "switch": 1,
+              "Value #A": 2,
+              "Value #D": 3,
+              "Value #B": 4,
+              "Value #C": 5,
+              "port": 6
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": { "fields": [{ "desc": false, "displayName": "Interface" }] }
+        }
+      ],
+      "options": {},
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "green", "value": 1 }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [{ "type": "value", "options": { "1": { "text": "Up" }, "0": { "text": "Down" } } }]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "In (bps)" },
+            "properties": [{ "id": "unit", "value": "bps" }, { "id": "decimals", "value": 0 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Out (bps)" },
+            "properties": [{ "id": "unit", "value": "bps" }, { "id": "decimals", "value": 0 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Link Speed" },
+            "properties": [{ "id": "unit", "value": "bps" }, { "id": "decimals", "value": 0 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Interface" },
+            "properties": [{
+              "id": "links",
+              "value": [{
+                "title": "Add to port traffic graph",
+                "url": "/d/crown-dell-switches?${__url_time_range}&${switch:queryparam}&${interface:queryparam}&var-interface=${__data.fields[\"port\"]}",
+                "targetBlank": false
+              }]
+            }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "port" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          }
+        ]
+      }
+    },
+    {
+      "id": 40,
+      "type": "row",
+      "title": "Port Traffic — click interface names in the table above to add to graph",
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "In",
+      "description": "Click an interface name in the Interface Status table to select it. Use the Interface dropdown to add more.",
+      "gridPos": { "x": 0, "y": 29, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(os10_interface_in_bytes_total{port=~\"$interface\",port!=\"\"}[5m]) * 8",
+          "legendFormat": "{{port}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "Out",
+      "gridPos": { "x": 12, "y": 29, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "rate(os10_interface_out_bytes_total{port=~\"$interface\",port!=\"\"}[5m]) * 8",
+          "legendFormat": "{{port}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

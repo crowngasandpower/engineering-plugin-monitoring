@@ -5,6 +5,8 @@ providers:
     orgId: 1
     type: file
     disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
     editable: true
     options:
       path: /opt/grafana-dashboards

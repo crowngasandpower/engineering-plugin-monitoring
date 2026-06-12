@@ -1,0 +1,82 @@
+{
+  "annotations": { "list": [{ "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" }] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    { "asDropdown": false, "icon": "arrow-left", "includeVars": false, "keepTime": true, "tags": [], "targetBlank": false, "title": "← Platform Overview", "tooltip": "Return to Platform Overview", "type": "link", "url": "/d/vms" }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": ["infrastructure"],
+  "templating": { "list": [] },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Memory Performance",
+  "uid": "compute-memory",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Memory > 90% — Active Now",
+      "description": "Hosts currently above 90% memory utilisation. Refreshes every 30s.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 0 },
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Memory %" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }, { "color": "red", "value": 95 }] },
+          "noValue": "No hosts currently above 90% memory"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Memory %" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "(1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"})) * 100 > 90", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Memory %" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Memory %" }] } }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Memory > 90% — Triggered Today",
+      "description": "Hosts that exceeded 90% memory at any point since midnight. Shows the peak value reached.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 0 },
+      "timeFrom": "now/d",
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Peak Memory %" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }, { "color": "red", "value": 95 }] },
+          "noValue": "No hosts exceeded 90% memory today"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Peak Memory %" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "max_over_time(\n  ((1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"})) * 100)\n  [$__range:5m]\n) > 90", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Peak Memory %" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Peak Memory %" }] } }
+      ]
+    }
+  ]
+}

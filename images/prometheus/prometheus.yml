@@ -2,6 +2,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
 scrape_configs:
   - job_name: 'pushgateway'
     honor_labels: true
@@ -25,37 +28,60 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9507']
 
-  # Weather exporter — outside temperature for the server-room dashboards.
-  # The on-prem compose maps weather-exporter 9522:3000 (9520 was taken by
-  # crown-mcp-diff-harness-api).
+  # Docker container metrics — Alloy scrapes cAdvisor and remote_writes through
+  # metrics-proxy (:9552) directly to this Prometheus instance. No scrape job
+  # needed here; metrics arrive via remote_write (--web.enable-remote-write-receiver).
+
+  # Weather exporter — Open-Meteo polled per scrape. Hit rate at 60s is
+  # 1,440/day/location, comfortably under the 10k/day free-tier cap.
   - job_name: 'weather'
     scrape_interval: 60s
     scrape_timeout: 15s
     static_configs:
       - targets: ['192.168.164.184:9522']
 
+  # Linux node exporters — targets discovered dynamically by vcenter-sd.
+  # Scrapes are routed through the metrics proxy at :9550 which resolves FQDNs
+  # via DNS and proxies to each host's :9100.
   - job_name: 'node'
     scrape_interval: 15s
-    static_configs:
-      - targets: ['apps-prod-1']
-        labels:
-          host: apps-prod-1
-      - targets: ['apps-prod-2']
-        labels:
-          host: apps-prod-2
-      - targets: ['apps-prod-mysql']
-        labels:
-          host: apps-prod-mysql
-      - targets: ['eps-worker-1']
-        labels:
-          host: eps-worker-1
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/vcenter/linux-targets
+        refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
+      # Strip .crowngp.local suffix so instance label stays short (apps-prod-1 not apps-prod-1.crowngp.local)
+      - source_labels: [instance]
+        regex: '^([^.]+)\.crowngp\.local$'
+        target_label: instance
+        replacement: '$1'
       - source_labels: [__address__]
         regex: (.+)
         target_label: __metrics_path__
         replacement: /$1/node/metrics
+      - target_label: __address__
+        replacement: 192.168.164.184:9550
+
+  # Windows exporters — targets discovered dynamically by vcenter-sd.
+  # Routed through metrics proxy at :9550 which proxies to each host's :9182.
+  - job_name: 'windows'
+    scrape_interval: 30s
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/vcenter/windows-targets
+        refresh_interval: 60s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      # Strip .crowngp.local suffix so instance label stays short
+      - source_labels: [instance]
+        regex: '^([^.]+)\.crowngp\.local$'
+        target_label: instance
+        replacement: '$1'
+      - source_labels: [__address__]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /$1/windows/metrics
       - target_label: __address__
         replacement: 192.168.164.184:9550
 
@@ -86,6 +112,9 @@ scrape_configs:
       - target_label: __address__
         replacement: 192.168.164.184:9516
 
+  # PowerStore — one job per metric category. Static targets; all 4 SANs scrape
+  # through the powerstore-exporter on :9521 which fans out to each array.
+  # To add a new SAN: add its entry to each job below and rebuild the Prometheus image.
   - job_name: 'powerstore_cluster'
     scrape_interval: 15m
     scrape_timeout: 3m
@@ -353,6 +382,109 @@ scrape_configs:
       - targets: ['192.168.164.184:9550']
         labels:
           host: apps-prod-mysql
+
+  # UniFi Site Manager — fleet overview via api.ui.com
+  - job_name: 'unifi'
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    static_configs:
+      - targets: ['192.168.164.184:9526']
+
+  # UniFi local controllers — per-device metrics via direct API
+  - job_name: 'unifi_local'
+    scrape_interval: 60s
+    scrape_timeout: 45s
+    static_configs:
+      - targets: ['192.168.164.184:9525']
+
+  # Dell OS10 switches — RESTCONF API
+  - job_name: 'dell_os10'
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    static_configs:
+      - targets: ['192.168.164.184:9523']
+
+  # Certificate monitoring — TLS expiry via blackbox https_cert module.
+  # Targets managed via http://poc-containers:9511/cert
+  - job_name: 'cert_probe'
+    metrics_path: /probe
+    params:
+      module: [https_cert]
+    scrape_interval: 5m
+    scrape_timeout: 30s
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/cert/targets
+        refresh_interval: 1m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [name]
+        target_label: name
+      - source_labels: [team]
+        target_label: team
+      - target_label: __address__
+        replacement: 192.168.164.184:9514
+
+  # Certificate monitoring — OCSP revocation, chain validation, cert metadata.
+  - job_name: 'cert_custom'
+    scrape_interval: 5m
+    scrape_timeout: 4m
+    metrics_path: /cert/metrics
+    static_configs:
+      - targets: ['192.168.164.184:9511']
+
+  # UniFi device exemptions — managed via http://poc-containers:9511/suppress
+  - job_name: 'unifi_exempt'
+    scrape_interval: 60s
+    metrics_path: /unifi/metrics
+    static_configs:
+      - targets: ['192.168.164.184:9511']
+
+  # Ping target registry — exposes configured targets as a gauge so the
+  # dashboard can show them as DOWN before a site script has pushed any data.
+  - job_name: 'ping_targets_config'
+    scrape_interval: 30s
+    metrics_path: /ping/metrics
+    static_configs:
+      - targets: ['192.168.164.184:9511']
+
+  # Ad-hoc connectivity checks — managed via http://poc-containers:9511/connectivity
+  - job_name: 'connectivity_check'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    scrape_interval: 60s
+    scrape_timeout: 10s
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/connectivity/targets
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.164.184:9514
+
+  # Ping targets — managed via http://poc-containers:9511/ping
+  - job_name: 'ping_targets'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    scrape_interval: 60s
+    scrape_timeout: 10s
+    http_sd_configs:
+      - url: http://192.168.164.184:9511/ping/targets
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.164.184:9514
 
   - job_name: 'blackbox'
     metrics_path: /probe

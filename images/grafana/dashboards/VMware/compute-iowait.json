@@ -1,0 +1,82 @@
+{
+  "annotations": { "list": [{ "builtIn": 1, "datasource": { "type": "grafana", "uid": "-- Grafana --" }, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard" }] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    { "asDropdown": false, "icon": "arrow-left", "includeVars": false, "keepTime": true, "tags": [], "targetBlank": false, "title": "← Platform Overview", "tooltip": "Return to Platform Overview", "type": "link", "url": "/d/vms" }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": ["infrastructure"],
+  "templating": { "list": [] },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "I/O Wait",
+  "uid": "compute-iowait",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "High I/O Wait — Active Now",
+      "description": "Hosts currently above 20% I/O wait (15-minute average). Sustained high I/O wait indicates a storage bottleneck. Refreshes every 30s.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 0 },
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "I/O Wait %" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }, { "color": "red", "value": 40 }] },
+          "noValue": "No hosts with high I/O wait right now"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "I/O Wait %" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "avg by(host)(rate(node_cpu_seconds_total{mode=\"iowait\", job=\"node\"}[15m])) / avg by(host)(rate(node_cpu_seconds_total{job=\"node\"}[15m])) * 100 > 20", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "I/O Wait %" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "I/O Wait %" }] } }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "High I/O Wait — Triggered Today",
+      "description": "Hosts that exceeded 20% I/O wait at any point since midnight. Shows the peak value reached.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 0 },
+      "timeFrom": "now/d",
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Peak I/O Wait %" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }, { "color": "red", "value": 40 }] },
+          "noValue": "No hosts had high I/O wait today"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Peak I/O Wait %" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "max_over_time(\n  (avg by(host)(rate(node_cpu_seconds_total{mode=\"iowait\", job=\"node\"}[15m])) / avg by(host)(rate(node_cpu_seconds_total{job=\"node\"}[15m])) * 100)\n  [$__range:5m]\n) > 20", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Peak I/O Wait %" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Peak I/O Wait %" }] } }
+      ]
+    }
+  ]
+}

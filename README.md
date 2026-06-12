@@ -19,11 +19,12 @@ APP HOSTS                          POC-CONTAINERS (192.168.164.184)        AWS (
 apps-prod-1  .252                  ┌─────────────────────────────┐
 apps-prod-2  .207                  │ metrics-proxy (nginx)        │        ┌───────────────────────────┐
 apps-prod-mysql .206               │  :9550 scrape path-router ───┼──pull──┤ Prometheus                │
-eps-worker-1 .40                   │  :9551 loki push-proxy ◄─────┼──push──┐│  (scrapes on-prem by IP   │
-                                   │                              │        ││   over the S2S VPN)       │
- node/nginx/phpfpm/mysqld  ──pull──┤ (via :9550)                  │        │└───────────────────────────┘
+eps-worker-1 .40                   │  :9551 loki push-proxy ◄─────┼──push──┐│  (--web.enable-remote-    │
+                                   │  :9552 prom push-proxy ◄─────┼──push──┘│   write-receiver)         │
+ node/nginx/phpfpm/mysqld  ──pull──┤ (via :9550)                  │        └───────────────────────────┘
  exporters                         │                              │        │
  log shippers (apache/laravel) ──push─► :9551 ──► tools.cgp3.co.uk ─ALB─► Loki │
+ alloy (cAdvisor)          ──push─► :9552 ──────────── VPN ───────┼──────► Prometheus /api/v1/write
                                    │                              │        │┌───────────────────────────┐
                                    │ custom exporters:            │        ││ Loki  (log store)         │
                                    │  genus-monitor :9507 ────────┼──pull──┤│                           │
@@ -31,10 +32,10 @@ eps-worker-1 .40                   │  :9551 loki push-proxy ◄─────
                                    │  powerstore :9521            │        │
                                    │  idrac      :9516            │        │┌───────────────────────────┐
                                    │  vmware     :9515            │        ││ Grafana                   │
-                                   │  weather    :9520 (outside°) │        ││  dashboards + alerting    │
-                                   │  blackbox, pushgateway :9501 │        │└───────────┬───────────────┘
-                                   │  alloy → cAdvisor metrics ───┼─remote_write──────────┘
-                                   └─────────────────────────────┘                     │
+                                   │  weather    :9522 (outside°) │        ││  dashboards + alerting    │
+                                   │  blackbox, pushgateway :9501 │        └───────────────────────────┘
+                                   │  alloy → cAdvisor :9527      │
+                                   └─────────────────────────────┘
                                                                           surfaced via the "monitoring"
                                                                           MCP plugin → /grafana, /loki, /tv
 ```
@@ -57,7 +58,7 @@ on 3100 (see `engineering-tools-framework/terraform/ecs/security_groups.tf`).
 | idrac-exporter | .184:9516 | `idrac` | iDRAC hardware health/temps |
 | powerstore-exporter | .184:9521 | `powerstore_*` | SAN |
 | node/nginx/phpfpm/mysqld | via .184:9550 | `node`/`nginx`/`phpfpm`/`mysql` | per-app-host OS/web/PHP/DB |
-| alloy (cAdvisor) | remote_write → :9500 | — | docker container metrics |
+| alloy (cAdvisor) | remote_write → metrics-proxy:9552 → VPN | — | docker container metrics |
 
 ---
 
@@ -81,8 +82,7 @@ onprem/                  The poc-containers stack — a faithful copy of what ru
   error-diagnosis/ supervisor-monitor/ jenkins-proxy/ file-gateway/
   alloy/alloy.config         cAdvisor docker metrics → remote_write (standalone container)
   metrics-proxy-nginx.conf   :9550 scrape router + :9551 loki push-proxy (standalone)
-  collectors-compose.yml     run definitions for the two standalone bridge containers
-                             (alloy + metrics-proxy; project: monitoring-collectors)
+  collectors-compose.yml     alloy + metrics-proxy bridge containers (project: monitoring-collectors)
 ```
 
 > **Grafana runs on AWS only.** The on-prem Grafana (+ its auth proxy) was
@@ -132,6 +132,33 @@ docker compose -f onprem/collectors-compose.yml -p monitoring-collectors up -d
 > disrupts scraping). The running stack was left untouched during consolidation; do the
 > re-clone deliberately, preserving the `monitoring` project name and the git-ignored
 > `data/` and `.env` files.
+
+### Alloy (cAdvisor container metrics)
+
+Alloy is managed by `collectors-compose.yml`. It scrapes Docker container metrics via the
+embedded cAdvisor library and remote_writes to `metrics-proxy:9552`, which proxies over
+the VPN to AWS Prometheus directly. AWS Prometheus must have `--web.enable-remote-write-receiver`
+set in the ECS task definition (`engineering-tools-framework/terraform/ecs/monitoring.tf`).
+
+**Adding Alloy to a new Docker host:**
+- Copy `onprem/alloy/alloy.config` to the new host
+- Change `host = "poc-containers"` in the relabel rule to the new host's name
+- Keep `prometheus.remote_write.aws.endpoint.url` pointing at `http://192.168.164.184:9552/api/v1/write`
+- Start Alloy via the collectors compose or as a standalone container mounting that config
+
+### Post-deploy checklist (first deploy of this branch)
+
+After the AWS images are redeployed and the on-prem stack is restarted:
+
+1. **Clean up old Grafana folders** — the dashboard restructure renames folders
+   (Application → Applications, ESXi → VMware, Infrastructure → Platform, SAN/Temperature/iDRAC → Hardware).
+   Grafana creates the new folders automatically on startup but leaves the old empty folders in place.
+   Delete them manually: Dashboards → browse to each old folder → Delete.
+
+2. **Verify container alerts** — confirm the three container alert rules
+   (`container-crash-loop`, `container-memory-limit`, `container-cpu-throttle`) are
+   evaluating in Grafana Alerting. They use `job="integrations/cadvisor"` and `id!="/"`;
+   check that firing conditions are met in Explore before relying on them.
 
 ## MCP plugin
 

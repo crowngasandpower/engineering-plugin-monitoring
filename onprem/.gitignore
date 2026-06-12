@@ -5,8 +5,9 @@ data/
 .env
 .env.local
 
-# Local compose overrides (machine-specific port remappings etc.)
+# Local compose overrides and dev-only config (machine-specific)
 docker-compose.override.yml
+local-datasources.yml
 
 # PowerStore exporter — cloned from github.com/dell/powerstore-metrics-exporter
 # config.yml contains credentials, neither file is committed

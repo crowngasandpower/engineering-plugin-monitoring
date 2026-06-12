@@ -7,3 +7,10 @@ __pycache__/
 onprem/data/
 onprem/powerstore-monitor/
 onprem/docker-compose.override.yml
+
+# local dev prometheus config (service names instead of poc-containers IPs)
+onprem/prometheus-local.yml
+
+# tray-monitor build artefacts
+tools/tray-monitor/build/
+tools/tray-monitor/dist/

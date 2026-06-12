@@ -1,0 +1,19 @@
+groups:
+  - name: linux-hosts
+    rules:
+      - alert: LinuxHostNodeExporterDown
+        # Only fires if the host has been successfully scraped at least once in
+        # the past 7 days. Brand-new hosts without node_exporter installed will
+        # never have up==1, so max_over_time returns 0 and the alert stays silent.
+        expr: >
+          up{job="node"} == 0
+          and on(instance)
+          max_over_time(up{job="node"}[7d]) == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "node_exporter unreachable on {{ $labels.host }}"
+          description: >
+            {{ $labels.host }} ({{ $labels.instance }}) was previously reachable
+            but node_exporter has not responded for more than 5 minutes.

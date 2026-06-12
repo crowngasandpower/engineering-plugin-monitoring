@@ -1,0 +1,547 @@
+{
+  "uid": "crown-unifi-detail",
+  "title": "UniFi Site Detail",
+  "tags": ["infrastructure", "network", "unifi"],
+  "schemaVersion": 39,
+  "version": 17,
+  "refresh": "1m",
+  "time": { "from": "now-3h", "to": "now" },
+  "timezone": "browser",
+  "annotations": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "site",
+        "label": "Site",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(unifi_scrape_success, site)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "device",
+        "label": "Switch",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(unifi_port_up{site=~\"$site\"}, device)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "allValue": "NOSELECT",
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "port",
+        "label": "Port",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+        "query": "label_values(unifi_port_up{site=~\"$site\",device=~\"$device\"}, port_name)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "^$",
+        "current": { "selected": true, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Sites Reachable",
+      "gridPos": { "x": 0, "y": 0, "w": 3, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "count(unifi_scrape_success{site=~\"$site\"} == 1)", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Devices Online",
+      "gridPos": { "x": 3, "y": 0, "w": 3, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "sum(unifi_device_up{site=~\"$site\"} == 1)", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "WiFi Clients",
+      "gridPos": { "x": 6, "y": 0, "w": 3, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "sum(unifi_site_clients{site=~\"$site\", subsystem=\"wlan\"})", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Wired Clients",
+      "gridPos": { "x": 9, "y": 0, "w": 3, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "sum(unifi_site_clients{site=~\"$site\", subsystem=\"lan\"})", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Ports Up",
+      "gridPos": { "x": 12, "y": 0, "w": 3, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "sum(unifi_port_up{site=~\"$site\"} == 1)", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Total PoE Draw",
+      "gridPos": { "x": 15, "y": 0, "w": 3, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "sum(unifi_port_poe_power_watts{site=~\"$site\"})", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "watt"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "WAN Latency",
+      "gridPos": { "x": 18, "y": 0, "w": 3, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "unifi_wan_latency_ms{site=~\"$site\"}", "instant": true, "legendFormat": "{{site}}", "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 50 }, { "color": "red", "value": 150 }] },
+          "unit": "ms"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "WAN Uptime",
+      "gridPos": { "x": 21, "y": 0, "w": 3, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "unifi_wan_uptime_seconds{site=~\"$site\"}", "instant": true, "legendFormat": "{{site}}", "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 300 }] },
+          "unit": "s"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "WAN Probe Drops",
+      "description": "Failed WAN probe packets in the last hour. 0 is normal — any value means there was packet loss.",
+      "gridPos": { "x": 0, "y": 4, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "increase(unifi_wan_probe_drops_total{site=~\"$site\"}[1h])", "instant": true, "legendFormat": "{{site}}", "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 5 }] },
+          "unit": "short",
+          "decimals": 0
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "VPN Tunnels Active",
+      "description": "Established VPN tunnels per site.",
+      "gridPos": { "x": 6, "y": 4, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "sum(unifi_vpn_tunnels_active{site=~\"$site\"})", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Max Device CPU",
+      "description": "Highest CPU utilisation across all UniFi devices at selected sites.",
+      "gridPos": { "x": 12, "y": 4, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "max(unifi_device_cpu_percent{site=~\"$site\"})", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": 90 }] },
+          "unit": "percent", "noValue": "N/A"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Max Device Memory",
+      "description": "Highest memory utilisation across all UniFi devices at selected sites.",
+      "gridPos": { "x": 18, "y": 4, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "max(unifi_device_memory_percent{site=~\"$site\"})", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 75 }, { "color": "red", "value": 90 }] },
+          "unit": "percent", "noValue": "N/A"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "WAN Throughput",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "unifi_wan_rx_bytes_rate{site=~\"$site\"} * 8", "legendFormat": "{{site}} ↓ in", "refId": "A" },
+        { "expr": "unifi_wan_tx_bytes_rate{site=~\"$site\"} * 8", "legendFormat": "{{site}} ↑ out", "refId": "B" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "unit": "bps", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "WAN Latency & Probe Drops",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "unifi_wan_latency_ms{site=~\"$site\"}", "legendFormat": "{{site}} latency", "refId": "A" },
+        { "expr": "increase(unifi_wan_probe_drops_total{site=~\"$site\"}[$__rate_interval])", "legendFormat": "{{site}} drops", "refId": "B" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byFrameRefID", "options": "A" },
+            "properties": [
+              { "id": "unit", "value": "ms" }
+            ]
+          },
+          {
+            "matcher": { "id": "byFrameRefID", "options": "B" },
+            "properties": [
+              { "id": "unit", "value": "short" },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 4] } },
+              { "id": "custom.fillOpacity", "value": 20 }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Switch Port Traffic (by Device)",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "sum by (site, device) (rate(unifi_port_rx_bytes_total{site=~\"$site\"}[5m]) * 8)", "legendFormat": "{{site}} / {{device}} ↓", "refId": "A" },
+        { "expr": "sum by (site, device) (rate(unifi_port_tx_bytes_total{site=~\"$site\"}[5m]) * 8)", "legendFormat": "{{site}} / {{device}} ↑", "refId": "B" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "unit": "bps", "custom": { "lineWidth": 1, "fillOpacity": 5 } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "AP Channel Utilization",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "unifi_radio_channel_utilization{site=~\"$site\"}", "legendFormat": "{{site}} / {{device}} {{radio}}", "refId": "A" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0, "max": 100,
+          "custom": { "lineWidth": 1, "fillOpacity": 10 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 60 }, { "color": "red", "value": 85 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Wireless Client Count",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "unifi_site_clients{site=~\"$site\", subsystem=\"wlan\"}", "legendFormat": "{{site}} WiFi", "refId": "A" },
+        { "expr": "unifi_site_clients{site=~\"$site\", subsystem=\"lan\"}", "legendFormat": "{{site}} Wired", "refId": "B" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 40,
+      "type": "table",
+      "title": "Device Status",
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "(unifi_device_up{site=~\"$site\"} unless on(device) unifi_device_exempt) or ((1 - unifi_device_up{site=~\"$site\"}) * on(device) group_left() unifi_device_exempt + 1)", "instant": true, "format": "table", "refId": "A" },
+        { "expr": "unifi_device_uptime_seconds{site=~\"$site\"}", "instant": true, "format": "table", "refId": "B" },
+        { "expr": "unifi_device_clients{site=~\"$site\"}", "instant": true, "format": "table", "refId": "C" },
+        { "expr": "unifi_device_cpu_percent{site=~\"$site\"}", "instant": true, "format": "table", "refId": "D" },
+        { "expr": "unifi_device_memory_percent{site=~\"$site\"}", "instant": true, "format": "table", "refId": "E" }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "groupBy", "options": {
+          "fields": {
+            "site":    { "aggregations": [], "operation": "groupby" },
+            "device":  { "aggregations": [], "operation": "groupby" },
+            "type":    { "aggregations": [], "operation": "groupby" },
+            "model":   { "aggregations": [], "operation": "groupby" },
+            "Value #A": { "aggregations": ["max"], "operation": "aggregate" },
+            "Value #B": { "aggregations": ["max"], "operation": "aggregate" },
+            "Value #C": { "aggregations": ["max"], "operation": "aggregate" },
+            "Value #D": { "aggregations": ["max"], "operation": "aggregate" },
+            "Value #E": { "aggregations": ["max"], "operation": "aggregate" }
+          }
+        }},
+        { "id": "organize", "options": {
+          "renameByName": {
+            "site": "Site", "device": "Device", "type": "Type", "model": "Model",
+            "Value #A (max)": "Status", "Value #B (max)": "Uptime", "Value #C (max)": "Clients",
+            "Value #D (max)": "CPU %", "Value #E (max)": "Memory %"
+          },
+          "excludeByName": { "Time": true, "job": true, "instance": true, "__name__": true }
+        }}
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }, { "color": "orange", "value": 2 }] } },
+              { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Online" }, "0": { "text": "Offline" }, "2": { "text": "Offline (Suppressed)" } } }] }
+            ]
+          },
+          { "matcher": { "id": "byName", "options": "Uptime" }, "properties": [{ "id": "unit", "value": "s" }] },
+          {
+            "matcher": { "id": "byName", "options": "CPU %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": 90 }] } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Memory %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 75 }, { "color": "red", "value": 90 }] } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 42,
+      "type": "text",
+      "title": "",
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 2 },
+      "options": {
+        "mode": "markdown",
+        "content": "[Manage device exemptions →](http://poc-containers:9511/suppress) — devices listed there are shown as **Offline (Suppressed)** in this table when offline, and excluded from the UniFi offline alert and the platform offline count."
+      }
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "Device CPU & Memory",
+      "description": "CPU and memory utilisation per device. Only devices that expose these metrics will appear.",
+      "gridPos": { "x": 0, "y": 42, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "unifi_device_cpu_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "legendFormat": "{{site}} / {{device}} CPU", "refId": "A" },
+        { "expr": "unifi_device_memory_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "legendFormat": "{{site}} / {{device}} Mem", "refId": "B" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0, "max": 100,
+          "custom": { "lineWidth": 1, "fillOpacity": 10 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": 90 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 50,
+      "type": "table",
+      "title": "Switch Ports",
+      "description": "All switch ports across selected sites. Filter by site/device using the variable above.",
+      "gridPos": { "x": 0, "y": 50, "w": 24, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "unifi_port_up{site=~\"$site\",device=~\"$device\",port_name=~\"$port|.+\"}", "instant": true, "format": "table", "refId": "A" },
+        { "expr": "rate(unifi_port_rx_bytes_total{site=~\"$site\",device=~\"$device\",port_name=~\"$port|.+\"}[5m]) * 8", "instant": true, "format": "table", "refId": "B" },
+        { "expr": "rate(unifi_port_tx_bytes_total{site=~\"$site\",device=~\"$device\",port_name=~\"$port|.+\"}[5m]) * 8", "instant": true, "format": "table", "refId": "C" },
+        { "expr": "unifi_port_poe_power_watts{site=~\"$site\",device=~\"$device\",port_name=~\"$port|.+\"}", "instant": true, "format": "table", "refId": "D" },
+        { "expr": "max_over_time(rate(unifi_port_rx_bytes_total{site=~\"$site\",device=~\"$device\",port_name=~\"$port|.+\"}[5m])[1h:5m]) * 8", "instant": true, "format": "table", "refId": "E" },
+        { "expr": "max_over_time(rate(unifi_port_tx_bytes_total{site=~\"$site\",device=~\"$device\",port_name=~\"$port|.+\"}[5m])[1h:5m]) * 8", "instant": true, "format": "table", "refId": "F" }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "organize", "options": {
+          "renameByName": {
+            "site": "Site", "device": "Device", "port": "Port #", "port_name": "Port Name",
+            "Value #A": "Status", "Value #B": "In (bps)", "Value #C": "Out (bps)", "Value #D": "PoE (W)", "Value #E": "Max In (1h)", "Value #F": "Max Out (1h)"
+          },
+          "excludeByName": { "Time": true, "job": true, "instance": true, "__name__": true }
+        }}
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } },
+              { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Up" }, "0": { "text": "Down" } } }] }
+            ]
+          },
+          { "matcher": { "id": "byName", "options": "In (bps)" }, "properties": [{ "id": "unit", "value": "bps" }] },
+          { "matcher": { "id": "byName", "options": "Out (bps)" }, "properties": [{ "id": "unit", "value": "bps" }] },
+          { "matcher": { "id": "byName", "options": "PoE (W)" }, "properties": [{ "id": "unit", "value": "watt" }, { "id": "decimals", "value": 1 }] },
+          { "matcher": { "id": "byName", "options": "Max In (1h)" }, "properties": [{ "id": "unit", "value": "bps" }] },
+          { "matcher": { "id": "byName", "options": "Max Out (1h)" }, "properties": [{ "id": "unit", "value": "bps" }] },
+          {
+            "matcher": { "id": "byName", "options": "Port Name" },
+            "properties": [{
+              "id": "links",
+              "value": [{
+                "title": "Add port to graph",
+                "url": "/d/crown-unifi-detail?${__url_time_range}&${site:queryparam}&${device:queryparam}&${port:queryparam}&var-port=${__data.fields[\"Port Name\"]}",
+                "targetBlank": false
+              }]
+            }]
+          }
+        ]
+      }
+    },
+    {
+      "id": 59,
+      "type": "row",
+      "title": "Port Traffic — select Site → Device → click port names below to add to graph",
+      "gridPos": { "x": 0, "y": 60, "w": 24, "h": 1 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 60,
+      "type": "timeseries",
+      "title": "In",
+      "description": "Click a port name in the Switch Ports table to select it. To show multiple ports, hold Ctrl and click in the Port dropdown.",
+      "gridPos": { "x": 0, "y": 61, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(unifi_port_rx_bytes_total{site=~\"$site\", device=~\"$device\", port_name=~\"$port\"}[5m]) * 8", "legendFormat": "{{port_name}}", "refId": "A" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "unit": "bps", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 61,
+      "type": "timeseries",
+      "title": "Out",
+      "gridPos": { "x": 12, "y": 61, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(unifi_port_tx_bytes_total{site=~\"$site\", device=~\"$device\", port_name=~\"$port\"}[5m]) * 8", "legendFormat": "{{port_name}}", "refId": "A" }
+      ],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
+      "fieldConfig": {
+        "defaults": { "unit": "bps", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": []
+      }
+    }
+  ]
+}

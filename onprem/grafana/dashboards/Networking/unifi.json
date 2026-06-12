@@ -1,0 +1,238 @@
+{
+  "uid": "crown-unifi-network",
+  "title": "UniFi Network",
+  "tags": ["infrastructure", "network", "unifi"],
+  "schemaVersion": 39,
+  "version": 8,
+  "refresh": "1m",
+  "time": { "from": "now-3h", "to": "now" },
+  "timezone": "browser",
+  "annotations": { "list": [] },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Consoles Online",
+      "description": "Consoles connected to UniFi Site Manager. If this is healthy but local metrics are missing for a site, the SDWAN link to that site is down.",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "count(max by (host, model) (unifi_host_up) == 1)", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Consoles Offline",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "count(max by (host, model) (unifi_host_up) == 0)", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Pending Updates",
+      "description": "Total controller/application updates available across all consoles.",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "sum(max by (host, model) (unifi_host_pending_updates))", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] },
+          "unit": "short", "noValue": "0"
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Exporter Health",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "unifi_scrape_success{job=\"unifi\"}", "instant": true, "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+          "mappings": [{ "type": "value", "options": { "1": { "text": "OK" }, "0": { "text": "FAILED" } } }]
+        }, "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "state-timeline",
+      "title": "Console Online State",
+      "description": "Green = connected to Site Manager. Red = offline/unreachable.",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "max by (host) (unifi_host_up)", "legendFormat": "{{host}}", "refId": "A" }
+      ],
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "fillOpacity": 80,
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "Offline", "color": "red" }, "1": { "text": "Online", "color": "green" } } }
+          ],
+          "custom": { "fillOpacity": 80, "lineWidth": 0 }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 20,
+      "type": "table",
+      "title": "Console Status",
+      "gridPos": { "x": 0, "y": 10, "w": 10, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "max by (host, model) (unifi_host_up)",
+          "instant": true, "format": "table", "legendFormat": "__auto", "refId": "A"
+        },
+        {
+          "expr": "max by (host, model) (unifi_host_pending_updates) or (max by (host, model) (unifi_host_up) * 0)",
+          "instant": true, "format": "table", "legendFormat": "__auto", "refId": "B"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "host": "Console", "model": "Model",
+              "Value #A": "Status", "Value #B": "Pending Updates"
+            },
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true }
+          }
+        },
+        { "id": "sortBy", "options": { "fields": [{ "desc": false, "displayName": "Console" }] } }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } },
+              { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Online" }, "0": { "text": "Offline" } } }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Pending Updates" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "Console Firmware Versions",
+      "description": "OS firmware version per console. Requires unifi-exporter rebuild to populate.",
+      "gridPos": { "x": 10, "y": 10, "w": 7, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "max by (host, model, firmware) (unifi_host_info)",
+          "instant": true, "format": "table", "legendFormat": "__auto", "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": { "host": "Console", "model": "Model", "firmware": "Firmware" },
+            "excludeByName": { "Time": true, "Value": true, "__name__": true, "job": true, "instance": true }
+          }
+        },
+        { "id": "sortBy", "options": { "fields": [{ "desc": false, "displayName": "Console" }] } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "id": 22,
+      "type": "table",
+      "title": "Controller Application Status",
+      "description": "Per-application running state and update availability. Requires unifi-exporter rebuild.",
+      "gridPos": { "x": 17, "y": 10, "w": 7, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "max by (host, app) (unifi_controller_running)",
+          "instant": true, "format": "table", "legendFormat": "__auto", "refId": "A"
+        },
+        {
+          "expr": "max by (host, app) (unifi_controller_update_available)",
+          "instant": true, "format": "table", "legendFormat": "__auto", "refId": "B"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "host": "Console", "app": "Application",
+              "Value #A": "Running", "Value #B": "Update Available"
+            },
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true }
+          }
+        },
+        { "id": "sortBy", "options": { "fields": [{ "desc": false, "displayName": "Console" }] } }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Running" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } },
+              { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Running" }, "0": { "text": "Stopped" } } }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Update Available" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] } },
+              { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Yes" }, "0": { "text": "No" } } }] }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
