@@ -391,11 +391,12 @@ scrape_configs:
       - targets: ['192.168.164.184:9526']
 
   # UniFi local controllers — per-device metrics via direct API
+  # (host port 9531 — 9525 is taken by crown-mcp-conversations-api on poc-containers)
   - job_name: 'unifi_local'
     scrape_interval: 60s
     scrape_timeout: 45s
     static_configs:
-      - targets: ['192.168.164.184:9525']
+      - targets: ['192.168.164.184:9531']
 
   # Dell OS10 switches — RESTCONF API
   - job_name: 'dell_os10'

@@ -234,7 +234,8 @@ services:
       UNIFI_4_API_KEY: ${UNIFI_4_API_KEY:-}
       UNIFI_4_SITE: ${UNIFI_4_SITE:-default}
     ports:
-      - "9525:3000"
+      # 9525 on poc-containers is taken by crown-mcp-conversations-api; use 9531.
+      - "9531:3000"
     restart: unless-stopped
 
   dell-os10-exporter:
