@@ -198,7 +198,7 @@ services:
     volumes:
       - powerstore_sd:/sd:ro
     ports:
-      - "9511:8000"
+      - "9529:8000"
     depends_on:
       - monitoring-postgres
       - vcenter-sd
