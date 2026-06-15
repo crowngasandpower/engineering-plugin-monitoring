@@ -5,7 +5,7 @@ FROM grafana/grafana:13.0.2
 # so that alert rules are editable in the UI (Grafana 13 locks file-provisioned
 # rules — see provision-alerts.py for the full explanation).
 USER root
-RUN apk add --no-cache python3 py3-yaml
+RUN apk add --no-cache python3 py3-yaml py3-psycopg2
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 USER grafana
