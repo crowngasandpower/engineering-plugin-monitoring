@@ -257,6 +257,47 @@
   }
   .routing-note strong { color: var(--crown-blue); }
 
+  /* ── Routing comparison ── */
+  .routing-change {
+    margin-bottom: 28px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    font-size: 12px;
+  }
+  .routing-change-header {
+    padding: 10px 18px;
+    background: var(--crown-blue);
+    color: white;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .routing-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .routing-col {
+    padding: 14px 18px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .routing-col + .routing-col { border-left: 1px solid var(--border); }
+  .routing-col-label {
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .routing-col-before .routing-col-label { color: #9ca3af; }
+  .routing-col-after .routing-col-label { color: var(--crown-blue); }
+  .routing-col ul { margin: 0; padding-left: 16px; }
+  .routing-col li { margin-bottom: 4px; }
+  .routing-col .removed { color: #9ca3af; text-decoration: line-through; }
+  .routing-col .added { color: #16a34a; font-weight: 500; }
+  .routing-col code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-family: monospace; font-size: 11px; }
+
   /* ── Print ── */
   @media print {
     body { background: white; padding: 20px 24px 40px; font-size: 11px; }
@@ -278,43 +319,63 @@
     <div class="subtitle">Grafana alerting — all configured rules, severities, and notification routes</div>
   </div>
   <div class="meta">
-    <div><strong>Generated</strong> June 2025</div>
+    <div><strong>Generated</strong> June 2026</div>
     <div><strong>Stack</strong> Grafana 13 · Prometheus · Alertmanager</div>
-    <div><strong>Notification gateway</strong> PagerDuty (oncall: Platform label)</div>
+    <div><strong>Notification gateway</strong> PagerDuty (all severities)</div>
   </div>
 </div>
 
 <!-- ── SUMMARY ── -->
 <div class="summary-bar">
-  <div class="summary-stat"><span class="num">73</span><span class="lbl">Total Rules</span></div>
+  <div class="summary-stat"><span class="num">77</span><span class="lbl">Total Rules</span></div>
   <div class="summary-divider"></div>
-  <div class="summary-stat"><span class="num">26</span><span class="lbl">PagerDuty</span></div>
+  <div class="summary-stat"><span class="num">76</span><span class="lbl">PagerDuty</span></div>
   <div class="summary-divider"></div>
-  <div class="summary-stat"><span class="num">7</span><span class="lbl">Critical Only</span></div>
+  <div class="summary-stat"><span class="num">1</span><span class="lbl">Webhook</span></div>
   <div class="summary-divider"></div>
-  <div class="summary-stat"><span class="num">3</span><span class="lbl">High</span></div>
+  <div class="summary-stat"><span class="num">4</span><span class="lbl">High</span></div>
   <div class="summary-divider"></div>
-  <div class="summary-stat"><span class="num">37</span><span class="lbl">Warning</span></div>
+  <div class="summary-stat"><span class="num">33</span><span class="lbl">Warning</span></div>
   <div class="summary-divider"></div>
-  <div class="summary-stat"><span class="num">14</span><span class="lbl">Groups</span></div>
+  <div class="summary-stat"><span class="num">15</span><span class="lbl">Groups</span></div>
 </div>
 
-<!-- ── ROUTING NOTE ── -->
-<div class="routing-note">
-  <strong>Severity routing</strong> &nbsp;·&nbsp;
-  <strong>Warning / High / Critical (no label)</strong> — desktop tray app only.
-  &nbsp;<strong>Critical + <code>oncall: Platform</code></strong> — desktop tray app <em>and</em> PagerDuty after a <strong>10-minute acknowledgment window</strong>. Silencing an alert in Grafana before the window elapses prevents PagerDuty from firing.
-  Acknowledged alerts in PagerDuty repeat every <strong>4 hours</strong> until resolved.
-  &nbsp;<strong>Maintenance mode</strong> — silences <code>oncall = Platform</code> for a chosen duration; all desktop alerts remain visible.
+<!-- ── ROUTING CHANGE ── -->
+<div class="routing-change">
+  <div class="routing-change-header">Alerting architecture — June 2026 update</div>
+  <div class="routing-cols">
+    <div class="routing-col routing-col-before">
+      <div class="routing-col-label">Before</div>
+      <ul>
+        <li><strong>Warning / High / Critical</strong> → Desktop tray app only</li>
+        <li><strong>Critical + <code>oncall: Platform</code></strong> → Tray app + PagerDuty after <strong>10-min window</strong></li>
+        <li>Silence in Grafana within window → PagerDuty suppressed</li>
+        <li>Repeat every 4 h until resolved</li>
+        <li class="removed">Maintenance: silence <code>oncall = Platform</code> in Grafana</li>
+        <li><strong>Laravel Error Rate Spike</strong> → Error Diagnosis Webhook → Jira + Teams</li>
+      </ul>
+    </div>
+    <div class="routing-col routing-col-after">
+      <div class="routing-col-label">After</div>
+      <ul>
+        <li class="added"><strong>All alerts → PagerDuty immediately</strong> (<code>group_wait: 0s</code>)</li>
+        <li class="added"><strong>Warning / High</strong> → PagerDuty low urgency → Slack + tray app (no escalation)</li>
+        <li class="added"><strong>Critical</strong> → PagerDuty high urgency → Slack + tray app + escalation policy</li>
+        <li class="added">Tray app reads PagerDuty API — no Grafana dependency</li>
+        <li class="added">Maintenance: PagerDuty maintenance windows</li>
+        <li><strong>Laravel Error Rate Spike</strong> → Error Diagnosis Webhook only (unchanged)</li>
+      </ul>
+    </div>
+  </div>
 </div>
 
 <!-- ── LEGEND ── -->
 <div class="legend">
   <div class="legend-title">Severity key</div>
-  <div class="legend-item"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span>&nbsp; Desktop + PagerDuty (after 10 min window)</div>
-  <div class="legend-item"><span class="badge badge-critical">CRITICAL</span>&nbsp; Desktop only — red indicator</div>
-  <div class="legend-item"><span class="badge badge-high">HIGH</span>&nbsp; Desktop only — red indicator, no PagerDuty</div>
-  <div class="legend-item"><span class="badge badge-warning">WARNING</span>&nbsp; Desktop only — amber indicator</div>
+  <div class="legend-item"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span>&nbsp; PagerDuty high urgency — Slack + escalation policy + tray app (purple, flash)</div>
+  <div class="legend-item"><span class="badge badge-high">HIGH</span><span class="pd-pill">PD</span>&nbsp; PagerDuty low urgency — Slack + tray app (red, flash, no escalation)</div>
+  <div class="legend-item"><span class="badge badge-warning">WARNING</span><span class="pd-pill">PD</span>&nbsp; PagerDuty low urgency — Slack + tray app (orange, no flash)</div>
+  <div class="legend-item"><span class="badge badge-critical">WEBHOOK</span>&nbsp; Laravel Error Rate Spike only — Error Diagnosis → Jira + Teams</div>
 </div>
 
 <!-- ══════════════════════════════════════════════
@@ -704,7 +765,7 @@
         <td class="alert-name">Certificate Expiring — Critical</td>
         <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
         <td class="for-col">0s</td>
-        <td class="fires-when">Certificate expires in &lt; 7 days</td>
+        <td class="fires-when">Certificate expires in &lt; 3 days</td>
       </tr>
       <tr>
         <td class="alert-name">Certificate Expired</td>
@@ -842,7 +903,7 @@
 <div class="section">
   <div class="section-header">
     <h2>Network — UniFi &amp; Dell OS10</h2>
-    <span class="rule-count">9 rules</span>
+    <span class="rule-count">11 rules</span>
   </div>
   <table>
     <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
@@ -868,8 +929,14 @@
       <tr>
         <td class="alert-name">UniFi Controller Unreachable</td>
         <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
-        <td class="for-col">3m</td>
+        <td class="for-col">0s</td>
         <td class="fires-when">UniFi scrape failing — network monitoring blind</td>
+      </tr>
+      <tr>
+        <td class="alert-name">UniFi Console Offline</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">1m</td>
+        <td class="fires-when">Local UniFi console unreachable — controller offline</td>
       </tr>
       <tr>
         <td class="alert-name">UniFi Device Offline</td>
@@ -878,22 +945,28 @@
         <td class="fires-when">An AP or switch reports offline in UniFi</td>
       </tr>
       <tr>
-        <td class="alert-name">VPN Tunnel Down</td>
+        <td class="alert-name">Site Ping Failing</td>
         <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
         <td class="for-col">5m</td>
-        <td class="fires-when">Active VPN tunnel count drops to zero</td>
+        <td class="fires-when">Ping probe from a site cannot reach its targets — remote site connectivity may be lost</td>
       </tr>
       <tr>
         <td class="alert-name">Switch Interface Down</td>
         <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
         <td class="for-col">2m</td>
-        <td class="fires-when">OS10 switch port link state = down</td>
+        <td class="fires-when">OS10 switch port was previously up and now shows link-down</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Switch Exporter Unreachable</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">3m</td>
+        <td class="fires-when">Dell OS10 exporter not responding to Prometheus scrapes</td>
       </tr>
       <tr>
         <td class="alert-name">Switch Unreachable</td>
         <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
         <td class="for-col">3m</td>
-        <td class="fires-when">Dell OS10 switch not responding to Prometheus scrapes</td>
+        <td class="fires-when">Dell OS10 switch not responding to RESTCONF API</td>
       </tr>
       <tr>
         <td class="alert-name">Switch Interface High Errors</td>

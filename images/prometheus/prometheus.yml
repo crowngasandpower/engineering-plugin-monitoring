@@ -1,4 +1,4 @@
-global:
+﻿global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
@@ -46,7 +46,7 @@ scrape_configs:
   - job_name: 'node'
     scrape_interval: 15s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/vcenter/linux-targets
+      - url: http://192.168.164.184:9529/vcenter/linux-targets
         refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
@@ -68,7 +68,7 @@ scrape_configs:
   - job_name: 'windows'
     scrape_interval: 30s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/vcenter/windows-targets
+      - url: http://192.168.164.184:9529/vcenter/windows-targets
         refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
@@ -405,7 +405,7 @@ scrape_configs:
       - targets: ['192.168.164.184:9523']
 
   # Certificate monitoring — TLS expiry via blackbox https_cert module.
-  # Targets managed via http://poc-containers:9511/cert
+  # Targets managed via http://poc-containers/exemptions/cert
   - job_name: 'cert_probe'
     metrics_path: /probe
     params:
@@ -413,7 +413,7 @@ scrape_configs:
     scrape_interval: 5m
     scrape_timeout: 30s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/cert/targets
+      - url: http://192.168.164.184:9529/cert/targets
         refresh_interval: 1m
     relabel_configs:
       - source_labels: [__address__]
@@ -433,14 +433,14 @@ scrape_configs:
     scrape_timeout: 4m
     metrics_path: /cert/metrics
     static_configs:
-      - targets: ['192.168.164.184:9511']
+      - targets: ['192.168.164.184:9529']
 
-  # UniFi device exemptions — managed via http://poc-containers:9511/suppress
+  # UniFi device exemptions — managed via http://poc-containers/exemptions/suppress
   - job_name: 'unifi_exempt'
     scrape_interval: 60s
     metrics_path: /unifi/metrics
     static_configs:
-      - targets: ['192.168.164.184:9511']
+      - targets: ['192.168.164.184:9529']
 
   # Ping target registry — exposes configured targets as a gauge so the
   # dashboard can show them as DOWN before a site script has pushed any data.
@@ -448,9 +448,9 @@ scrape_configs:
     scrape_interval: 30s
     metrics_path: /ping/metrics
     static_configs:
-      - targets: ['192.168.164.184:9511']
+      - targets: ['192.168.164.184:9529']
 
-  # Ad-hoc connectivity checks — managed via http://poc-containers:9511/connectivity
+  # Ad-hoc connectivity checks — managed via http://poc-containers/exemptions/connectivity
   - job_name: 'connectivity_check'
     metrics_path: /probe
     params:
@@ -458,7 +458,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 10s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/connectivity/targets
+      - url: http://192.168.164.184:9529/connectivity/targets
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]
@@ -468,7 +468,7 @@ scrape_configs:
       - target_label: __address__
         replacement: 192.168.164.184:9514
 
-  # Ping targets — managed via http://poc-containers:9511/ping
+  # Ping targets — managed via http://poc-containers/exemptions/ping
   - job_name: 'ping_targets'
     metrics_path: /probe
     params:
@@ -476,7 +476,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 10s
     http_sd_configs:
-      - url: http://192.168.164.184:9511/ping/targets
+      - url: http://192.168.164.184:9529/ping/targets
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]

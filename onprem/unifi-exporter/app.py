@@ -116,6 +116,29 @@ async def metrics() -> Response:
     return Response(content="\n".join(blocks) + "\n", media_type="text/plain; version=0.0.4")
 
 
+@app.get("/hosts")
+async def hosts() -> dict:
+    """Return all host names from Site Manager — includes offline consoles."""
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{API_BASE}/v1/hosts",
+                headers={"X-API-KEY": API_KEY},
+                timeout=TIMEOUT,
+            )
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+        result = []
+        for host in data:
+            state = host.get("reportedState", {})
+            name = state.get("name") or state.get("hostname") or host.get("id", "")
+            if name:
+                result.append(name)
+        return {"hosts": sorted(result)}
+    except Exception as exc:
+        return {"hosts": [], "error": str(exc)}
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}

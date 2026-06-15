@@ -24,7 +24,7 @@ POC_CONTAINERS  = "192.168.164.184"  # ← poc-containers static IP
 FETCH_SOURCE_IP = ""                 # ← local IP of the interface that can reach poc-containers (blank = OS default)
 
 SITE_ID     = socket.gethostname()
-API_URL     = f"http://{POC_CONTAINERS}:9511/ping/targets/script?site_id={urllib.parse.quote(SITE_ID)}"
+API_URL     = f"http://{POC_CONTAINERS}:9529/ping/targets/script?site_id={urllib.parse.quote(SITE_ID)}"
 PUSHGATEWAY = f"http://{POC_CONTAINERS}:9501"
 
 
@@ -73,7 +73,7 @@ def fetch_config():
 
 def register():
     reg_url = (
-        f"http://{POC_CONTAINERS}:9511/ping/sources/add"
+        f"http://{POC_CONTAINERS}:9529/ping/sources/add"
         f"?site_id={urllib.parse.quote(SITE_ID)}"
         f"&source={urllib.parse.quote(SITE_ID)}"
     )

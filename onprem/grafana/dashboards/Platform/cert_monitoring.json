@@ -1,11 +1,11 @@
-{
+﻿{
   "annotations": { "list": [] },
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "links": [
     { "title": "Platform Overview", "url": "/d/vms", "type": "link", "targetBlank": false },
-    { "title": "Manage Certificate Targets", "url": "http://poc-containers:9511/cert", "type": "link", "targetBlank": true, "icon": "external link" }
+    { "title": "Manage Certificate Targets", "url": "http://poc-containers/exemptions/cert", "type": "link", "targetBlank": true, "icon": "external link" }
   ],
   "preload": false,
   "refresh": "5m",

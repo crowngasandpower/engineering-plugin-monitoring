@@ -1,4 +1,4 @@
-{
+﻿{
   "annotations": {
     "list": [
       {
@@ -254,7 +254,7 @@
       "links": [
         {
           "title": "View Targets Down",
-          "url": "/d/infra-detail?viewPanel=7",
+          "url": "/d/infra-detail",
           "targetBlank": false
         }
       ],
@@ -1571,10 +1571,6 @@
               {
                 "color": "orange",
                 "value": 1
-              },
-              {
-                "color": "red",
-                "value": 3
               }
             ]
           },
@@ -1585,7 +1581,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 8,
+        "w": 4,
         "x": 16,
         "y": 13
       },
@@ -1625,6 +1621,78 @@
         }
       ],
       "title": "VM Disk Capacity (>80%)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 13
+      },
+      "id": 311,
+      "links": [
+        {
+          "title": "View VM Disk Detail",
+          "url": "/d/vm-disk-capacity",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(\n  max by(host)(\n    (1 - (node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} / node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"})) * 100 > 90\n  )\n  or\n  max by(host)(\n    (1 - (windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} / windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"})) * 100 > 90\n  )\n)\nor vector(0)",
+          "instant": true,
+          "legendFormat": "Hosts >90%",
+          "refId": "A"
+        }
+      ],
+      "title": "VM Disk Capacity (>90%)",
       "type": "stat"
     },
     {
@@ -1853,7 +1921,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(max by (host, model) (unifi_host_up) == 0) or vector(0)",
+          "expr": "count(max by (host, model) (unifi_host_up) == 0 unless on(host) unifi_console_exempt) or vector(0)",
           "legendFormat": "Consoles Offline",
           "range": true,
           "refId": "A"
@@ -2012,8 +2080,8 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(unifi_wan_packet_loss_percent) or vector(0)",
-          "legendFormat": "Max WAN Packet Loss",
+          "expr": "max(increase(unifi_wan_probe_drops_total[$__rate_interval])) or vector(0)",
+          "legendFormat": "Max WAN Probe Drops",
           "range": true,
           "refId": "A"
         }
@@ -2188,12 +2256,90 @@
       "type": "stat"
     },
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "id": 340,
+      "panels": [],
+      "title": "Acknowledged Offline",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "UniFi consoles currently offline but exempted from alerting.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "mappings": [{ "type": "value", "options": { "0": { "color": "green", "index": 0, "text": "None" } } }],
+          "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 27 },
+      "id": 341,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "count(max by (host, model) (unifi_host_up) == 0 and on(host) unifi_console_exempt) or vector(0)",
+          "instant": true,
+          "legendFormat": "Acknowledged",
+          "refId": "A"
+        }
+      ],
+      "title": "Consoles Acknowledged",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "UniFi consoles currently offline and exempted from alerting. Manage exemptions at http://poc-containers/exemptions/suppress",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "cellOptions": { "type": "auto" } } },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 20, "x": 4, "y": 27 },
+      "id": 342,
+      "options": { "sortBy": [{ "displayName": "Console" }] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "max by (host, model) (unifi_host_up) == 0 and on(host) unifi_console_exempt",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "mode": "columns" } },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "Value": true, "job": true, "instance": true, "site": true },
+            "renameByName": { "host": "Console", "model": "Model" },
+            "indexByName": { "host": 0, "model": 1 }
+          }
+        }
+      ],
+      "title": "Acknowledged Offline Items",
+      "type": "table"
+    },
+    {
       "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 31
       },
       "id": 160,
       "panels": [
@@ -2202,11 +2348,11 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 27
+            "y": 32
           },
           "id": 159,
           "options": {
-            "content": "## Suppressing alerts from this dashboard\n\nCertain stat panels on this dashboard (**Powered Off**, **Active Alerts**, **Backups Overdue**) can be configured to ignore specific VMs or alerts that are known/intentional.\n\n**Manage suppressions:** open [http://poc-containers:9511/suppress](http://poc-containers:9511/suppress) — the page lists all current suppressions and has a form to add or remove them.\n\n| Panel | Category | Identifier |\n|---|---|---|\n| Powered Off | `powered_off` | VM name (e.g. `my-vm-01`) |\n| Backups Overdue | `backup_overdue` | VM name (e.g. `my-vm-01`) |\n| Active Alerts | `active_alert` | Alert name (e.g. `HostHighCPU`) |\n\nChanges take effect within 30 seconds (next dashboard refresh).\n\n---\n\n## UniFi Device Exemptions\n\nDevices can be excluded from the **network-unifi-offline** alert and hidden from the Device Status table in the UniFi Site Detail dashboard when offline. Use the dropdown in the **UniFi Device Exemptions** section at [http://poc-containers:9511/suppress](http://poc-containers:9511/suppress).\n\nChanges take effect within 60 seconds.",
+            "content": "## Suppressing alerts from this dashboard\n\nCertain stat panels on this dashboard (**Powered Off**, **Active Alerts**, **Backups Overdue**) can be configured to ignore specific VMs or alerts that are known/intentional.\n\n**Manage suppressions:** open [http://poc-containers/exemptions/suppress](http://poc-containers/exemptions/suppress) -- the page lists all current suppressions and has a form to add or remove them.\n\n| Panel | Category | Identifier |\n|---|---|---|\n| Powered Off | `powered_off` | VM name (e.g. `my-vm-01`) |\n| Backups Overdue | `backup_overdue` | VM name (e.g. `my-vm-01`) |\n| Active Alerts | `active_alert` | Alert name (e.g. `HostHighCPU`) |\n\nChanges take effect within 30 seconds (next dashboard refresh).\n\n---\n\n## UniFi Device Exemptions\n\nDevices can be excluded from the **network-unifi-offline** alert and hidden from the Device Status table in the UniFi Site Detail dashboard when offline. Use the dropdown in the **UniFi Device Exemptions** section at [http://poc-containers/exemptions/suppress](http://poc-containers/exemptions/suppress).\n\nChanges take effect within 60 seconds.",
             "mode": "markdown"
           },
           "title": "",
@@ -2215,6 +2361,94 @@
       ],
       "title": "Alert Suppression",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "All OK"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Down"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "All OK"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 17
+      },
+      "id": 310,
+      "links": [
+        {
+          "title": "View Site Connectivity",
+          "url": "/d/crown-network-connectivity",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(site_ping_success == 0) or vector(0)",
+          "legendFormat": "Sites Down",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Site Pings",
+      "type": "stat"
     }
   ]
 }

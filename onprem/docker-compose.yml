@@ -198,7 +198,18 @@ services:
     volumes:
       - powerstore_sd:/sd:ro
     ports:
-      - "9511:8000"
+      - "9529:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=jenkins-poc_traefik_public"
+      - "traefik.http.routers.exemption-api.rule=Host(`poc-containers`) && PathPrefix(`/exemptions`)"
+      - "traefik.http.routers.exemption-api.entrypoints=web"
+      - "traefik.http.middlewares.exemption-api-strip.stripprefix.prefixes=/exemptions"
+      - "traefik.http.routers.exemption-api.middlewares=exemption-api-strip"
+      - "traefik.http.services.exemption-api.loadbalancer.server.port=8000"
+    networks:
+      - default
+      - traefik_public
     depends_on:
       - monitoring-postgres
       - vcenter-sd
