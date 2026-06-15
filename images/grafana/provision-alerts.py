@@ -236,21 +236,21 @@ def provision():
 
 def migrate():
     """
-    Remove file-provenance alert rule records from the local SQLite database
-    so the ruler API can take ownership without hitting the
-    'cannot change provenance from file to api' error in Grafana 13.
+    Remove file-provenance alert rule records from the Grafana database so the
+    provisioning API can take ownership without hitting the 'cannot change
+    provenance from file to api' error in Grafana 13.
 
-    For non-SQLite databases (AWS RDS) this step must be done manually — see
-    the PR description for the one-time SQL command.
+    Handles both SQLite (local/on-prem) and PostgreSQL (AWS RDS).
     """
     db_type = os.environ.get("GF_DATABASE_TYPE", "sqlite3")
 
-    if db_type != "sqlite3":
-        print(f"[provision-alerts] DB type is '{db_type}' — skipping automatic migration.", flush=True)
-        print("[provision-alerts] Run the following against your database once before deploying:", flush=True)
-        print("  DELETE FROM provenance_type WHERE record_type = 'alertRule';", flush=True)
-        return
+    if db_type == "sqlite3":
+        _migrate_sqlite()
+    else:
+        _migrate_postgres()
 
+
+def _migrate_sqlite():
     if not os.path.exists(DB_PATH):
         print("[provision-alerts] No SQLite DB found — first run, no migration needed.", flush=True)
         return
@@ -264,11 +264,50 @@ def migrate():
         conn.commit()
         conn.close()
         if n:
-            print(f"[provision-alerts] Migration: removed {n} file-provenance record(s).", flush=True)
+            print(f"[provision-alerts] Migration: removed {n} file-provenance record(s) from SQLite.", flush=True)
         else:
-            print("[provision-alerts] Migration: nothing to remove.", flush=True)
+            print("[provision-alerts] Migration: nothing to remove from SQLite.", flush=True)
     except Exception as e:
-        print(f"[provision-alerts] Migration warning: {e}", flush=True)
+        print(f"[provision-alerts] Migration warning (SQLite): {e}", flush=True)
+
+
+def _migrate_postgres():
+    try:
+        import psycopg2
+    except ImportError:
+        print("[provision-alerts] psycopg2 not available — cannot run RDS migration automatically.", flush=True)
+        print("[provision-alerts] Run manually against your database:", flush=True)
+        print("  DELETE FROM provenance_type WHERE record_type = 'alertRule';", flush=True)
+        return
+
+    host_port = os.environ.get("GF_DATABASE_HOST", "localhost:5432")
+    if ":" in host_port:
+        host, port = host_port.rsplit(":", 1)
+        port = int(port)
+    else:
+        host, port = host_port, 5432
+
+    try:
+        conn = psycopg2.connect(
+            host=host,
+            port=port,
+            dbname=os.environ.get("GF_DATABASE_NAME", "grafana"),
+            user=os.environ.get("GF_DATABASE_USER", "grafana"),
+            password=os.environ.get("GF_DATABASE_PASSWORD", ""),
+            sslmode=os.environ.get("GF_DATABASE_SSL_MODE", "require"),
+        )
+        cur = conn.cursor()
+        cur.execute("DELETE FROM provenance_type WHERE record_type = 'alertRule'")
+        n = cur.rowcount
+        conn.commit()
+        cur.close()
+        conn.close()
+        if n:
+            print(f"[provision-alerts] Migration: removed {n} file-provenance record(s) from RDS.", flush=True)
+        else:
+            print("[provision-alerts] Migration: nothing to remove from RDS.", flush=True)
+    except Exception as e:
+        print(f"[provision-alerts] Migration warning (RDS): {e}", flush=True)
 
 
 # ---------------------------------------------------------------------------
