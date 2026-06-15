@@ -1,2 +1,3 @@
 FROM prom/prometheus:latest
-COPY prometheus.yml /etc/prometheus/prometheus.yml
+COPY images/prometheus/prometheus.yml /etc/prometheus/prometheus.yml
+COPY onprem/alerts/ /etc/prometheus/alerts/
