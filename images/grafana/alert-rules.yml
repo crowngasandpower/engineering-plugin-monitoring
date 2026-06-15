@@ -266,7 +266,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: powerstore_eth_port_is_link_up == 0 and on(appliance_id, eth_port_id) (max_over_time(powerstore_eth_port_is_link_up[7d]) == 1)
+              expr: powerstore_eth_port_is_link_up == 0 and on(appliance_id, eth_port_id) (max_over_time(powerstore_eth_port_is_link_up[8h]) == 1)
               refId: A
           - refId: link_up
             relativeTimeRange:
@@ -1526,7 +1526,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: idrac_network_port_link_up == 0 and on(instance, adapter_id, id) (max_over_time(idrac_network_port_link_up[7d]) == 1)
+              expr: idrac_network_port_link_up == 0 and on(instance, adapter_id, id) (max_over_time(idrac_network_port_link_up[8h]) == 1)
               refId: A
           - refId: link_up
             relativeTimeRange:
