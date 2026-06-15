@@ -141,7 +141,7 @@
           {
             "matcher": { "id": "byName", "options": "Status" },
             "properties": [
-              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
               { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } },
               { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Online" }, "0": { "text": "Offline" } } }] }
             ]
@@ -149,7 +149,7 @@
           {
             "matcher": { "id": "byName", "options": "Pending Updates" },
             "properties": [
-              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
               { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] } }
             ]
           }
@@ -218,7 +218,7 @@
           {
             "matcher": { "id": "byName", "options": "Running" },
             "properties": [
-              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
               { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } },
               { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Running" }, "0": { "text": "Stopped" } } }] }
             ]
@@ -226,7 +226,7 @@
           {
             "matcher": { "id": "byName", "options": "Update Available" },
             "properties": [
-              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
               { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] } },
               { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Yes" }, "0": { "text": "No" } } }] }
             ]
