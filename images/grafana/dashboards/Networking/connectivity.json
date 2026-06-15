@@ -1,7 +1,10 @@
 {
   "title": "Network Connectivity",
   "uid": "crown-network-connectivity",
-  "tags": ["networking", "connectivity"],
+  "tags": [
+    "networking",
+    "connectivity"
+  ],
   "timezone": "browser",
   "schemaVersion": 38,
   "version": 2,
@@ -17,15 +20,27 @@
   ],
   "panels": [
     {
-      "id": 3,
+      "id": 30,
       "type": "table",
-      "title": "Site Mesh Pings (from each firewall)",
-      "description": "ICMP pings run from each site's firewall script, pushed to Pushgateway. Shows per-site reachability perspective. Manage targets at http://poc-containers/exemptions/ping — set Source to the firewall name.",
-      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "title": "Pings from BH-FIREWALL",
+      "description": "ICMP pings run from each site's firewall script, pushed to Pushgateway. Shows per-site reachability perspective. Manage targets at http://poc-containers/exemptions/ping \u2014 set Source to the firewall name.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "targets": [
         {
-          "expr": "site_ping_success",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "ping_target_configured{source=\"BH-FIREWALL\"} * on(source,target,dst) group_left() site_ping_success or ping_target_configured{source=\"BH-FIREWALL\"} * 0",
           "instant": true,
           "refId": "A",
           "legendFormat": ""
@@ -34,7 +49,13 @@
       "transformations": [
         {
           "id": "labelsToFields",
-          "options": { "mode": "columns" }
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
         },
         {
           "id": "organize",
@@ -44,108 +65,114 @@
               "__name__": true,
               "job": true,
               "instance": true,
-              "exported_job": true
+              "exported_job": true,
+              "source": true,
+              "category": true
             },
             "renameByName": {
-              "source": "Source Site",
               "target": "Target",
-              "category": "Category",
-              "dst": "IP",
-              "Value": "Status"
+              "dst": "Target IP",
+              "Value": "Success",
+              "site_ping_success": "Success",
+              "ping_target_configured": "Success"
             },
             "indexByName": {
-              "source": 0,
-              "target": 1,
-              "category": 2,
-              "dst": 3,
-              "Value": 4
+              "target": 0,
+              "dst": 1,
+              "Value": 2
             }
           }
         }
       ],
       "fieldConfig": {
-        "defaults": { "custom": { "displayMode": "auto" } },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Status" },
-            "properties": [
-              { "id": "custom.displayMode", "value": "color-background" },
-              { "id": "color", "value": { "mode": "thresholds" } },
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
-                }
+                "color": "red",
+                "value": null
               },
               {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "0": { "text": "Down", "color": "red" },
-                      "1": { "text": "Up", "color": "green" }
-                    }
-                  }
-                ]
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "NO",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
               }
             ]
           }
         ]
       },
-      "options": { "sortBy": [{ "displayName": "Source Site" }] }
-    },
-    {
-      "id": 4,
-      "type": "table",
-      "title": "Ping Targets (HQ blackbox)",
-      "description": "Targets with Source='all' probed from poc-containers. Manage at http://poc-containers/exemptions/ping",
-      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "targets": [
-        {
-          "expr": "probe_success{job=\"ping_targets\"}",
-          "instant": true,
-          "refId": "A",
-          "legendFormat": ""
-        }
-      ],
-      "transformations": [
-        { "id": "labelsToFields", "options": { "mode": "columns" } },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true },
-            "renameByName": { "name": "Name", "category": "Category", "instance": "IP", "Value": "Status" },
-            "indexByName": { "name": 0, "category": 1, "instance": 2, "Value": 3 }
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Source Site"
           }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": { "custom": { "displayMode": "auto" } },
-        "overrides": [{
-          "matcher": { "id": "byName", "options": "Status" },
-          "properties": [
-            { "id": "custom.displayMode", "value": "color-background" },
-            { "id": "color", "value": { "mode": "thresholds" } },
-            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } },
-            { "id": "mappings", "value": [{ "type": "value", "options": { "0": { "text": "Down", "color": "red" }, "1": { "text": "Up", "color": "green" } } }] }
-          ]
-        }]
-      },
-      "options": { "sortBy": [{ "displayName": "Category" }] }
+        ]
+      }
     },
     {
-      "id": 2,
+      "id": 31,
       "type": "table",
-      "title": "Connectivity Checks (blackbox)",
-      "description": "Ad-hoc ICMP checks probed from poc-containers (HQ). Manage targets at http://poc-containers/exemptions/connectivity",
-      "gridPos": { "x": 0, "y": 26, "w": 24, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "title": "Pings from HO-Firewall-EFG",
+      "description": "ICMP pings run from each site's firewall script, pushed to Pushgateway. Shows per-site reachability perspective. Manage targets at http://poc-containers/exemptions/ping \u2014 set Source to the firewall name.",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "targets": [
         {
-          "expr": "probe_success{job=\"connectivity_check\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "ping_target_configured{source=\"HO-Firewall-EFG\"} * on(source,target,dst) group_left() site_ping_success or ping_target_configured{source=\"HO-Firewall-EFG\"} * 0",
           "instant": true,
           "refId": "A",
           "legendFormat": ""
@@ -154,59 +181,495 @@
       "transformations": [
         {
           "id": "labelsToFields",
-          "options": { "mode": "columns" }
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
         },
         {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
+              "__name__": true,
               "job": true,
-              "__name__": true
+              "instance": true,
+              "exported_job": true,
+              "source": true,
+              "category": true
             },
             "renameByName": {
-              "name": "Name",
-              "category": "Category",
-              "instance": "IP",
-              "Value": "Status"
+              "target": "Target",
+              "dst": "Target IP",
+              "Value": "Success",
+              "site_ping_success": "Success",
+              "ping_target_configured": "Success"
             },
             "indexByName": {
-              "name": 0,
-              "category": 1,
-              "instance": 2,
-              "Value": 3
+              "target": 0,
+              "dst": 1,
+              "Value": 2
             }
           }
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "custom": { "displayMode": "auto" }
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "NO",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Status" },
+            "matcher": {
+              "id": "byName",
+              "options": "Success"
+            },
             "properties": [
-              { "id": "custom.displayMode", "value": "color-background" },
-              { "id": "color", "value": { "mode": "thresholds" } },
               {
-                "id": "thresholds",
+                "id": "custom.cellOptions",
                 "value": {
-                  "mode": "absolute",
-                  "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+                  "type": "color-background"
                 }
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  { "type": "value", "options": { "0": { "text": "Down", "color": "red" }, "1": { "text": "Up", "color": "green" } } }
-                ]
               }
             ]
           }
         ]
       },
-      "options": { "sortBy": [{ "displayName": "Category" }] }
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Source Site"
+          }
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "type": "table",
+      "title": "Pings from ReplicationHO-Firewall",
+      "description": "ICMP pings run from each site's firewall script, pushed to Pushgateway. Shows per-site reachability perspective. Manage targets at http://poc-containers/exemptions/ping \u2014 set Source to the firewall name.",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "ping_target_configured{source=\"ReplicationHO-Firewall\"} * on(source,target,dst) group_left() site_ping_success or ping_target_configured{source=\"ReplicationHO-Firewall\"} * 0",
+          "instant": true,
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "exported_job": true,
+              "source": true,
+              "category": true
+            },
+            "renameByName": {
+              "target": "Target",
+              "dst": "Target IP",
+              "Value": "Success",
+              "site_ping_success": "Success",
+              "ping_target_configured": "Success"
+            },
+            "indexByName": {
+              "target": 0,
+              "dst": 1,
+              "Value": 2
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "NO",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Source Site"
+          }
+        ]
+      }
+    },
+    {
+      "id": 33,
+      "type": "table",
+      "title": "Pings from ZEN-Firewall-EFG",
+      "description": "ICMP pings run from each site's firewall script, pushed to Pushgateway. Shows per-site reachability perspective. Manage targets at http://poc-containers/exemptions/ping \u2014 set Source to the firewall name.",
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "ping_target_configured{source=\"ZEN-Firewall-EFG\"} * on(source,target,dst) group_left() site_ping_success or ping_target_configured{source=\"ZEN-Firewall-EFG\"} * 0",
+          "instant": true,
+          "refId": "A",
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "exported_job": true,
+              "source": true,
+              "category": true
+            },
+            "renameByName": {
+              "target": "Target",
+              "dst": "Target IP",
+              "Value": "Success",
+              "site_ping_success": "Success",
+              "ping_target_configured": "Success"
+            },
+            "indexByName": {
+              "target": 0,
+              "dst": 1,
+              "Value": 2
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "NO",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Source Site"
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Ping RTT (ms)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 24,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 5
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max",
+            "last"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "site_ping_rtt_ms",
+          "legendFormat": "{{source}} \u2192 {{target}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Ping Packet Loss (%)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 24,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max",
+            "last"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "site_ping_loss_percent",
+          "legendFormat": "{{source}} \u2192 {{target}}",
+          "refId": "A"
+        }
+      ]
     }
-  ]
+  ],
+  "templating": {
+    "list": []
+  }
 }
