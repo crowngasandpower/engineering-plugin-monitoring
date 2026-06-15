@@ -285,6 +285,21 @@ services:
       - pushgateway
     restart: unless-stopped
 
+  alloy:
+    image: grafana/alloy:latest
+    container_name: monitoring-alloy
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/alloy.config"]
+    volumes:
+      - ./alloy/alloy.config:/etc/alloy/alloy.config:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "9527:12345"
+    restart: unless-stopped
+
 volumes:
   pushgateway_data: null
   powerstore_sd: null
