@@ -206,6 +206,8 @@ services:
       - "traefik.http.routers.exemption-api.entrypoints=web"
       - "traefik.http.middlewares.exemption-api-strip.stripprefix.prefixes=/exemptions"
       - "traefik.http.routers.exemption-api.middlewares=exemption-api-strip"
+      - "traefik.http.routers.exemption-api-direct.rule=Host(`poc-containers`)"
+      - "traefik.http.routers.exemption-api-direct.entrypoints=web"
       - "traefik.http.services.exemption-api.loadbalancer.server.port=8000"
     networks:
       - default
