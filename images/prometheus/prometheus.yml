@@ -67,6 +67,7 @@ scrape_configs:
   # Routed through metrics proxy at :9550 which proxies to each host's :9182.
   - job_name: 'windows'
     scrape_interval: 30s
+    scrape_timeout: 25s
     http_sd_configs:
       - url: http://192.168.164.184:9529/vcenter/windows-targets
         refresh_interval: 60s
