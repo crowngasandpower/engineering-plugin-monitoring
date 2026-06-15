@@ -223,7 +223,8 @@ services:
     environment:
       UNIFI_API_KEY: ${UNIFI_API_KEY}
     ports:
-      - "9526:3000"
+      # 9526 on poc-containers is now taken by the Crown memory curation API; use 9532.
+      - "9532:3000"
     restart: unless-stopped
 
   unifi-local-exporter:
