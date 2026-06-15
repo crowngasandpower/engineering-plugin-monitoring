@@ -288,6 +288,7 @@ services:
   alloy:
     image: grafana/alloy:latest
     container_name: monitoring-alloy
+    hostname: poc-containers
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/alloy.config"]
     volumes:
       - ./alloy/alloy.config:/etc/alloy/alloy.config:ro

@@ -424,7 +424,7 @@
       "gridPos": { "x": 0, "y": 40, "w": 24, "h": 2 },
       "options": {
         "mode": "markdown",
-        "content": "[Manage device exemptions →](http://poc-containers/exemptions/suppress) — devices listed there are shown as **Offline (Suppressed)** in this table when offline, and excluded from the UniFi offline alert and the platform offline count."
+        "content": "[Manage device exemptions →](http://localhost/exemptions/suppress) — devices listed there are shown as **Offline (Suppressed)** in this table when offline, and excluded from the UniFi offline alert and the platform offline count."
       }
     },
     {
@@ -464,7 +464,7 @@
       "gridPos": { "x": 0, "y": 48, "w": 24, "h": 2 },
       "options": {
         "mode": "markdown",
-        "content": "[Manage console exemptions →](http://poc-containers/exemptions/suppress) — consoles listed there are shown as **Offline (Suppressed)** in the table above when offline, and excluded from the UniFi console offline alert."
+        "content": "[Manage console exemptions →](http://localhost/exemptions/suppress) — consoles listed there are shown as **Offline (Suppressed)** in the table above when offline, and excluded from the UniFi console offline alert."
       }
     },
     {
