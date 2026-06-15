@@ -3390,7 +3390,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'container_memory_usage_bytes{job="integrations/cadvisor",id!="/"} / container_spec_memory_limit_bytes{job="integrations/cadvisor",id!="/",container_spec_memory_limit_bytes>0} * 100'
+              expr: 'container_memory_usage_bytes{job="integrations/cadvisor",id!="/"} / (container_spec_memory_limit_bytes{job="integrations/cadvisor",id!="/"} > 0) * 100'
               refId: A
           - refId: mem_pct
             relativeTimeRange:
