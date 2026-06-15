@@ -1529,7 +1529,7 @@
                 "value": [
                   {
                     "title": "Remove exemption",
-                    "url": "http://localhost/exemptions/exempt/remove?host=${__data.fields.Host}",
+                    "url": "http://poc-containers/exemptions/exempt/remove?host=${__data.fields.Host}",
                     "targetBlank": false
                   }
                 ]
