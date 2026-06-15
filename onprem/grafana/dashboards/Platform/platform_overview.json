@@ -196,7 +196,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "grafana_alerting_alertmanager_alerts{org=\"1\", state=\"active\"} or vector(0)",
+          "expr": "sum(grafana_alerting_alertmanager_alerts{org=\"1\", state=\"active\"}) or vector(0)",
           "legendFormat": "Active Alerts",
           "range": true,
           "refId": "A"
