@@ -5,20 +5,14 @@ templates:
     name: platform_title
     template: |
       {{ define "default.title" -}}
-      [{{ .Status | toUpper }}:{{ len .Alerts.Firing }}] {{ .CommonLabels.alertname }}
+      {{ if .Alerts.Firing -}}
+      [{{ .CommonLabels.severity | toUpper }}] {{ .CommonLabels.alertname }}
+      {{- else -}}
+      [RESOLVED] {{ .CommonLabels.alertname }}
+      {{- end }}
       {{- end }}
 
 contactPoints:
-  - orgId: 1
-    name: Error Diagnosis Webhook
-    receivers:
-      - uid: error-diagnosis-webhook
-        type: webhook
-        settings:
-          url: "http://error-diagnosis:3000/webhook/grafana"
-          httpMethod: POST
-        disableResolveMessage: true
-
   - orgId: 1
     name: PagerDuty
     receivers:
@@ -26,35 +20,40 @@ contactPoints:
         type: pagerduty
         settings:
           integrationKey: "${PAGERDUTY_PLATFORM_INTEGRATION_KEY}"
-          severity: critical
+          severity: '{{ if eq .CommonLabels.severity "critical" }}critical{{ else }}warning{{ end }}'
         disableResolveMessage: false
+  - orgId: 1
+    name: ErrorDiagnosisWebhook
+    receivers:
+      - uid: error-diagnosis-webhook
+        type: webhook
+        settings:
+          url: http://error-diagnosis:3000/webhook/grafana
+        disableResolveMessage: true
 
 policies:
   - orgId: 1
-    receiver: Error Diagnosis Webhook
+    receiver: PagerDuty
     group_by:
       - grafana_folder
       - alertname
+    group_wait: 0s
+    group_interval: 1m
+    repeat_interval: 4h
     routes:
-      # oncall=Platform alerts escalate to PagerDuty after a 10-minute acknowledgment window.
-      # Time-based routing (business-hours vs out-of-hours) should be configured in
-      # PagerDuty's escalation policy — Grafana 13 removed active_time_intervals from
-      # notification policy routes (muteTimes/mute_time_intervals still exists for silencing).
-      - receiver: PagerDuty
+      - receiver: ErrorDiagnosisWebhook
         matchers:
-          - oncall = Platform
-        group_by:
-          - grafana_folder
-          - alertname
-        group_wait: 10m
-        group_interval: 5m
-        repeat_interval: 4h
+          - alertname = "Laravel Error Rate Spike"
+        group_wait: 0s
 
 # Severity convention:
-#   warning  — proactive, team-facing (disk >80%, cert <30d, etc.)   → desktop only
-#   high     — serious degradation, service still up (disk >90%, etc.) → desktop only
-#   critical — service down / loss of service                          → desktop + PagerDuty
-#              requires oncall=Platform label to trigger PagerDuty route
+#   warning  — low urgency in PagerDuty, no escalation
+#   high     — low urgency in PagerDuty, no escalation
+#              mapped to PagerDuty severity "warning" so urgency stays Low
+#   critical — high urgency in PagerDuty, triggers escalation policy
+#
+# Maintenance windows: schedule in PagerDuty to suppress alerts during planned outages.
+# Ad-hoc silencing: tray app Silence button calls Grafana silence API directly.
 #
 # Alert rule groups are NOT defined here.
 # They are provisioned via the Grafana API by provision-alerts.py at container

@@ -33,7 +33,7 @@
       "title": "Consoles Offline",
       "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "targets": [{ "expr": "count(max by (host, model) (unifi_host_up) == 0)", "instant": true, "refId": "A" }],
+      "targets": [{ "expr": "count(max by (host, model) (unifi_host_up) == 0 unless on(host) unifi_console_exempt)", "instant": true, "refId": "A" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" },
       "fieldConfig": {
         "defaults": {

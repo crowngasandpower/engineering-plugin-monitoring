@@ -9,7 +9,7 @@
   "links": [
     {
       "title": "Manage Ping Targets",
-      "url": "http://poc-containers:9511/ping",
+      "url": "http://poc-containers/exemptions/ping",
       "type": "link",
       "icon": "external link",
       "targetBlank": true
@@ -20,7 +20,7 @@
       "id": 3,
       "type": "table",
       "title": "Site Mesh Pings (from each firewall)",
-      "description": "ICMP pings run from each site's firewall script, pushed to Pushgateway. Shows per-site reachability perspective. Manage targets at http://poc-containers:9511/ping — set Source to the firewall name.",
+      "description": "ICMP pings run from each site's firewall script, pushed to Pushgateway. Shows per-site reachability perspective. Manage targets at http://poc-containers/exemptions/ping — set Source to the firewall name.",
       "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
@@ -100,7 +100,7 @@
       "id": 4,
       "type": "table",
       "title": "Ping Targets (HQ blackbox)",
-      "description": "Targets with Source='all' probed from poc-containers. Manage at http://poc-containers:9511/ping",
+      "description": "Targets with Source='all' probed from poc-containers. Manage at http://poc-containers/exemptions/ping",
       "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
@@ -140,7 +140,7 @@
       "id": 2,
       "type": "table",
       "title": "Connectivity Checks (blackbox)",
-      "description": "Ad-hoc ICMP checks probed from poc-containers (HQ). Manage targets at http://poc-containers:9511/connectivity",
+      "description": "Ad-hoc ICMP checks probed from poc-containers (HQ). Manage targets at http://poc-containers/exemptions/connectivity",
       "gridPos": { "x": 0, "y": 26, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [

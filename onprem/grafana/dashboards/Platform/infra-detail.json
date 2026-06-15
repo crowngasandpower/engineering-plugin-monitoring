@@ -1529,7 +1529,7 @@
                 "value": [
                   {
                     "title": "Remove exemption",
-                    "url": "http://poc-containers:9511/exempt/remove?host=${__data.fields.Host}",
+                    "url": "http://localhost/exemptions/exempt/remove?host=${__data.fields.Host}",
                     "targetBlank": false
                   }
                 ]
@@ -2427,6 +2427,137 @@
           }
         }
       ]
+    },
+    {
+      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 23,
+      "title": "Recently Offline (Last Hour)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 24,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "min_over_time(up{job=~\"node|windows\"}[1h]) == 0 and on(instance) max_over_time(up{job=~\"node|windows\"}[7d]) == 1",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Devices Offline in Last Hour (may now be recovered)",
+      "description": "Instances that had up==0 at any point in the last 1 hour. Includes targets that are currently down as well as those that briefly dropped and recovered.",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "instance",
+                "job",
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "instance": "Instance",
+              "job": "Job",
+              "Value": "Status"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": [
+              {
+                "desc": false,
+                "displayName": "Instance"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
     }
   ]
 }

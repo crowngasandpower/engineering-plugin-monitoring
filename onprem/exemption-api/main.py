@@ -39,12 +39,27 @@ CATEGORY_LABELS = {
 }
 
 def _get_unifi_sites() -> list[str]:
-    """Fetch controller names from the unifi-local-exporter health endpoint."""
+    """Return all console names: parsed from local exporter metrics (includes offline) merged with Site Manager."""
+    names: set[str] = set()
+    # Primary: parse unifi_scrape_success from local exporter metrics — always emitted per controller
+    # regardless of whether it's reachable, so offline consoles are included.
     try:
-        with urllib.request.urlopen("http://unifi-local-exporter:3000/health", timeout=3) as r:
-            return json.loads(r.read()).get("controllers", [])
+        with urllib.request.urlopen("http://unifi-local-exporter:3000/metrics", timeout=5) as r:
+            body = r.read().decode()
+        for line in body.splitlines():
+            if line.startswith("unifi_scrape_success{"):
+                m = re.search(r'site="([^"]+)"', line)
+                if m:
+                    names.add(m.group(1))
     except Exception:
-        return []
+        pass
+    # Supplement: Site Manager API for any consoles not in the local exporter config
+    try:
+        with urllib.request.urlopen("http://unifi-exporter:3000/hosts", timeout=5) as r:
+            names.update(json.loads(r.read()).get("hosts", []))
+    except Exception:
+        pass
+    return sorted(names)
 
 
 def _get_unifi_devices() -> list[str]:
@@ -150,6 +165,13 @@ def create_tables():
                 added_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS unifi_console_exempt (
+                site     TEXT PRIMARY KEY,
+                reason   TEXT,
+                added_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
 
 def _page(msg: str) -> HTMLResponse:
     return HTMLResponse(f"""<!DOCTYPE html>
@@ -228,6 +250,8 @@ def suppress_list():
         rows = cur.fetchall()
         cur.execute("SELECT device, reason, added_at FROM unifi_exempt ORDER BY device")
         unifi_rows = cur.fetchall()
+        cur.execute("SELECT site, reason, added_at FROM unifi_console_exempt ORDER BY site")
+        console_rows = cur.fetchall()
 
     rows_html = "".join(
         f"<tr>"
@@ -259,6 +283,25 @@ def suppress_list():
         for d in all_devices
         if d not in exempted_devices
     ) or '<option value="" disabled>No devices found — check Prometheus</option>'
+
+    console_rows_html = "".join(
+        f"<tr>"
+        f"<td>{html.escape(r[0])}</td>"
+        f"<td>{html.escape(r[1] or '')}</td>"
+        f"<td>{r[2].strftime('%Y-%m-%d %H:%M') if r[2] else ''}</td>"
+        f"<td><a href='/unifi/console/remove?site={urllib.parse.quote(r[0])}' "
+        f"onclick=\"return confirm('Remove {_js(r[0])}?')\">Remove</a></td>"
+        f"</tr>"
+        for r in console_rows
+    ) or "<tr><td colspan='4' style='color:#888'>No exemptions configured</td></tr>"
+
+    exempted_consoles = {r[0] for r in console_rows}
+    all_sites = _get_unifi_sites()
+    console_options = "".join(
+        f'<option value="{html.escape(s)}">{html.escape(s)}</option>'
+        for s in all_sites
+        if s not in exempted_consoles
+    ) or '<option value="" disabled>No consoles found — check Prometheus</option>'
 
     return HTMLResponse(f"""<!DOCTYPE html>
 <html>
@@ -329,6 +372,30 @@ Changes take effect within 60 seconds.</p>
   </label>
   <label>Reason (optional)
     <input name="reason" placeholder="e.g. decommissioned" size="25">
+  </label>
+  <button type="submit">Add</button>
+</form>
+
+<hr>
+<h2>UniFi Console Exemptions</h2>
+<p>Consoles listed here are excluded from the <strong>network-unifi-console-offline</strong> alert
+and shown as <strong>Offline (Suppressed)</strong> in the Console Status table in the UniFi Site Detail dashboard.
+Changes take effect within 60 seconds.</p>
+
+<table>
+  <thead><tr><th>Console</th><th>Reason</th><th>Added</th><th></th></tr></thead>
+  <tbody>{console_rows_html}</tbody>
+</table>
+
+<h3 style="font-size:1rem;margin:1.5rem 0 0.5rem">Add exemption</h3>
+<form method="get" action="/unifi/console/add">
+  <label>Console
+    <select name="site" required>
+      {console_options}
+    </select>
+  </label>
+  <label>Reason (optional)
+    <input name="reason" placeholder="e.g. temporary maintenance" size="25">
   </label>
   <button type="submit">Add</button>
 </form>
@@ -1338,17 +1405,25 @@ def vcenter_windows_targets():
 
 @app.get("/unifi/metrics")
 def unifi_metrics():
-    """Prometheus text format — one gauge per exempted device name."""
+    """Prometheus text format — one gauge per exempted device and per exempted console."""
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("SELECT device FROM unifi_exempt ORDER BY device")
-        rows = cur.fetchall()
+        device_rows = cur.fetchall()
+        cur.execute("SELECT site FROM unifi_console_exempt ORDER BY site")
+        console_rows = cur.fetchall()
     lines = [
         "# HELP unifi_device_exempt 1 if this UniFi device is suppressed from offline alerts and status",
         "# TYPE unifi_device_exempt gauge",
     ]
-    for (device,) in rows:
+    for (device,) in device_rows:
         lines.append(f'unifi_device_exempt{{device="{_escape_label(device)}"}} 1')
+    lines += [
+        "# HELP unifi_console_exempt 1 if this UniFi console is suppressed from the console-offline alert",
+        "# TYPE unifi_console_exempt gauge",
+    ]
+    for (site,) in console_rows:
+        lines.append(f'unifi_console_exempt{{site="{_escape_label(site)}",host="{_escape_label(site)}"}} 1')
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 
@@ -1367,6 +1442,23 @@ def unifi_remove(device: str = Query(...)):
     with get_conn() as conn:
         conn.cursor().execute("DELETE FROM unifi_exempt WHERE device = %s", (device,))
     return _page(f"✓ <strong>{html.escape(device)}</strong> removed from UniFi exemptions.")
+
+
+@app.get("/unifi/console/add")
+def unifi_console_add(site: str = Query(...), reason: str = Query(default="")):
+    with get_conn() as conn:
+        conn.cursor().execute(
+            "INSERT INTO unifi_console_exempt(site, reason) VALUES (%s, %s) ON CONFLICT(site) DO NOTHING",
+            (site, reason),
+        )
+    return _page(f"✓ Console <strong>{html.escape(site)}</strong> exempted from UniFi console offline alerts.")
+
+
+@app.get("/unifi/console/remove")
+def unifi_console_remove(site: str = Query(...)):
+    with get_conn() as conn:
+        conn.cursor().execute("DELETE FROM unifi_console_exempt WHERE site = %s", (site,))
+    return _page(f"✓ Console <strong>{html.escape(site)}</strong> removed from UniFi console exemptions.")
 
 
 @app.get("/unifi", response_class=HTMLResponse)

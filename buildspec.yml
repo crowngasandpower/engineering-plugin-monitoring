@@ -32,7 +32,10 @@ phases:
         }
         build_and_tag grafana    images/grafana
         build_and_tag loki       images/loki
-        build_and_tag prometheus images/prometheus
+        # Prometheus uses repo root as build context so the Dockerfile can
+        # COPY onprem/alerts/ into the image (alert rules are not in images/prometheus/).
+        docker build -t "$ECR_BASE/prometheus:$IMAGE_TAG" -t "$ECR_BASE/prometheus:latest" \
+          -f images/prometheus/Dockerfile .
 
   post_build:
     commands:

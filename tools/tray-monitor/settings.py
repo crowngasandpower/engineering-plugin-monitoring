@@ -7,15 +7,21 @@ import json
 import os
 from pathlib import Path
 
-_PROFILE_KEYS = ("name", "grafana_url", "auth_type", "username", "password", "api_token")
+_PROFILE_KEYS = (
+    "name", "grafana_url", "auth_type", "username", "password", "api_token",
+    "source_type", "pd_api_key", "pd_user_email",
+)
 
 PROFILE_DEFAULTS: dict = {
-    "name":        "Live",
-    "grafana_url": "",
-    "auth_type":   "basic",
-    "username":    "",
-    "password":    "",
-    "api_token":   "",
+    "name":          "Live",
+    "grafana_url":   "",
+    "auth_type":     "basic",
+    "username":      "",
+    "password":      "",
+    "api_token":     "",
+    "source_type":   "grafana",
+    "pd_api_key":    "",
+    "pd_user_email": "",
 }
 
 DEFAULTS: dict = {
@@ -92,7 +98,7 @@ def set_active(index: int) -> None:
 def save(data: dict) -> None:
     """Save a flat settings dict — updates the active profile and global fields."""
     global _live
-    s       = _live if _live else load()
+    s        = _live if _live else load()
     profiles = list(s.get("profiles", [dict(PROFILE_DEFAULTS)]))
     idx      = _clamp_active(s)
     existing_name = profiles[idx].get("name", "Live") if 0 <= idx < len(profiles) else "Live"
@@ -120,7 +126,7 @@ def save_profile(index: int, profile_data: dict) -> None:
 
 
 def save_global(**kwargs) -> None:
-    """Persist top-level (non-profile) settings: poll_interval, flash_on_critical."""
+    """Persist top-level (non-profile) settings: poll_interval, flash_on_critical, etc."""
     global _live
     for k, v in kwargs.items():
         _live[k] = v
@@ -160,7 +166,7 @@ def _persist() -> None:
 
 
 def needs_setup() -> bool:
-    """Return True if the active profile has no Grafana URL configured."""
+    """Return True if the active profile has no data source configured."""
     if not _FILE.exists():
         return True
     profiles = get_profiles()
@@ -168,4 +174,6 @@ def needs_setup() -> bool:
         return True
     idx     = get_active_index()
     profile = profiles[idx] if 0 <= idx < len(profiles) else {}
+    if profile.get("source_type") == "pagerduty":
+        return not profile.get("pd_api_key", "").strip()
     return not profile.get("grafana_url", "").strip()

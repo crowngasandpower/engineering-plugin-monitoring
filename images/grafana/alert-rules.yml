@@ -23,6 +23,7 @@ groups:
           severity: warning
         annotations:
           summary: "Server room temperature is {{ $values.temp_c.Value | printf \"%.1f\" }}°C (warning: 29.5°C, critical: 30°C) — check cooling"
+          panelUrl: "/d/server-room-temperature?orgId=1&viewPanel=4"
         data:
           - refId: A
             relativeTimeRange:
@@ -68,6 +69,7 @@ groups:
           severity: critical
         annotations:
           summary: "Server room temperature is {{ $values.temp_c.Value | printf \"%.1f\" }}°C (threshold: 30°C) — take immediate action"
+          panelUrl: "/d/server-room-temperature?orgId=1&viewPanel=4"
         data:
           - refId: A
             relativeTimeRange:
@@ -118,6 +120,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PowerStore has {{ $values.alert_count.Value | printf \"%.0f\" }} active Major/Critical alert(s)"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
         data:
           - refId: A
             relativeTimeRange:
@@ -163,6 +166,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PowerStore {{ $labels.appliance_id }} physical capacity at {{ $values.pct_used.Value | printf \"%.1f\" }}% used (threshold: 75%)"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=11"
         data:
           - refId: A
             relativeTimeRange:
@@ -208,6 +212,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PowerStore drive {{ $labels.name }} on {{ $labels.appliance_id }} has {{ $values.pct_remaining.Value | printf \"%.1f\" }}% endurance remaining"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=42"
         data:
           - refId: A
             relativeTimeRange:
@@ -253,10 +258,11 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PowerStore ETH port {{ $labels.eth_port_id }} on appliance {{ $labels.appliance_id }} link is down"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
         data:
           - refId: A
             relativeTimeRange:
-              from: 604800
+              from: 600
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
@@ -298,6 +304,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PowerStore ETH port {{ $labels.eth_port_id }} on appliance {{ $labels.appliance_id }} has sustained packet errors: {{ $values.errors_per_sec.Value | printf \"%.0f\" }}/s"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
         data:
           - refId: A
             relativeTimeRange:
@@ -343,6 +350,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PowerStore metro session {{ $labels.id }} is not Engaged (state={{ $values.state.Value | printf \"%.0f\" }}: 0=Initializing 1=Disengaged 2=Engaged 3=WitnessInvalid 4=FailedInit 5=Unconfiguring)"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
         data:
           - refId: A
             relativeTimeRange:
@@ -389,6 +397,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PowerStore metro witness {{ $labels.name }} is not OK (state={{ $values.state.Value | printf \"%.0f\" }}: 0=OK 1=PartiallyConnected 2=Disconnected 3=Deleting 4=Initializing)"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
         data:
           - refId: A
             relativeTimeRange:
@@ -441,6 +450,7 @@ groups:
           severity: high
         annotations:
           summary: "Cluster {{ $labels.vmwcluster }} CPU is {{ $values.pct_surplus.Value | printf \"%.1f\" }}% above HA failover headroom"
+          panelUrl: "/d/VMwExClV?orgId=1&viewPanel=14"
         data:
           - refId: A
             relativeTimeRange:
@@ -486,6 +496,7 @@ groups:
           severity: high
         annotations:
           summary: "Cluster {{ $labels.vmwcluster }} memory is {{ $values.pct_surplus.Value | printf \"%.1f\" }}% above HA failover headroom"
+          panelUrl: "/d/VMwExClV?orgId=1&viewPanel=16"
         data:
           - refId: A
             relativeTimeRange:
@@ -530,6 +541,7 @@ groups:
           severity: high
         annotations:
           summary: "Datastore {{ $labels.ds }} has {{ $values.free_pct.Value | printf \"%.1f\" }}% free space remaining (warning: <20%, critical: <5%)"
+          panelUrl: "/d/VMwExDsV?orgId=1&viewPanel=100"
         data:
           - refId: A
             relativeTimeRange:
@@ -576,6 +588,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Datastore {{ $labels.ds }} is over 95% full — {{ $values.free_pct.Value | printf \"%.1f\" }}% free"
+          panelUrl: "/d/VMwExDsV?orgId=1&viewPanel=100"
         data:
           - refId: A
             relativeTimeRange:
@@ -620,6 +633,7 @@ groups:
           severity: warning
         annotations:
           summary: "Host {{ $labels.host }} memory balloon at {{ $values.pct_ballooned.Value | printf \"%.1f\" }}% — host under memory pressure"
+          panelUrl: "/d/VMwExHoV?orgId=1&viewPanel=16"
         data:
           - refId: A
             relativeTimeRange:
@@ -664,6 +678,7 @@ groups:
           severity: high
         annotations:
           summary: "Host {{ $labels.host }} VMs are swapping to disk — {{ $values.pct_swapped.Value | printf \"%.1f\" }}% of memory swapped"
+          panelUrl: "/d/VMwExHoV?orgId=1&viewPanel=16"
         data:
           - refId: A
             relativeTimeRange:
@@ -708,6 +723,7 @@ groups:
           severity: warning
         annotations:
           summary: "Host {{ $labels.host }} CPU ready at {{ $values.pct_ready.Value | printf \"%.1f\" }}% — VMs waiting for CPU time"
+          panelUrl: "/d/VMwExHoV?orgId=1&viewPanel=14"
         data:
           - refId: A
             relativeTimeRange:
@@ -758,6 +774,7 @@ groups:
           severity: warning
         annotations:
           summary: "Server intake temperature elevated on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C (warning: 29.5°C, critical: 30°C)"
+          panelUrl: "/d/server-room-temperature?orgId=1&viewPanel=5"
         data:
           - refId: A
             relativeTimeRange:
@@ -804,6 +821,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Server intake temperature critical on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C (threshold: 30°C)"
+          panelUrl: "/d/server-room-temperature?orgId=1&viewPanel=5"
         data:
           - refId: A
             relativeTimeRange:
@@ -855,6 +873,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "CPU health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=4"
         data:
           - refId: A
             relativeTimeRange:
@@ -900,6 +919,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PSU {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=12"
         data:
           - refId: A
             relativeTimeRange:
@@ -945,6 +965,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "PSU {{ $labels.id }} on {{ $labels.instance }} receiving no input power"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=14"
         data:
           - refId: A
             relativeTimeRange:
@@ -990,6 +1011,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Fan {{ $labels.name }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=32"
         data:
           - refId: A
             relativeTimeRange:
@@ -1035,6 +1057,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Fan {{ $labels.name }} on {{ $labels.instance }} running at low RPM: {{ $values.rpm.Value | printf \"%.0f\" }} RPM"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=31"
         data:
           - refId: A
             relativeTimeRange:
@@ -1080,6 +1103,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Storage drive {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=41"
         data:
           - refId: A
             relativeTimeRange:
@@ -1125,6 +1149,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Storage controller {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=42"
         data:
           - refId: A
             relativeTimeRange:
@@ -1170,6 +1195,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Storage volume {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=43"
         data:
           - refId: A
             relativeTimeRange:
@@ -1215,6 +1241,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Server {{ $labels.instance }} is unexpectedly powered off"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=2"
         data:
           - refId: A
             relativeTimeRange:
@@ -1263,6 +1290,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "System health degraded on {{ $labels.instance }}.{{ with $values.cpu }}{{ if gt .Value 0.0 }} CPU unhealthy.{{ end }}{{ end }}{{ with $values.psu }}{{ if gt .Value 0.0 }} PSU unhealthy.{{ end }}{{ end }}{{ with $values.fan }}{{ if gt .Value 0.0 }} Fan unhealthy.{{ end }}{{ end }}{{ with $values.stor }}{{ if gt .Value 0.0 }} Storage unhealthy.{{ end }}{{ end }}{{ with $values.mem }}{{ if gt .Value 0.0 }} Memory unhealthy.{{ end }}{{ end }} Check iDRAC console for full details."
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=3"
         data:
           - refId: A
             relativeTimeRange:
@@ -1398,6 +1426,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "CPU temperature high on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=25"
         data:
           - refId: A
             relativeTimeRange:
@@ -1443,6 +1472,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Exhaust temperature high on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=25"
         data:
           - refId: A
             relativeTimeRange:
@@ -1488,10 +1518,11 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "NIC {{ $labels.id }} on adapter {{ $labels.adapter_id }} lost link on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=51"
         data:
           - refId: A
             relativeTimeRange:
-              from: 604800
+              from: 600
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
@@ -1533,6 +1564,7 @@ groups:
           oncall: "Platform"
         annotations:
           summary: "Memory module {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=44"
         data:
           - refId: A
             relativeTimeRange:
@@ -1582,6 +1614,7 @@ groups:
           severity: critical
         annotations:
           summary: "Genus database is unreachable — billing system may be affected"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -1626,6 +1659,7 @@ groups:
           severity: warning
         annotations:
           summary: "Genus hub file has not been updated for over 3 hours — industry data exchange may be stalled"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=40"
         data:
           - refId: A
             relativeTimeRange:
@@ -1670,6 +1704,7 @@ groups:
           severity: warning
         annotations:
           summary: "Genus replica lag exceeds 1 second — reporting and read queries may be stale"
+          panelUrl: "/d/genus-details?orgId=1&viewPanel=22"
         data:
           - refId: A
             relativeTimeRange:
@@ -1714,6 +1749,7 @@ groups:
           severity: warning
         annotations:
           summary: "eWelcome has failed jobs in the queue — welcome packs may not be sending"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=64"
         data:
           - refId: A
             relativeTimeRange:
@@ -1763,6 +1799,7 @@ groups:
           severity: warning
         annotations:
           summary: "EPS pricing queue has a job waiting over 1 hour — check for stuck jobs"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=99"
         data:
           - refId: A
             relativeTimeRange:
@@ -1812,6 +1849,7 @@ groups:
           severity: critical
         annotations:
           summary: "Supervisor worker {{ $labels.app }}/{{ $labels.worker }} is FATAL on {{ $labels.host }} (auto-restart failed)"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=7"
         data:
           - refId: A
             relativeTimeRange:
@@ -1856,6 +1894,7 @@ groups:
           severity: critical
         annotations:
           summary: "Cannot SSH to {{ $labels.host }} to check supervisor workers"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=7"
         data:
           - refId: A
             relativeTimeRange:
@@ -1900,6 +1939,7 @@ groups:
           severity: warning
         annotations:
           summary: "Supervisor health check has not run for {{ $labels.host }} in over 15 minutes"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=7"
         data:
           - refId: A
             relativeTimeRange:
@@ -1949,6 +1989,7 @@ groups:
           severity: critical
         annotations:
           summary: "Laravel error rate exceeded 200 in 5 minutes (deadlocks excluded)"
+          panelUrl: "/d/infrastructure?orgId=1&viewPanel=2"
         data:
           - refId: A
             relativeTimeRange:
@@ -1998,6 +2039,7 @@ groups:
           severity: warning
         annotations:
           summary: "Certificate {{ $labels.name }} expiring in {{ $values.days.Value | printf \"%.0f\" }} days (warning: <30d, critical: <3d)"
+          panelUrl: "/d/cert-mon?orgId=1&viewPanel=30"
           description: "{{ $labels.name }} ({{ $labels.instance }}) expires on {{ $labels.not_after }}"
         data:
           - refId: A
@@ -2045,6 +2087,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "Certificate has expired: {{ $labels.name }} ({{ $labels.instance }})"
+          panelUrl: "/d/cert-mon?orgId=1&viewPanel=30"
           description: "{{ $labels.name }} expired on {{ $labels.not_after }} — services using this certificate will fail TLS handshakes"
         data:
           - refId: A
@@ -2091,6 +2134,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "Certificate {{ $labels.name }} expiring in {{ $values.days.Value | printf \"%.0f\" }} days — less than 3 days remaining"
+          panelUrl: "/d/cert-mon?orgId=1&viewPanel=30"
           description: "{{ $labels.name }} ({{ $labels.instance }}) expires on {{ $labels.not_after }}"
         data:
           - refId: A
@@ -2137,6 +2181,7 @@ groups:
           severity: warning
         annotations:
           summary: "TLS probe failed for {{ $labels.name }}"
+          panelUrl: "/d/cert-mon?orgId=1&viewPanel=50"
           description: "Blackbox cannot complete a TLS handshake to {{ $labels.instance }} — cert may be unreachable or misconfigured"
         data:
           - refId: A
@@ -2183,6 +2228,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "Certificate revoked: {{ $labels.name }}"
+          panelUrl: "/d/cert-mon?orgId=1&viewPanel=40"
           description: "OCSP check reports {{ $labels.name }} ({{ $labels.url }}) as revoked — immediate action required"
         data:
           - refId: A
@@ -2228,6 +2274,7 @@ groups:
           severity: warning
         annotations:
           summary: "Weak certificate signature: {{ $labels.name }}"
+          panelUrl: "/d/cert-mon?orgId=1&viewPanel=41"
           description: "{{ $labels.name }} ({{ $labels.url }}) uses SHA-1 or MD5 — should be replaced with a SHA-256 certificate"
         data:
           - refId: A
@@ -2278,6 +2325,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free (warning: <20%, critical: <10%)"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2323,6 +2371,7 @@ groups:
           severity: critical
         annotations:
           summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free — filesystem near full"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2367,6 +2416,7 @@ groups:
           severity: warning
         annotations:
           summary: "Inodes on {{ $labels.mountpoint }} ({{ $labels.instance }}) are {{ $values.free_pct.Value | printf \"%.1f\" }}% free"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2411,6 +2461,7 @@ groups:
           severity: warning
         annotations:
           summary: "CPU on {{ $labels.instance }} at {{ $values.cpu_pct.Value | printf \"%.1f\" }}% — sustained high load"
+          panelUrl: "/d/compute-cpu?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2455,6 +2506,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.instance }} has {{ $values.avail_pct.Value | printf \"%.1f\" }}% memory available"
+          panelUrl: "/d/compute-memory?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2499,6 +2551,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.instance }} IO wait at {{ $values.iowait_pct.Value | printf \"%.1f\" }}% — storage may be bottlenecking"
+          panelUrl: "/d/compute-iowait?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2543,6 +2596,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.instance }} load average {{ $values.load_ratio.Value | printf \"%.2f\" }}× CPU count"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=3"
         data:
           - refId: A
             relativeTimeRange:
@@ -2636,6 +2690,7 @@ groups:
           severity: warning
         annotations:
           summary: "Drive {{ $labels.volume }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free (warning: <20%, critical: <10%)"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2681,6 +2736,7 @@ groups:
           severity: critical
         annotations:
           summary: "Drive {{ $labels.volume }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free — filesystem near full"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2725,6 +2781,7 @@ groups:
           severity: warning
         annotations:
           summary: "CPU on {{ $labels.instance }} at {{ $values.cpu_pct.Value | printf \"%.1f\" }}% — sustained high load"
+          panelUrl: "/d/compute-cpu?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2769,6 +2826,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.instance }} has {{ $values.avail_pct.Value | printf \"%.1f\" }}% memory available"
+          panelUrl: "/d/compute-memory?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -2818,6 +2876,7 @@ groups:
           severity: warning
         annotations:
           summary: "WAN latency at {{ $values.latency_ms.Value | printf \"%.0f\" }}ms — internet connection degraded"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
         data:
           - refId: A
             relativeTimeRange:
@@ -2862,6 +2921,7 @@ groups:
           severity: warning
         annotations:
           summary: "WAN packet loss at {{ $values.loss_pct.Value | printf \"%.1f\" }}% (warning: >5%, critical: >15%)"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=6"
         data:
           - refId: A
             relativeTimeRange:
@@ -2908,6 +2968,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "WAN packet loss at {{ $values.loss_pct.Value | printf \"%.1f\" }}% — internet connection severely degraded"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=6"
         data:
           - refId: A
             relativeTimeRange:
@@ -2953,6 +3014,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "UniFi controller scrape failing — network monitoring blind"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
         data:
           - refId: A
             relativeTimeRange:
@@ -2997,6 +3059,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $values.offline_count.Value | printf \"%.0f\" }} UniFi device(s) offline — check the UniFi dashboard for details"
+          panelUrl: "/d/crown-unifi-network?orgId=1&viewPanel=10"
         data:
           - refId: A
             relativeTimeRange:
@@ -3034,7 +3097,7 @@ groups:
       - uid: network-site-ping-down
         title: Site Ping Failing
         condition: threshold
-        for: 5m
+        for: 0s
         noDataState: OK
         execErrState: Error
         labels:
@@ -3042,6 +3105,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "{{ $labels.source }} cannot reach {{ $values.down_count.Value | printf \"%.0f\" }} ping target(s) — remote site connectivity may be lost"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
         data:
           - refId: A
             relativeTimeRange:
@@ -3086,6 +3150,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $values.down_count.Value | printf \"%.0f\" }} switch interface(s) are down — check the Switch dashboard for details"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=3"
         data:
           - refId: A
             relativeTimeRange:
@@ -3131,6 +3196,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "Dell OS10 exporter is not responding to Prometheus scrapes ({{ $labels.instance }})"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -3176,6 +3242,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "Dell OS10 switch {{ $labels.switch }} is not responding to RESTCONF API"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=1"
         data:
           - refId: A
             relativeTimeRange:
@@ -3220,6 +3287,7 @@ groups:
           severity: warning
         annotations:
           summary: "Interface {{ $labels.interface }} on {{ $labels.instance }} receiving {{ $values.err_rate.Value | printf \"%.1f\" }} errors/s"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=20"
         data:
           - refId: A
             relativeTimeRange:
@@ -3269,6 +3337,7 @@ groups:
           severity: warning
         annotations:
           summary: "Container {{ $labels.name }} on {{ $labels.instance }} has restarted {{ $values.restarts.Value | printf \"%.0f\" }} times in 10 minutes"
+          panelUrl: "/d/docker-containers?orgId=1&viewPanel=5"
         data:
           - refId: A
             relativeTimeRange:
@@ -3313,6 +3382,7 @@ groups:
           severity: warning
         annotations:
           summary: "Container {{ $labels.name }} on {{ $labels.instance }} using {{ $values.mem_pct.Value | printf \"%.1f\" }}% of its memory limit"
+          panelUrl: "/d/docker-containers?orgId=1&viewPanel=8"
         data:
           - refId: A
             relativeTimeRange:
@@ -3320,7 +3390,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'container_memory_usage_bytes{job="integrations/cadvisor",id!="/"} / container_spec_memory_limit_bytes{job="integrations/cadvisor",id!="/",container_spec_memory_limit_bytes>0} * 100'
+              expr: 'container_memory_usage_bytes{job="integrations/cadvisor",id!="/"} / (container_spec_memory_limit_bytes{job="integrations/cadvisor",id!="/"} > 0) * 100'
               refId: A
           - refId: mem_pct
             relativeTimeRange:
@@ -3357,6 +3427,7 @@ groups:
           severity: warning
         annotations:
           summary: "Container {{ $labels.name }} on {{ $labels.instance }} is {{ $values.throttle_pct.Value | printf \"%.1f\" }}% CPU throttled"
+          panelUrl: "/d/docker-containers?orgId=1&viewPanel=6"
         data:
           - refId: A
             relativeTimeRange:
@@ -3407,6 +3478,7 @@ groups:
           oncall: Platform
         annotations:
           summary: "HTTP probe failing for {{ $labels.instance }} — application may be down"
+          panelUrl: "/d/infrastructure?orgId=1&viewPanel=15"
         data:
           - refId: A
             relativeTimeRange:
@@ -3451,6 +3523,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.instance }} responding in {{ $values.duration_s.Value | printf \"%.2f\" }}s — above 3s threshold"
+          panelUrl: "/d/infrastructure?orgId=1&viewPanel=15"
         data:
           - refId: A
             relativeTimeRange:
@@ -3500,6 +3573,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.instance }} MySQL connections at {{ $values.conn_pct.Value | printf \"%.1f\" }}% of max_connections"
+          panelUrl: "/d/infrastructure?orgId=1&viewPanel=5"
         data:
           - refId: A
             relativeTimeRange:
@@ -3544,6 +3618,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $labels.instance }} MySQL slow queries at {{ $values.qps.Value | printf \"%.1f\" }}/s"
+          panelUrl: "/d/infrastructure?orgId=1&viewPanel=5"
         data:
           - refId: A
             relativeTimeRange:

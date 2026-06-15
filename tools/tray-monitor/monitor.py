@@ -12,6 +12,7 @@ Right-click               → menu (Settings, Open Grafana, Quit)
 Click an alert row        → open that rule directly in Grafana
 """
 
+import re
 import threading
 import time
 import webbrowser
@@ -41,8 +42,8 @@ _states: dict = {0: {"alerts": [], "silenced": [], "reachable": False, "maintena
 # Flash state
 # ---------------------------------------------------------------------------
 
-_flash_stop  = threading.Event()   # set this to stop the loop
-_flash_state = {"running": False, "paused": False}
+_flash_stop  = threading.Event()
+_flash_state = {"running": False, "paused": False, "colour": "red"}
 
 
 # ---------------------------------------------------------------------------
@@ -54,11 +55,14 @@ def _make_icon(colour: str) -> Image.Image:
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     palette = {
-        "green":    (76,  175,  80),
-        "yellow":   (255, 193,   7),
-        "red":      (244,  67,  54),
-        "red_dim":  (70,   15,  10),   # dark maroon — flash "off" frame
-        "grey":     (158, 158, 158),
+        "green":       (76,  175,  80),
+        "orange":      (255, 152,   0),
+        "yellow":      (255, 193,   7),
+        "red":         (244,  67,  54),
+        "red_dim":     (70,   15,  10),
+        "purple":      (156,  39, 176),
+        "purple_dim":  (40,   10,  46),
+        "grey":        (158, 158, 158),
     }
     fill = palette.get(colour, palette["grey"])
     m = 4
@@ -71,21 +75,22 @@ def _make_icon(colour: str) -> Image.Image:
 # ---------------------------------------------------------------------------
 
 def _flash_loop(icon: pystray.Icon) -> None:
-    red = _make_icon("red")
-    dim = _make_icon("red_dim")
     bright = True
     _flash_state["running"] = True
     _flash_stop.clear()
     try:
         while not _flash_stop.wait(0.55):
             if not _flash_state["paused"]:
-                icon.icon = red if bright else dim
+                colour = _flash_state["colour"]
+                dim    = "purple_dim" if colour == "purple" else "red_dim"
+                icon.icon = _make_icon(colour) if bright else _make_icon(dim)
                 bright = not bright
     finally:
         _flash_state["running"] = False
 
 
-def _start_flashing(icon: pystray.Icon) -> None:
+def _start_flashing(icon: pystray.Icon, colour: str = "red") -> None:
+    _flash_state["colour"] = colour
     if _flash_state["running"]:
         return
     threading.Thread(target=_flash_loop, args=(icon,), daemon=True).start()
@@ -317,6 +322,168 @@ def _test_conn(url: str, auth_type: str, username: str,
 
 
 # ---------------------------------------------------------------------------
+# PagerDuty API
+# ---------------------------------------------------------------------------
+
+def _normalise_pd_incident(inc: dict, grafana_url: str = "") -> dict:
+    """Convert a PagerDuty incident into a Grafana-compatible alert dict."""
+    title   = inc.get("title", "Unknown")
+    name    = re.sub(r"^\[(CRITICAL|HIGH|WARNING|RESOLVED)\]\s*", "", title, flags=re.IGNORECASE)
+    details = (inc.get("body") or {}).get("details") or {}
+    # Grafana buries the payload inside __pd_cef_payload.details
+    cef_det = ((details.get("__pd_cef_payload") or {}).get("details") or {})
+    cef     = (details.get("__pd_cef_payload") or {})
+
+    severity = str(cef.get("severity") or "").lower()
+    if severity not in ("critical", "high", "warning"):
+        severity = "critical" if inc.get("urgency") == "high" else "warning"
+
+    # Extract per-instance summaries, panel annotations, and alert path from firing text
+    summaries: list[str] = []
+    grafana_path = ""
+    panel_url    = ""
+    for line in (cef_det.get("firing") or "").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- summary = "):
+            s = re.sub(r'\s*\([^)]*%[^)]*\)\s*$', '', stripped[12:]).strip()
+            if s and s not in summaries:
+                summaries.append(s)
+        if not grafana_path and stripped.startswith("Source: "):
+            m = re.match(r'Source:\s*https?://[^/]+(/.+)', stripped)
+            if m:
+                grafana_path = m.group(1)
+        if not panel_url and stripped.startswith("- panelUrl = "):
+            panel_url = stripped[13:].strip()
+
+    if grafana_url and panel_url:
+        grafana_alert_url = grafana_url.rstrip("/") + panel_url
+    elif grafana_url and grafana_path:
+        grafana_alert_url = grafana_url.rstrip("/") + grafana_path
+    else:
+        grafana_alert_url = ""
+
+    # Fallback for non-Grafana sources
+    if not summaries:
+        seen: set = set()
+        for sub in inc.get("alerts", []):
+            sub_d = (sub.get("body") or {}).get("details") or {}
+            inst  = (sub_d.get("instance") or sub_d.get("host") or "").strip()
+            if inst and inst not in seen:
+                summaries.append(inst)
+                seen.add(inst)
+
+    return {
+        "labels": {
+            "alertname":          name,
+            "severity":           severity,
+            "__alert_rule_uid__": "",
+            "instance":           summaries[0] if summaries else "",
+        },
+        "annotations": {"summary": inc.get("description", "") or title},
+        "fingerprint":  inc.get("id", ""),
+        "status":       {"silencedBy": []},
+        "_source":         "pagerduty",
+        "_pd_id":          inc.get("id", ""),
+        "_pd_status":      inc.get("status", "triggered"),
+        "_pd_url":         inc.get("html_url", ""),
+        "_pd_grafana_url": grafana_alert_url,
+        "_pd_instances":   summaries,
+    }
+
+
+def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
+    api_key = profile.get("pd_api_key", "").strip()
+    if not api_key:
+        return None
+    try:
+        r = requests.get(
+            "https://api.pagerduty.com/incidents",
+            headers={
+                "Authorization": f"Token token={api_key}",
+                "Accept": "application/vnd.pagerduty+json;version=2",
+            },
+            params={"statuses[]": ["triggered", "acknowledged"], "include[]": ["body", "alerts"], "limit": 100},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return None
+        grafana_url = profile.get("grafana_url", "")
+        active, silenced = [], []
+        for inc in r.json().get("incidents", []):
+            alert = _normalise_pd_incident(inc, grafana_url)
+            if inc.get("status") == "acknowledged":
+                alert["_mute_type"] = "ack"
+                silenced.append(alert)
+            else:
+                active.append(alert)
+        return active, silenced, None
+    except Exception:
+        return None
+
+
+def _pd_headers(profile: dict) -> dict:
+    h = {
+        "Authorization": f"Token token={profile.get('pd_api_key', '')}",
+        "Accept": "application/vnd.pagerduty+json;version=2",
+        "Content-Type": "application/json",
+    }
+    if profile.get("pd_user_email"):
+        h["From"] = profile["pd_user_email"]
+    return h
+
+
+def _acknowledge_pd(alert: dict, profile: dict) -> tuple[bool, str]:
+    pd_id = alert.get("_pd_id", "")
+    if not pd_id or not profile.get("pd_api_key"):
+        return False, "Missing PagerDuty credentials"
+    try:
+        r = requests.put(
+            "https://api.pagerduty.com/incidents",
+            headers=_pd_headers(profile),
+            json={"incidents": [{"id": pd_id, "type": "incident_reference", "status": "acknowledged"}]},
+            timeout=10,
+        )
+        return (True, "Acknowledged") if r.status_code in (200, 201) else (False, f"HTTP {r.status_code}")
+    except Exception as e:
+        return False, str(e)
+
+
+def _add_pd_note(alert: dict, note_text: str, profile: dict) -> tuple[bool, str]:
+    pd_id = alert.get("_pd_id", "")
+    if not pd_id or not profile.get("pd_api_key"):
+        return False, "Missing PagerDuty credentials"
+    try:
+        r = requests.post(
+            f"https://api.pagerduty.com/incidents/{pd_id}/notes",
+            headers=_pd_headers(profile),
+            json={"note": {"content": note_text}},
+            timeout=10,
+        )
+        return (True, "Note added") if r.status_code in (200, 201) else (False, f"HTTP {r.status_code}")
+    except Exception as e:
+        return False, str(e)
+
+
+def _test_conn_pd(api_key: str) -> tuple[bool, str]:
+    try:
+        r = requests.get(
+            "https://api.pagerduty.com/incidents",
+            headers={
+                "Authorization": f"Token token={api_key}",
+                "Accept": "application/vnd.pagerduty+json;version=2",
+            },
+            params={"limit": 1},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            total = r.json().get("total", 0)
+            return True, f"✓  Connected  ({total} open incidents)"
+        return False, f"✗  HTTP {r.status_code} — check API key"
+    except Exception as exc:
+        return False, f"✗  {exc}"
+
+
+# ---------------------------------------------------------------------------
 # Settings dialog
 # ---------------------------------------------------------------------------
 
@@ -437,42 +604,68 @@ class SettingsDialog:
         name_var = tk.StringVar(value=profiles[edit_idx[0]].get("name", "Live"))
         self._entry(win, name_var, **pad)
 
-        # ---- URL ----
-        self._section(win, "Grafana URL")
+        # ---- Source type ----
+        self._section(win, "Source")
+        src_var = tk.StringVar(value=profiles[edit_idx[0]].get("source_type", "grafana"))
+        src_frame = tk.Frame(win, bg=self.BG)
+        src_frame.pack(fill="x", **pad, pady=(0, 4))
+        for label, val in [("Grafana", "grafana"), ("PagerDuty", "pagerduty")]:
+            tk.Radiobutton(
+                src_frame, text=label, variable=src_var, value=val,
+                bg=self.BG, fg=self.FG, selectcolor=self.ENT_BG,
+                activebackground=self.BG, activeforeground=self.FG,
+                command=lambda: _toggle_source(),
+            ).pack(side="left", padx=(0, 16))
+
+        # ---- Grafana section ----
+        grafana_frm = tk.Frame(win, bg=self.BG)
+        self._field(grafana_frm, "Grafana URL")
         url_var = tk.StringVar(value=s["grafana_url"])
-        self._entry(win, url_var, **pad)
-
-        # ---- Auth type ----
-        self._section(win, "Authentication")
+        self._entry(grafana_frm, url_var, **pad)
+        self._section(grafana_frm, "Authentication")
         auth_var = tk.StringVar(value=s["auth_type"])
-
-        rb_frame = tk.Frame(win, bg=self.BG)
+        rb_frame = tk.Frame(grafana_frm, bg=self.BG)
         rb_frame.pack(fill="x", **pad, pady=(0, 4))
         for label, val in [("Basic (username / password)", "basic"),
-                            ("API Token  (Grafana service account or AWS Managed Grafana)", "token")]:
+                            ("API Token  (service account or AWS Managed Grafana)", "token")]:
             tk.Radiobutton(
                 rb_frame, text=label, variable=auth_var, value=val,
                 bg=self.BG, fg=self.FG, selectcolor=self.ENT_BG,
                 activebackground=self.BG, activeforeground=self.FG,
-                command=lambda: _toggle(),
+                command=lambda: _toggle_auth(),
             ).pack(anchor="w")
-
-        # ---- Basic auth fields ----
-        basic_frm = tk.Frame(win, bg=self.BG)
+        basic_frm = tk.Frame(grafana_frm, bg=self.BG)
         self._field(basic_frm, "Username")
         user_var = tk.StringVar(value=s["username"])
         self._entry(basic_frm, user_var, **pad)
         self._field(basic_frm, "Password")
         pass_var = tk.StringVar(value=s["password"])
         self._entry(basic_frm, pass_var, show="●", **pad)
-
-        # ---- Token field ----
-        token_frm = tk.Frame(win, bg=self.BG)
+        token_frm = tk.Frame(grafana_frm, bg=self.BG)
         self._field(token_frm, "API Token")
         token_var = tk.StringVar(value=s["api_token"])
         self._entry(token_frm, token_var, show="●", **pad)
 
-        def _toggle() -> None:
+        # ---- PagerDuty section ----
+        pd_frm = tk.Frame(win, bg=self.BG)
+        self._field(pd_frm, "PagerDuty API Key")
+        pd_key_var = tk.StringVar(value=profiles[edit_idx[0]].get("pd_api_key", ""))
+        self._entry(pd_frm, pd_key_var, show="●", **pad)
+        self._field(pd_frm, "Your email  (used for acknowledge / note API calls)")
+        pd_email_var = tk.StringVar(value=profiles[edit_idx[0]].get("pd_user_email", ""))
+        self._entry(pd_frm, pd_email_var, **pad)
+        tk.Frame(pd_frm, bg=self.SEP, height=1).pack(fill="x", pady=(10, 0))
+        tk.Label(pd_frm, text="Optional — for Silence in Grafana action",
+                 bg=self.BG, fg=self.FG_DIM, font=("Segoe UI", 8), anchor="w").pack(
+                     fill="x", padx=18, pady=(8, 2))
+        self._field(pd_frm, "Grafana URL")
+        pd_gurl_var = tk.StringVar(value=profiles[edit_idx[0]].get("grafana_url", ""))
+        self._entry(pd_frm, pd_gurl_var, **pad)
+        self._field(pd_frm, "Grafana API Token")
+        pd_gtoken_var = tk.StringVar(value=profiles[edit_idx[0]].get("api_token", ""))
+        self._entry(pd_frm, pd_gtoken_var, show="●", **pad)
+
+        def _toggle_auth() -> None:
             if auth_var.get() == "basic":
                 token_frm.pack_forget()
                 basic_frm.pack(fill="x")
@@ -481,22 +674,35 @@ class SettingsDialog:
                 token_frm.pack(fill="x")
             _refit()
 
+        def _toggle_source() -> None:
+            if src_var.get() == "grafana":
+                pd_frm.pack_forget()
+                grafana_frm.pack(fill="x")
+                _toggle_auth()
+            else:
+                grafana_frm.pack_forget()
+                pd_frm.pack(fill="x")
+            _refit()
+
         def _load_profile(idx: int) -> None:
-            """Populate form fields from profile at idx."""
             p = settings.get_profiles()[idx]
             name_var.set(p.get("name", ""))
+            src_var.set(p.get("source_type", "grafana"))
             url_var.set(p.get("grafana_url", ""))
             auth_var.set(p.get("auth_type", "basic"))
             user_var.set(p.get("username", ""))
             pass_var.set(p.get("password", ""))
             token_var.set(p.get("api_token", ""))
-            _toggle()
+            pd_key_var.set(p.get("pd_api_key", ""))
+            pd_email_var.set(p.get("pd_user_email", ""))
+            pd_gurl_var.set(p.get("grafana_url", "") if p.get("source_type") == "pagerduty" else "")
+            pd_gtoken_var.set(p.get("api_token", "") if p.get("source_type") == "pagerduty" else "")
+            _toggle_source()
 
-        # Show correct auth section immediately
-        if s["auth_type"] == "basic":
-            basic_frm.pack(fill="x")
-        else:
-            token_frm.pack(fill="x")
+        # Show correct section immediately
+        _toggle_source()
+        if src_var.get() == "grafana":
+            _toggle_auth()
 
         # ---- Poll interval ----
         tk.Frame(win, bg=self.SEP, height=1).pack(fill="x", pady=(10, 0))
@@ -526,10 +732,13 @@ class SettingsDialog:
             status_var.set("Testing...")
             status_lbl.config(fg=self.FG_DIM)
             win.update_idletasks()
-            ok, msg = _test_conn(
-                url_var.get(), auth_var.get(),
-                user_var.get(), pass_var.get(), token_var.get(),
-            )
+            if src_var.get() == "pagerduty":
+                ok, msg = _test_conn_pd(pd_key_var.get())
+            else:
+                ok, msg = _test_conn(
+                    url_var.get(), auth_var.get(),
+                    user_var.get(), pass_var.get(), token_var.get(),
+                )
             status_lbl.config(fg=self.GREEN if ok else self.RED)
             status_var.set(msg)
 
@@ -538,15 +747,33 @@ class SettingsDialog:
                 interval = max(10, int(interval_var.get()))
             except ValueError:
                 interval = 30
-            idx = edit_idx[0]
-            settings.save_profile(idx, {
-                "name":        name_var.get().strip() or f"Instance {idx + 1}",
-                "grafana_url": url_var.get().rstrip("/"),
-                "auth_type":   auth_var.get(),
-                "username":    user_var.get(),
-                "password":    pass_var.get(),
-                "api_token":   token_var.get(),
-            })
+            idx  = edit_idx[0]
+            src  = src_var.get()
+            if src == "pagerduty":
+                profile_data = {
+                    "name":          name_var.get().strip() or f"Instance {idx + 1}",
+                    "source_type":   "pagerduty",
+                    "pd_api_key":    pd_key_var.get().strip(),
+                    "pd_user_email": pd_email_var.get().strip(),
+                    "grafana_url":   pd_gurl_var.get().rstrip("/"),
+                    "api_token":     pd_gtoken_var.get().strip(),
+                    "auth_type":     "token",
+                    "username":      "",
+                    "password":      "",
+                }
+            else:
+                profile_data = {
+                    "name":        name_var.get().strip() or f"Instance {idx + 1}",
+                    "source_type": "grafana",
+                    "grafana_url": url_var.get().rstrip("/"),
+                    "auth_type":   auth_var.get(),
+                    "username":    user_var.get(),
+                    "password":    pass_var.get(),
+                    "api_token":   token_var.get(),
+                    "pd_api_key":    "",
+                    "pd_user_email": "",
+                }
+            settings.save_profile(idx, profile_data)
             settings.set_active(idx)
             settings.save_global(poll_interval=interval)
             win.destroy()
@@ -614,6 +841,7 @@ class AlertPanel:
     FG_DIM   = "#777788"
     GREEN    = "#4caf50"
     RED      = "#f44336"
+    PURPLE   = "#9c27b0"
     AMBER    = "#ffa726"
 
     def __init__(self, root: tk.Tk) -> None:
@@ -624,6 +852,7 @@ class AlertPanel:
         self._alerts_expanded    = True
         self._acked_expanded     = True
         self._silenced_expanded  = False
+        self._pd_expanded:  set  = set()
         self._suppress_focus_out = False
         self._menu_open          = False
         self._active_tab         = 0      # which profile's alerts are shown
@@ -638,7 +867,10 @@ class AlertPanel:
         return settings.get()
 
     def _tab_url(self) -> str:
-        return self._tab_profile().get("grafana_url", settings.get()["grafana_url"])
+        profile = self._tab_profile()
+        if profile.get("source_type") == "pagerduty":
+            return "https://app.pagerduty.com/incidents"
+        return profile.get("grafana_url", settings.get()["grafana_url"])
 
     def toggle(self) -> None:
         self.root.after(0, self._toggle_main)
@@ -732,7 +964,9 @@ class AlertPanel:
             self._maintenance_banner(maintenance)
 
         if not reachable:
-            self._msg("Cannot reach Grafana", self.FG_DIM)
+            profile = self._tab_profile()
+            src = "PagerDuty" if profile.get("source_type") == "pagerduty" else "Grafana"
+            self._msg(f"Cannot reach {src}", self.FG_DIM)
             return
         if not alerts and not silenced:
             self._all_clear_box()
@@ -768,10 +1002,13 @@ class AlertPanel:
                 with _state_lock:
                     st = _states.get(i, {"alerts": [], "silenced": [], "reachable": False})
                 crits = sum(1 for a in st["alerts"]
-                            if a.get("labels", {}).get("severity") in ("critical", "high"))
-                warns = len(st["alerts"]) - crits
+                            if a.get("labels", {}).get("severity") == "critical")
+                highs = sum(1 for a in st["alerts"]
+                            if a.get("labels", {}).get("severity") == "high")
+                warns = len(st["alerts"]) - crits - highs
                 if not st["reachable"]:  dot_col = self.FG_DIM
-                elif crits:              dot_col = self.RED
+                elif crits:              dot_col = self.PURPLE
+                elif highs:              dot_col = self.RED
                 elif warns:              dot_col = self.AMBER
                 else:                    dot_col = self.GREEN
 
@@ -857,7 +1094,7 @@ class AlertPanel:
         if crits: parts.append(f"{crits} critical")
         if highs: parts.append(f"{highs} high")
         if warns: parts.append(f"{warns} warning")
-        dot_col = self.RED if (crits or highs) else self.AMBER
+        dot_col = self.PURPLE if crits else (self.RED if highs else self.AMBER)
 
         arrow = "▼" if self._alerts_expanded else "▶"
         hdr = tk.Label(
@@ -986,12 +1223,28 @@ class AlertPanel:
         labels    = alert.get("labels", {})
         severity  = labels.get("severity", "warning")
         name      = labels.get("alertname", "Unknown alert")
-        summary   = (alert.get("annotations", {}).get("summary") or
-                     labels.get("instance", ""))
-        uid       = labels.get("__alert_rule_uid__", "")
-        base_url  = self._tab_url()
-        url       = (f"{base_url}/alerting/grafana/{uid}/view"
-                     if uid else f"{base_url}/alerting/list")
+        pd_instances    = alert.get("_pd_instances", [])
+        is_pd           = alert.get("_source") == "pagerduty"
+        pd_id           = alert.get("_pd_id", "")
+        pd_expanded     = is_pd and (pd_id in self._pd_expanded)
+        pd_grafana_url  = alert.get("_pd_grafana_url", "")
+
+        if is_pd and pd_instances and pd_expanded:
+            shown   = pd_instances[:4]
+            extra   = len(pd_instances) - len(shown)
+            summary = "\n".join(shown) + (f"\n+{extra} more" if extra else "")
+        elif is_pd:
+            summary = ""  # collapsed — show nothing until expanded
+        else:
+            summary = (alert.get("annotations", {}).get("summary") or
+                       labels.get("instance", ""))
+        uid      = labels.get("__alert_rule_uid__", "")
+        base_url = self._tab_url()
+        if alert.get("_source") == "pagerduty":
+            url = alert.get("_pd_url", base_url) or base_url
+        else:
+            url = (f"{base_url}/alerting/grafana/{uid}/view"
+                   if uid else f"{base_url}/alerting/list")
         mute_type = alert.get("_mute_type", "mute") if silenced else None
 
         if silenced:
@@ -1004,10 +1257,12 @@ class AlertPanel:
                 hov_bg  = "#2a2a3e"
                 dot_col = self.FG_DIM
         else:
-            is_serious = severity in ("critical", "high")
-            row_bg  = self.CRIT_BG  if is_serious else self.WARN_BG
-            hov_bg  = self.CRIT_HOV if is_serious else self.WARN_HOV
-            dot_col = self.RED      if is_serious else self.AMBER
+            if severity == "critical":
+                row_bg, hov_bg, dot_col = self.CRIT_BG, self.CRIT_HOV, self.PURPLE
+            elif severity == "high":
+                row_bg, hov_bg, dot_col = self.CRIT_BG, self.CRIT_HOV, self.RED
+            else:
+                row_bg, hov_bg, dot_col = self.WARN_BG, self.WARN_HOV, self.AMBER
 
         tk.Frame(parent, bg=self.SEP, height=1).pack(fill="x")
 
@@ -1027,18 +1282,34 @@ class AlertPanel:
                        font=dot_font, padx=10)
         dot.pack(side="left", anchor="n", pady=10)
 
-        # Silence / unsilence button (right side — NOT in all_w so it gets its own click)
-        btn_sym  = "🔔" if silenced else "🔕"
-        btn_tip  = "Unsilence" if silenced else "Silence"
+        # Right-side buttons (packed right-to-left, so action btn is outermost)
+        btn_sym = "🔔" if silenced else "🔕"
         btn = tk.Label(row, text=btn_sym, bg=row_bg, fg=self.FG_DIM,
-                       font=("Segoe UI", 11), padx=8, cursor="hand2")
+                       font=("Segoe UI", 11), padx=6, cursor="hand2")
         btn.pack(side="right", anchor="n", pady=8)
+
+        # PD rows get explicit link buttons; Grafana rows keep click-to-open
+        pd_btn = gf_btn = None
+        if is_pd:
+            pd_btn = tk.Label(row, text="PD ↗", bg=row_bg, fg=self.FG_DIM,
+                              font=("Segoe UI", 8), padx=5, cursor="hand2")
+            pd_btn.pack(side="right", anchor="n", pady=10)
+            if pd_grafana_url:
+                gf_btn = tk.Label(row, text="Grafana ↗", bg=row_bg, fg=self.FG_DIM,
+                                  font=("Segoe UI", 8), padx=5, cursor="hand2")
+                gf_btn.pack(side="right", anchor="n", pady=10)
 
         mid = tk.Frame(row, bg=row_bg)
         mid.pack(side="left", fill="both", expand=True, pady=8, padx=(0, 4))
 
-        name_lbl = tk.Label(mid, text=name, bg=row_bg, fg=name_fg,
-                            font=name_fnt, anchor="w", justify="left")
+        # PD rows show ▶/▼ chevron to signal expand/collapse
+        if is_pd:
+            chevron = "▼" if pd_expanded else "▶"
+            name_lbl = tk.Label(mid, text=f"{chevron}  {name}", bg=row_bg, fg=name_fg,
+                                font=name_fnt, anchor="w", justify="left")
+        else:
+            name_lbl = tk.Label(mid, text=name, bg=row_bg, fg=name_fg,
+                                font=name_fnt, anchor="w", justify="left")
         name_lbl.pack(fill="x")
 
         all_w = [row, dot, mid, name_lbl]
@@ -1046,13 +1317,21 @@ class AlertPanel:
         if summary:
             s_lbl = tk.Label(mid, text=summary, bg=row_bg, fg=self.FG_DIM,
                              font=("Segoe UI", 8), anchor="w", justify="left",
-                             wraplength=self.W - 100)
+                             wraplength=self.W - 120)
             s_lbl.pack(fill="x")
             all_w.append(s_lbl)
 
-        def on_click(_e, u=url):
-            webbrowser.open(u)
-            self._close()
+        if is_pd:
+            def on_click(_e, pid=pd_id):
+                if pid in self._pd_expanded:
+                    self._pd_expanded.discard(pid)
+                else:
+                    self._pd_expanded.add(pid)
+                self._refresh_panel()
+        else:
+            def on_click(_e, u=url):
+                webbrowser.open(u)
+                self._close()
 
         def on_enter(_e, bg=hov_bg):
             for w in all_w:
@@ -1071,55 +1350,107 @@ class AlertPanel:
             w.bind("<Enter>",    on_enter)
             w.bind("<Leave>",    on_leave)
 
-        # Silence / unsilence button behaviour
+        # PD link buttons — independent click handlers, brighten on row hover
+        if pd_btn is not None:
+            def _open_pd(_e, u=url):
+                webbrowser.open(u)
+                self._close()
+            pd_btn.bind("<Button-1>", _open_pd)
+            pd_btn.bind("<Enter>",    lambda _e: pd_btn.configure(fg=self.FG))
+            pd_btn.bind("<Leave>",    lambda _e: pd_btn.configure(fg=self.FG_DIM))
+        if gf_btn is not None:
+            def _open_gf(_e, u=pd_grafana_url):
+                webbrowser.open(u)
+                self._close()
+            gf_btn.bind("<Button-1>", _open_gf)
+            gf_btn.bind("<Enter>",    lambda _e: gf_btn.configure(fg=self.FG))
+            gf_btn.bind("<Leave>",    lambda _e: gf_btn.configure(fg=self.FG_DIM))
+
+        # Action button behaviour — differs by source and silenced state
         if silenced:
-            def _do_unsilence(_e, a=alert):
-                try:
-                    btn.configure(text="⏳")
-                except Exception:
-                    pass
-                profile = self._tab_profile()
-                def _bg():
-                    ok, msg = _unsilence_alert(a, profile)
-                    if ok:
-                        self._fetch_and_rebuild()
-                    else:
-                        _notify("Unsilence failed", msg)
-                        try:
-                            self.root.after(0, lambda: btn.configure(text="🔔"))
-                        except Exception:
-                            pass
-                threading.Thread(target=_bg, daemon=True).start()
-            btn.bind("<Button-1>", _do_unsilence)
+            if is_pd:
+                btn.configure(text="📝", font=("Segoe UI", 11))
+                def _show_pd_note_btn(_e, a=alert):
+                    self._do_pd_note_prompt(a)
+                btn.bind("<Button-1>", _show_pd_note_btn)
+            else:
+                def _do_unsilence(_e, a=alert):
+                    try:
+                        btn.configure(text="⏳")
+                    except Exception:
+                        pass
+                    profile = self._tab_profile()
+                    def _bg():
+                        ok, msg = _unsilence_alert(a, profile)
+                        if ok:
+                            self._fetch_and_rebuild()
+                        else:
+                            _notify("Unsilence failed", msg)
+                            try:
+                                self.root.after(0, lambda: btn.configure(text="🔔"))
+                            except Exception:
+                                pass
+                    threading.Thread(target=_bg, daemon=True).start()
+                btn.bind("<Button-1>", _do_unsilence)
         else:
-            def _show_silence_menu(_e, a=alert):
-                self._suppress_focus_out = True
-                self._menu_open          = True
-                menu_kw = dict(bg="#2a2a3e", fg=self.FG,
-                               activebackground="#7c6af7",
-                               activeforeground="#ffffff", bd=0, tearoff=0)
-                menu = tk.Menu(self._win, **menu_kw)
-
-                ack_menu = tk.Menu(menu, **menu_kw)
-                for h, lbl in [(1, "1 hour"), (2, "2 hours"), (4, "4 hours")]:
-                    ack_menu.add_command(
-                        label=f"for {lbl}",
-                        command=lambda hours=h, al=a: self._do_silence(al, hours, "ack"),
+            if is_pd:
+                def _show_pd_menu(_e, a=alert):
+                    self._suppress_focus_out = True
+                    self._menu_open          = True
+                    menu_kw = dict(bg="#2a2a3e", fg=self.FG,
+                                   activebackground="#7c6af7",
+                                   activeforeground="#ffffff", bd=0, tearoff=0)
+                    menu = tk.Menu(self._win, **menu_kw)
+                    menu.add_command(
+                        label="🔧  Acknowledge in PagerDuty",
+                        command=lambda al=a: self._do_pd_acknowledge(al),
                     )
-
-                mute_menu = tk.Menu(menu, **menu_kw)
-                for h, lbl in [(4, "4 hours"), (8, "8 hours"), (24, "24 hours")]:
-                    mute_menu.add_command(
-                        label=f"for {lbl}",
-                        command=lambda hours=h, al=a: self._do_silence(al, hours, "mute"),
+                    menu.add_separator()
+                    gf_menu = tk.Menu(menu, **menu_kw)
+                    for h, lbl in [(4, "4 hours"), (8, "8 hours"), (24, "24 hours")]:
+                        gf_menu.add_command(
+                            label=f"for {lbl}",
+                            command=lambda hours=h, al=a: self._do_silence(al, hours, "mute"),
+                        )
+                    menu.add_cascade(label="🔇  Silence in Grafana", menu=gf_menu)
+                    menu.add_separator()
+                    menu.add_command(
+                        label="📝  Add Note...",
+                        command=lambda al=a: self._do_pd_note_prompt(al),
                     )
+                    menu.bind("<Unmap>", lambda _e: setattr(self, "_menu_open", False))
+                    menu.tk_popup(_e.x_root, _e.y_root)
+                    self.root.after(1500, lambda: setattr(self, "_suppress_focus_out", False))
+                btn.bind("<Button-1>", _show_pd_menu)
+            else:
+                def _show_silence_menu(_e, a=alert):
+                    self._suppress_focus_out = True
+                    self._menu_open          = True
+                    menu_kw = dict(bg="#2a2a3e", fg=self.FG,
+                                   activebackground="#7c6af7",
+                                   activeforeground="#ffffff", bd=0, tearoff=0)
+                    menu = tk.Menu(self._win, **menu_kw)
 
-                menu.add_cascade(label="🔧  Acknowledge (working on it)", menu=ack_menu)
-                menu.add_cascade(label="🔇  Mute (not important)", menu=mute_menu)
-                menu.bind("<Unmap>", lambda _e: setattr(self, "_menu_open", False))
-                menu.tk_popup(_e.x_root, _e.y_root)
-                self.root.after(1500, lambda: setattr(self, "_suppress_focus_out", False))
-            btn.bind("<Button-1>", _show_silence_menu)
+                    ack_menu = tk.Menu(menu, **menu_kw)
+                    for h, lbl in [(1, "1 hour"), (2, "2 hours"), (4, "4 hours")]:
+                        ack_menu.add_command(
+                            label=f"for {lbl}",
+                            command=lambda hours=h, al=a: self._do_silence(al, hours, "ack"),
+                        )
+
+                    mute_menu = tk.Menu(menu, **menu_kw)
+                    for h, lbl in [(4, "4 hours"), (8, "8 hours"), (24, "24 hours")]:
+                        mute_menu.add_command(
+                            label=f"for {lbl}",
+                            command=lambda hours=h, al=a: self._do_silence(al, hours, "mute"),
+                        )
+
+                    menu.add_cascade(label="🔧  Acknowledge (working on it)", menu=ack_menu)
+                    menu.add_cascade(label="🔇  Mute (not important)", menu=mute_menu)
+                    menu.bind("<Unmap>", lambda _e: setattr(self, "_menu_open", False))
+                    menu.tk_popup(_e.x_root, _e.y_root)
+                    self.root.after(1500, lambda: setattr(self, "_suppress_focus_out", False))
+                btn.bind("<Button-1>", _show_silence_menu)
 
         btn.bind("<Enter>", lambda _: btn.configure(fg=self.FG))
         btn.bind("<Leave>", lambda _: btn.configure(fg=self.FG_DIM))
@@ -1177,13 +1508,43 @@ class AlertPanel:
                 _notify("Silence failed", msg)
         threading.Thread(target=_bg, daemon=True).start()
 
+    def _do_pd_acknowledge(self, alert: dict) -> None:
+        profile = self._tab_profile()
+        def _bg():
+            ok, msg = _acknowledge_pd(alert, profile)
+            if ok:
+                self._fetch_and_rebuild()
+            else:
+                _notify("Acknowledge failed", msg)
+        threading.Thread(target=_bg, daemon=True).start()
+
+    def _do_pd_note_prompt(self, alert: dict) -> None:
+        self._suppress_focus_out = True
+        note = simpledialog.askstring(
+            "Add Note",
+            f"Note for: {alert.get('labels', {}).get('alertname', 'alert')}",
+            parent=self._win,
+        )
+        self.root.after(500, lambda: setattr(self, "_suppress_focus_out", False))
+        if not note or not note.strip():
+            return
+        profile = self._tab_profile()
+        def _bg():
+            ok, msg = _add_pd_note(alert, note.strip(), profile)
+            if not ok:
+                _notify("Add note failed", msg)
+        threading.Thread(target=_bg, daemon=True).start()
+
     def _fetch_and_rebuild(self, delay: float = 0.8) -> None:
         """Re-fetch the active tab's profile and rebuild the panel."""
         tab_idx = self._active_tab
         profile = self._tab_profile()
         def _bg():
             time.sleep(delay)
-            result = _fetch(profile)
+            if profile.get("source_type") == "pagerduty":
+                result = _fetch_pd(profile)
+            else:
+                result = _fetch(profile)
             with _state_lock:
                 if tab_idx not in _states:
                     _states[tab_idx] = {"alerts": [], "silenced": [], "reachable": False, "maintenance": None}
@@ -1214,14 +1575,19 @@ def _poll(icon: pystray.Icon) -> None:
 
     while True:
         profiles     = settings.get_profiles()
-        any_critical = False
-        any_warning  = False
+        any_critical  = False
+        any_high      = False
+        any_warning   = False
         any_reachable = False
 
         for i, profile in enumerate(profiles):
-            if not profile.get("grafana_url", "").strip():
+            is_pd = profile.get("source_type") == "pagerduty"
+            if is_pd:
+                if not profile.get("pd_api_key", "").strip():
+                    continue
+            elif not profile.get("grafana_url", "").strip():
                 continue
-            result = _fetch(profile)
+            result = _fetch_pd(profile) if is_pd else _fetch(profile)
             with _state_lock:
                 if result is None:
                     _states[i] = {"alerts": [], "silenced": [], "reachable": False, "maintenance": None}
@@ -1230,10 +1596,13 @@ def _poll(icon: pystray.Icon) -> None:
                     _states[i] = {"alerts": active, "silenced": silenced,
                                   "reachable": True, "maintenance": maintenance}
                     crits = sum(1 for a in active
-                                if a.get("labels", {}).get("severity") in ("critical", "high"))
-                    warns = len(active) - crits
-                    if crits: any_critical  = True
-                    elif warns: any_warning = True
+                                if a.get("labels", {}).get("severity") == "critical")
+                    highs = sum(1 for a in active
+                                if a.get("labels", {}).get("severity") == "high")
+                    warns = len(active) - crits - highs
+                    if crits:        any_critical = True
+                    elif highs:      any_high     = True
+                    elif warns:      any_warning  = True
                     any_reachable = True
 
             # Toasts for newly firing alerts — skip on first sync to avoid
@@ -1260,16 +1629,17 @@ def _poll(icon: pystray.Icon) -> None:
                 previous_per[i] = current
 
         # Tray icon reflects worst state across all profiles
+        s     = settings.get()
+        flash = s.get("flash_on_critical", True) and not _flash_state["paused"]
         if any_critical:
-            s = settings.get()
-            if s.get("flash_on_critical", True) and not _flash_state["paused"]:
-                _start_flashing(icon)
-            else:
-                _stop_flashing()
-                icon.icon = _make_icon("red")
+            if flash: _start_flashing(icon, "purple")
+            else:     _stop_flashing(); icon.icon = _make_icon("purple")
+        elif any_high:
+            if flash: _start_flashing(icon, "red")
+            else:     _stop_flashing(); icon.icon = _make_icon("red")
         elif any_warning:
             _stop_flashing()
-            icon.icon = _make_icon("yellow")
+            icon.icon = _make_icon("orange")
         elif any_reachable:
             _stop_flashing()
             icon.icon = _make_icon("green")

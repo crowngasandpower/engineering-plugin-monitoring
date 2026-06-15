@@ -6,6 +6,11 @@ rule_files:
   - /etc/prometheus/alerts/*.yml
 
 scrape_configs:
+  - job_name: 'grafana'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['grafana.mcp.local:3000']
+
   - job_name: 'pushgateway'
     honor_labels: true
     static_configs:
@@ -28,9 +33,20 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9507']
 
-  # Docker container metrics — Alloy scrapes cAdvisor and remote_writes through
-  # metrics-proxy (:9552) directly to this Prometheus instance. No scrape job
-  # needed here; metrics arrive via remote_write (--web.enable-remote-write-receiver).
+  # Docker container metrics — Alloy on poc-containers scrapes cAdvisor and
+  # remote_writes to the on-prem prometheus-relay (:9528). AWS Prometheus
+  # federates from the relay over the VPN (same path as :9550 scrapes).
+  # prometheus.mcp.local is NXDOMAIN from on-prem so direct remote_write
+  # from Alloy to AWS is not possible without DNS/ALB changes.
+  - job_name: 'cadvisor'
+    scrape_interval: 60s
+    honor_labels: true
+    metrics_path: /federate
+    params:
+      'match[]':
+        - '{job="integrations/cadvisor"}'
+    static_configs:
+      - targets: ['192.168.164.184:9528']
 
   # Weather exporter — Open-Meteo polled per scrape. Hit rate at 60s is
   # 1,440/day/location, comfortably under the 10k/day free-tier cap.
@@ -67,6 +83,7 @@ scrape_configs:
   # Routed through metrics proxy at :9550 which proxies to each host's :9182.
   - job_name: 'windows'
     scrape_interval: 30s
+    scrape_timeout: 25s
     http_sd_configs:
       - url: http://192.168.164.184:9529/vcenter/windows-targets
         refresh_interval: 60s
@@ -406,7 +423,7 @@ scrape_configs:
       - targets: ['192.168.164.184:9523']
 
   # Certificate monitoring — TLS expiry via blackbox https_cert module.
-  # Targets managed via http://poc-containers:9529/cert
+  # Targets managed via http://poc-containers/exemptions/cert
   - job_name: 'cert_probe'
     metrics_path: /probe
     params:
@@ -436,7 +453,7 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9529']
 
-  # UniFi device exemptions — managed via http://poc-containers:9529/suppress
+  # UniFi device exemptions — managed via http://poc-containers/exemptions/suppress
   - job_name: 'unifi_exempt'
     scrape_interval: 60s
     metrics_path: /unifi/metrics
@@ -451,7 +468,7 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9529']
 
-  # Ad-hoc connectivity checks — managed via http://poc-containers:9529/connectivity
+  # Ad-hoc connectivity checks — managed via http://poc-containers/exemptions/connectivity
   - job_name: 'connectivity_check'
     metrics_path: /probe
     params:
@@ -469,7 +486,7 @@ scrape_configs:
       - target_label: __address__
         replacement: 192.168.164.184:9514
 
-  # Ping targets — managed via http://poc-containers:9529/ping
+  # Ping targets — managed via http://poc-containers/exemptions/ping
   - job_name: 'ping_targets'
     metrics_path: /probe
     params:

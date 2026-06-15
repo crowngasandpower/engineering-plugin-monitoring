@@ -199,6 +199,19 @@ services:
       - powerstore_sd:/sd:ro
     ports:
       - "9529:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=jenkins-poc_traefik_public"
+      - "traefik.http.routers.exemption-api.rule=Host(`poc-containers`) && PathPrefix(`/exemptions`)"
+      - "traefik.http.routers.exemption-api.entrypoints=web"
+      - "traefik.http.middlewares.exemption-api-strip.stripprefix.prefixes=/exemptions"
+      - "traefik.http.routers.exemption-api.middlewares=exemption-api-strip"
+      - "traefik.http.routers.exemption-api-direct.rule=Host(`poc-containers`)"
+      - "traefik.http.routers.exemption-api-direct.entrypoints=web"
+      - "traefik.http.services.exemption-api.loadbalancer.server.port=8000"
+    networks:
+      - default
+      - traefik_public
     depends_on:
       - monitoring-postgres
       - vcenter-sd
@@ -270,6 +283,22 @@ services:
       - powerstore_sd:/sd
     depends_on:
       - pushgateway
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: monitoring-alloy
+    hostname: poc-containers
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/alloy.config"]
+    volumes:
+      - ./alloy/alloy.config:/etc/alloy/alloy.config:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "9527:12345"
     restart: unless-stopped
 
 volumes:
