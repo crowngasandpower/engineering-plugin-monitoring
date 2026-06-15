@@ -1,4 +1,4 @@
-FROM grafana/grafana:latest
+FROM grafana/grafana:13.0.2
 
 # Python is needed by the alert rule provisioner (provision-alerts.py).
 # We use API-based provisioning instead of Grafana's built-in file provisioner
