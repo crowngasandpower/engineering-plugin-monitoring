@@ -334,7 +334,13 @@
         "y": 1
       },
       "id": 344,
-      "links": [],
+      "links": [
+        {
+          "title": "View App Health",
+          "url": "/d/genus-monitoring",
+          "targetBlank": false
+        }
+      ],
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -1502,7 +1508,13 @@
         "y": 13
       },
       "id": 346,
-      "links": [],
+      "links": [
+        {
+          "title": "View MySQL Detail",
+          "url": "/d/infrastructure",
+          "targetBlank": false
+        }
+      ],
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -1584,7 +1596,13 @@
         "y": 13
       },
       "id": 347,
-      "links": [],
+      "links": [
+        {
+          "title": "View MySQL Detail",
+          "url": "/d/infrastructure",
+          "targetBlank": false
+        }
+      ],
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -1667,7 +1685,13 @@
         "y": 13
       },
       "id": 348,
-      "links": [],
+      "links": [
+        {
+          "title": "View Genus Detail",
+          "url": "/d/genus-details",
+          "targetBlank": false
+        }
+      ],
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
