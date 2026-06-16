@@ -1536,7 +1536,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections * 100",
+          "expr": "max(mysql_global_status_threads_connected / mysql_global_variables_max_connections * 100)",
           "legendFormat": "Connections %",
           "range": true,
           "refId": "A"
@@ -1624,7 +1624,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "rate(mysql_global_status_slow_queries[5m]) * 60 or vector(0)",
+          "expr": "sum(rate(mysql_global_status_slow_queries[5m])) * 60 or vector(0)",
           "legendFormat": "Slow Queries/min",
           "range": true,
           "refId": "A"
