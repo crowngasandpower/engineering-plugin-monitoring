@@ -710,7 +710,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count((1 - avg by(host)(rate(node_cpu_seconds_total{mode=\"idle\", job=\"node\"}[10m]))) * 100 > 80) or vector(0)",
+          "expr": "count(\n  (1 - avg by(host)(rate(node_cpu_seconds_total{mode=\"idle\",job=\"node\"}[10m]))) * 100 > 80\n  or\n  (1 - avg by(host)(rate(windows_cpu_time_total{mode=\"idle\",job=\"windows\"}[10m]))) * 100 > 80\n) or vector(0)",
           "legendFormat": "CPU > 80%",
           "range": true,
           "refId": "A"
@@ -793,7 +793,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(node_load15{job=\"node\"} > on(host) group_left() count by(host)(node_cpu_seconds_total{mode=\"idle\", job=\"node\"})) or vector(0)",
+          "expr": "count(\n  node_load15{job=\"node\"} > on(host) group_left() count by(host)(node_cpu_seconds_total{mode=\"idle\",job=\"node\"})\n  or\n  windows_system_processor_queue_length{job=\"windows\"} > on(host) group_left() count by(host)(windows_cpu_time_total{mode=\"idle\",job=\"windows\"})\n) or vector(0)",
           "legendFormat": "Hosts Overloaded",
           "range": true,
           "refId": "A"
@@ -876,13 +876,13 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(avg by(host)(rate(node_cpu_seconds_total{mode=\"iowait\", job=\"node\"}[15m])) / avg by(host)(rate(node_cpu_seconds_total{job=\"node\"}[15m])) * 100 > 20) or vector(0)",
-          "legendFormat": "High I/O Wait",
+          "expr": "count(\n  avg by(host)(rate(node_cpu_seconds_total{mode=\"iowait\",job=\"node\"}[15m])) / avg by(host)(rate(node_cpu_seconds_total{job=\"node\"}[15m])) * 100 > 20\n  or\n  max by(host)(windows_logical_disk_current_disk_queue_length{job=\"windows\",volume!~\"HarddiskVolume.*|_Total\"}) > 2\n) or vector(0)",
+          "legendFormat": "High I/O",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "High I/O Wait (>20%)",
+      "title": "High I/O (wait >20% / queue >2)",
       "type": "stat"
     },
     {
@@ -959,7 +959,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(avg_over_time(((1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"})) * 100)[10m:1m]) > 90) or vector(0)",
+          "expr": "count(\n  avg_over_time(((1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"})) * 100)[10m:1m]) > 90\n  or\n  avg_over_time(((1 - (windows_memory_available_bytes{job=\"windows\"} / windows_os_visible_memory_bytes{job=\"windows\"})) * 100)[10m:1m]) > 90\n) or vector(0)",
           "legendFormat": "Memory > 90%",
           "range": true,
           "refId": "A"
@@ -969,12 +969,89 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "id": 343,
+      "links": [],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(\n  (1 - (node_memory_SwapFree_bytes{job=\"node\"} / node_memory_SwapTotal_bytes{job=\"node\"})) * 100 > 20\n  or\n  (1 - (windows_os_paging_free_bytes{job=\"windows\"} / windows_os_paging_limit_bytes{job=\"windows\"})) * 100 > 20\n) or vector(0)",
+          "legendFormat": "Swap In Use",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Swap In Use (>20%)",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 8
+        "y": 11
       },
       "id": 202,
       "panels": [],
@@ -1024,7 +1101,7 @@
         "h": 3,
         "w": 12,
         "x": 0,
-        "y": 9
+        "y": 12
       },
       "id": 150,
       "links": [
@@ -1101,7 +1178,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 9
+        "y": 12
       },
       "id": 151,
       "links": [
@@ -1178,7 +1255,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 9
+        "y": 12
       },
       "id": 300,
       "links": [
@@ -1255,7 +1332,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 9
+        "y": 12
       },
       "id": 301,
       "links": [
@@ -1301,7 +1378,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 15
       },
       "id": 203,
       "panels": [],
@@ -1351,7 +1428,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 13
+        "y": 16
       },
       "id": 152,
       "links": [
@@ -1428,7 +1505,7 @@
         "h": 3,
         "w": 8,
         "x": 4,
-        "y": 13
+        "y": 16
       },
       "id": 153,
       "links": [
@@ -1511,7 +1588,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 13
+        "y": 16
       },
       "id": 139,
       "links": [
@@ -1583,7 +1660,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 13
+        "y": 16
       },
       "id": 156,
       "links": [
@@ -1655,7 +1732,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 13
+        "y": 16
       },
       "id": 311,
       "links": [
@@ -1701,7 +1778,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 23
       },
       "id": 204,
       "panels": [],
@@ -1783,7 +1860,7 @@
         "h": 5,
         "w": 16,
         "x": 0,
-        "y": 21
+        "y": 24
       },
       "id": 141,
       "links": [
@@ -1840,7 +1917,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 19
       },
       "id": 205,
       "panels": [],
@@ -1890,7 +1967,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 17
+        "y": 20
       },
       "id": 300,
       "links": [
@@ -1973,7 +2050,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 17
+        "y": 20
       },
       "id": 301,
       "links": [
@@ -2049,7 +2126,7 @@
         "h": 3,
         "w": 4,
         "x": 8,
-        "y": 17
+        "y": 20
       },
       "id": 302,
       "links": [
@@ -2132,7 +2209,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 17
+        "y": 20
       },
       "id": 303,
       "links": [
@@ -2215,7 +2292,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 17
+        "y": 20
       },
       "id": 304,
       "links": [
@@ -2261,7 +2338,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 29
       },
       "id": 340,
       "panels": [],
@@ -2309,7 +2386,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 27
+        "y": 30
       },
       "id": 341,
       "options": {
@@ -2363,7 +2440,7 @@
         "h": 4,
         "w": 20,
         "x": 4,
-        "y": 27
+        "y": 30
       },
       "id": 342,
       "options": {
@@ -2428,7 +2505,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 34
       },
       "id": 160,
       "panels": [
@@ -2499,7 +2576,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 17
+        "y": 20
       },
       "id": 310,
       "links": [
