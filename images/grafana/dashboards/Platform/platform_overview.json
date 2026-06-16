@@ -2715,7 +2715,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "(count(site_ping_loss_percent > 0) or vector(0)) / count(site_ping_loss_percent) * 100",
+          "expr": "max(site_ping_loss_percent) or vector(0)",
           "legendFormat": "Packet Loss",
           "range": true,
           "refId": "B"
@@ -2726,7 +2726,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(max_over_time(site_ping_rtt_ms[5m]))",
+          "expr": "max(site_ping_rtt_ms) or vector(0)",
           "legendFormat": "Peak Latency",
           "range": true,
           "refId": "C"
