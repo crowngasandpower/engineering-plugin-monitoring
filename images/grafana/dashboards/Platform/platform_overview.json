@@ -182,7 +182,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "count"
+            "last"
           ],
           "fields": "",
           "values": false
@@ -218,7 +218,11 @@
       "title": "Warning Alerts",
       "transformations": [
         {
-          "id": "seriesToRows",
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "countRows",
           "options": {}
         }
       ],
@@ -284,7 +288,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "count"
+            "last"
           ],
           "fields": "",
           "values": false
@@ -320,7 +324,11 @@
       "title": "Critical / High Alerts",
       "transformations": [
         {
-          "id": "seriesToRows",
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "countRows",
           "options": {}
         }
       ],
@@ -1221,7 +1229,7 @@
       "links": [
         {
           "title": "View swap detail",
-          "url": "/d/infra-detail",
+          "url": "/d/infra-detail?viewPanel=30",
           "targetBlank": false
         }
       ],
