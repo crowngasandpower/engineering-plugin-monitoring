@@ -84,7 +84,7 @@
   "timezone": "browser",
   "title": "Infrastructure Detail",
   "uid": "infra-detail",
-  "version": 4,
+  "version": 5,
   "weekStart": "",
   "panels": [
     {
@@ -1282,7 +1282,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 65
+        "y": 73
       },
       "id": 12,
       "title": "Physical Infrastructure",
@@ -1301,7 +1301,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 66
+        "y": 74
       },
       "options": {
         "cellHeight": "sm",
@@ -1459,7 +1459,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 77
+        "y": 85
       },
       "id": 14,
       "title": "Exemption Management",
@@ -1478,7 +1478,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 78
+        "y": 86
       },
       "options": {
         "cellHeight": "sm",
@@ -2558,6 +2558,293 @@
         }
       ],
       "type": "table"
+    },
+    {
+      "id": 30,
+      "type": "table",
+      "title": "Swap > 20% — Active Now",
+      "description": "Hosts currently using more than 20% of their swap space. Linux swap and Windows page file are both included. High swap usage indicates memory pressure — the host is running low on RAM.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 65
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Swap %"
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "inspect": false
+          },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "noValue": "No hosts currently above 20% swap"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Host"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View VM",
+                    "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 240
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Swap %"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background-solid"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "(\n  (1 - (node_memory_SwapFree_bytes{job=\"node\"} / node_memory_SwapTotal_bytes{job=\"node\"})) * 100 > 20\n) or (\n  (1 - (windows_os_paging_free_bytes{job=\"windows\"} / windows_os_paging_limit_bytes{job=\"windows\"})) * 100 > 20\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "host",
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "host": "Host",
+              "Value": "Swap %"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": [
+              {
+                "desc": true,
+                "displayName": "Swap %"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "table",
+      "title": "Swap > 20% — Triggered Today",
+      "description": "Hosts that exceeded 20% swap usage at any point since midnight. Shows the peak value reached. Empty means no host had high swap usage today.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 65
+      },
+      "timeFrom": "now/d",
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Peak Swap %"
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "inspect": false
+          },
+          "unit": "percent",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          },
+          "noValue": "No hosts exceeded 20% swap today"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Host"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View VM",
+                    "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 240
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Peak Swap %"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background-solid"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max_over_time(\n  (\n    (1 - (node_memory_SwapFree_bytes{job=\"node\"} / node_memory_SwapTotal_bytes{job=\"node\"})) * 100\n    or\n    (1 - (windows_os_paging_free_bytes{job=\"windows\"} / windows_os_paging_limit_bytes{job=\"windows\"})) * 100\n  )\n  [$__range:5m]\n) > 20",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "host",
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "host": "Host",
+              "Value": "Peak Swap %"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": [
+              {
+                "desc": true,
+                "displayName": "Peak Swap %"
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

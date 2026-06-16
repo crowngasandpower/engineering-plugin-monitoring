@@ -124,8 +124,110 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "type": "grafana",
+        "uid": "-- Grafana --"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 0,
+        "y": 1
+      },
+      "id": 132,
+      "links": [
+        {
+          "title": "View Alerts",
+          "url": "/alerting/list",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "queryType": "alertInstances",
+          "refId": "A",
+          "stateFilter": {
+            "firing": true,
+            "pending": false,
+            "noData": false,
+            "normal": false,
+            "error": false,
+            "inactive": false
+          },
+          "matchers": [
+            {
+              "name": "severity",
+              "value": "warning",
+              "isRegex": false,
+              "isEqual": true
+            }
+          ]
+        }
+      ],
+      "title": "Warning Alerts",
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana",
+        "uid": "-- Grafana --"
       },
       "fieldConfig": {
         "defaults": {
@@ -164,10 +266,10 @@
       "gridPos": {
         "h": 3,
         "w": 3,
-        "x": 0,
+        "x": 3,
         "y": 1
       },
-      "id": 132,
+      "id": 500,
       "links": [
         {
           "title": "View Alerts",
@@ -182,7 +284,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "count"
           ],
           "fields": "",
           "values": false
@@ -192,17 +294,36 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "type": "grafana",
+            "uid": "-- Grafana --"
           },
-          "editorMode": "code",
-          "expr": "sum(grafana_alerting_alertmanager_alerts{org=\"1\", state=\"active\"}) or vector(0)",
-          "legendFormat": "Active Alerts",
-          "range": true,
-          "refId": "A"
+          "queryType": "alertInstances",
+          "refId": "A",
+          "stateFilter": {
+            "firing": true,
+            "pending": false,
+            "noData": false,
+            "normal": false,
+            "error": false,
+            "inactive": false
+          },
+          "matchers": [
+            {
+              "name": "severity",
+              "value": "warning",
+              "isRegex": false,
+              "isEqual": false
+            }
+          ]
         }
       ],
-      "title": "Active Alerts",
+      "title": "Critical / High Alerts",
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        }
+      ],
       "type": "stat"
     },
     {
@@ -246,8 +367,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
-        "x": 3,
+        "w": 2,
+        "x": 6,
         "y": 1
       },
       "id": 133,
@@ -329,8 +450,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 6,
-        "x": 6,
+        "w": 4,
+        "x": 8,
         "y": 1
       },
       "id": 344,
@@ -1097,7 +1218,13 @@
         "y": 5
       },
       "id": 343,
-      "links": [],
+      "links": [
+        {
+          "title": "View swap detail",
+          "url": "/d/infra-detail",
+          "targetBlank": false
+        }
+      ],
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
