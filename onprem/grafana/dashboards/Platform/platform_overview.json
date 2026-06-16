@@ -163,7 +163,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
+        "w": 3,
         "x": 0,
         "y": 1
       },
@@ -246,8 +246,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 4,
+        "w": 3,
+        "x": 3,
         "y": 1
       },
       "id": 133,
@@ -300,6 +300,83 @@
           },
           "mappings": [
             {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "All OK"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 344,
+      "links": [],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(probe_success{job=\"blackbox\"} == 0) OR on() vector(0)",
+          "legendFormat": "Apps Down",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Apps Down",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
               "options": {
                 "0": {
                   "color": "green",
@@ -330,8 +407,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 8,
+        "w": 3,
+        "x": 12,
         "y": 1
       },
       "id": 129,
@@ -415,8 +492,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 12,
+        "w": 3,
+        "x": 15,
         "y": 1
       },
       "id": 155,
@@ -498,8 +575,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 16,
+        "w": 3,
+        "x": 18,
         "y": 1
       },
       "id": 154,
@@ -581,8 +658,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 20,
+        "w": 3,
+        "x": 21,
         "y": 1
       },
       "id": 210,
@@ -1380,6 +1457,266 @@
         "x": 0,
         "y": 12
       },
+      "id": 345,
+      "title": "Data Services",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 8,
+        "x": 0,
+        "y": 13
+      },
+      "id": 346,
+      "links": [],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "mysql_global_status_threads_connected / mysql_global_variables_max_connections * 100",
+          "legendFormat": "Connections %",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Connections",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 8,
+        "x": 8,
+        "y": 13
+      },
+      "id": 347,
+      "links": [],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(mysql_global_status_slow_queries[5m]) * 60 or vector(0)",
+          "legendFormat": "Slow Queries/min",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Slow Queries",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "0s"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "s",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 8,
+        "x": 16,
+        "y": 13
+      },
+      "id": 348,
+      "links": [],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "genus_replica_lag_seconds{fuel=\"gas\"}",
+          "legendFormat": "Gas",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "genus_replica_lag_seconds{fuel=\"elec\"}",
+          "legendFormat": "Power",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Genus Replica Lag",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
       "id": 203,
       "panels": [],
       "title": "Storage",
@@ -1428,7 +1765,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 13
+        "y": 17
       },
       "id": 152,
       "links": [
@@ -1505,7 +1842,7 @@
         "h": 3,
         "w": 8,
         "x": 4,
-        "y": 13
+        "y": 17
       },
       "id": 153,
       "links": [
@@ -1588,7 +1925,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 13
+        "y": 17
       },
       "id": 139,
       "links": [
@@ -1685,7 +2022,7 @@
         "h": 3,
         "w": 8,
         "x": 16,
-        "y": 13
+        "y": 17
       },
       "id": 156,
       "links": [
@@ -1742,7 +2079,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 24
       },
       "id": 204,
       "panels": [],
@@ -1824,7 +2161,7 @@
         "h": 5,
         "w": 16,
         "x": 0,
-        "y": 21
+        "y": 25
       },
       "id": 141,
       "links": [
@@ -1881,7 +2218,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 20
       },
       "id": 205,
       "panels": [],
@@ -1931,7 +2268,7 @@
         "h": 3,
         "w": 3,
         "x": 0,
-        "y": 17
+        "y": 21
       },
       "id": 300,
       "links": [
@@ -2014,7 +2351,7 @@
         "h": 3,
         "w": 3,
         "x": 3,
-        "y": 17
+        "y": 21
       },
       "id": 301,
       "links": [
@@ -2090,7 +2427,7 @@
         "h": 3,
         "w": 3,
         "x": 6,
-        "y": 17
+        "y": 21
       },
       "id": 302,
       "links": [
@@ -2173,7 +2510,7 @@
         "h": 3,
         "w": 3,
         "x": 9,
-        "y": 17
+        "y": 21
       },
       "id": 303,
       "links": [
@@ -2256,7 +2593,7 @@
         "h": 3,
         "w": 3,
         "x": 12,
-        "y": 17
+        "y": 21
       },
       "id": 304,
       "links": [
@@ -2302,7 +2639,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 30
       },
       "id": 340,
       "panels": [],
@@ -2350,7 +2687,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 27
+        "y": 31
       },
       "id": 341,
       "options": {
@@ -2404,7 +2741,7 @@
         "h": 4,
         "w": 20,
         "x": 4,
-        "y": 27
+        "y": 31
       },
       "id": 342,
       "options": {
@@ -2469,7 +2806,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 35
       },
       "id": 160,
       "panels": [
@@ -2645,7 +2982,7 @@
         "h": 3,
         "w": 9,
         "x": 15,
-        "y": 17
+        "y": 21
       },
       "id": 310,
       "links": [
