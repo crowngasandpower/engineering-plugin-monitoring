@@ -53,10 +53,15 @@ def _get_unifi_sites() -> list[str]:
                     names.add(m.group(1))
     except Exception:
         pass
-    # Supplement: Site Manager API for any consoles not in the local exporter config
+    # Supplement: Site Manager exporter metrics — authority on all consoles, including offline ones
     try:
-        with urllib.request.urlopen("http://unifi-exporter:3000/hosts", timeout=5) as r:
-            names.update(json.loads(r.read()).get("hosts", []))
+        with urllib.request.urlopen("http://unifi-exporter:3000/metrics", timeout=5) as r:
+            body = r.read().decode()
+        for line in body.splitlines():
+            if line.startswith("unifi_host_up{"):
+                m = re.search(r'host="([^"]+)"', line)
+                if m:
+                    names.add(m.group(1))
     except Exception:
         pass
     return sorted(names)
