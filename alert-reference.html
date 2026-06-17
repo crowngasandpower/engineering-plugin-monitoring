@@ -327,15 +327,15 @@
 
 <!-- ── SUMMARY ── -->
 <div class="summary-bar">
-  <div class="summary-stat"><span class="num">77</span><span class="lbl">Total Rules</span></div>
+  <div class="summary-stat"><span class="num">84</span><span class="lbl">Total Rules</span></div>
   <div class="summary-divider"></div>
-  <div class="summary-stat"><span class="num">76</span><span class="lbl">PagerDuty</span></div>
+  <div class="summary-stat"><span class="num">83</span><span class="lbl">PagerDuty</span></div>
   <div class="summary-divider"></div>
   <div class="summary-stat"><span class="num">1</span><span class="lbl">Webhook</span></div>
   <div class="summary-divider"></div>
   <div class="summary-stat"><span class="num">4</span><span class="lbl">High</span></div>
   <div class="summary-divider"></div>
-  <div class="summary-stat"><span class="num">33</span><span class="lbl">Warning</span></div>
+  <div class="summary-stat"><span class="num">39</span><span class="lbl">Warning</span></div>
   <div class="summary-divider"></div>
   <div class="summary-stat"><span class="num">15</span><span class="lbl">Groups</span></div>
 </div>
@@ -468,7 +468,7 @@
 <div class="section">
   <div class="section-header">
     <h2>ESXi / vCenter</h2>
-    <span class="rule-count">7 rules</span>
+    <span class="rule-count">9 rules</span>
   </div>
   <table>
     <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
@@ -514,6 +514,18 @@
         <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
         <td class="for-col">10m</td>
         <td class="fires-when">VMs waiting for CPU time (CPU contention)</td>
+      </tr>
+      <tr>
+        <td class="alert-name">VM Powered Off Unexpectedly</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">A non-suppressed VM is in a powered-off state — uses the platform suppression list</td>
+      </tr>
+      <tr>
+        <td class="alert-name">VM Backup Overdue</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">0s</td>
+        <td class="fires-when">VM has not been backed up in over 7 days — uses the platform suppression list</td>
       </tr>
     </tbody>
   </table>
@@ -801,7 +813,7 @@
 <div class="section">
   <div class="section-header">
     <h2>Linux — node_exporter</h2>
-    <span class="rule-count">8 rules</span>
+    <span class="rule-count">10 rules</span>
   </div>
   <table>
     <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
@@ -854,6 +866,18 @@
         <td class="for-col">5m</td>
         <td class="fires-when">Clock offset &gt; 0.1 seconds — NTP sync may have failed</td>
       </tr>
+      <tr>
+        <td class="alert-name">Host Exporter Offline</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">Prometheus cannot scrape node_exporter or windows_exporter for a host that was previously up — all metrics for that host are lost</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Active Swapping</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">OS is actively paging to swap (Linux: vmstat swap-in rate &gt; 0; Windows: swap page reads &gt; 0) — sustained memory pressure</td>
+      </tr>
     </tbody>
   </table>
 </div>
@@ -903,7 +927,7 @@
 <div class="section">
   <div class="section-header">
     <h2>Network — UniFi &amp; Dell OS10</h2>
-    <span class="rule-count">11 rules</span>
+    <span class="rule-count">13 rules</span>
   </div>
   <table>
     <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
@@ -974,6 +998,18 @@
         <td class="for-col">5m</td>
         <td class="fires-when">Interface error rate &gt; 10 errors/s</td>
       </tr>
+      <tr>
+        <td class="alert-name">VPN Tunnel Drop</td>
+        <td class="sev-col"><span class="badge badge-critical-pd">CRITICAL</span><span class="pd-pill">PD</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Active VPN tunnel count drops below expected — site-to-site connectivity lost</td>
+      </tr>
+      <tr>
+        <td class="alert-name">WAN High Utilisation</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">10m</td>
+        <td class="fires-when">WAN TX or RX throughput &gt; 80% of link capacity</td>
+      </tr>
     </tbody>
   </table>
 </div>
@@ -984,7 +1020,7 @@
 <div class="section">
   <div class="section-header">
     <h2>Containers — cAdvisor</h2>
-    <span class="rule-count">3 rules</span>
+    <span class="rule-count">4 rules</span>
   </div>
   <table>
     <thead><tr><th>Alert</th><th>Severity</th><th>For</th><th>Fires when</th></tr></thead>
@@ -1006,6 +1042,12 @@
         <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
         <td class="for-col">10m</td>
         <td class="fires-when">&gt; 50% of CPU scheduling periods are throttled</td>
+      </tr>
+      <tr>
+        <td class="alert-name">Container Stopped</td>
+        <td class="sev-col"><span class="badge badge-warning">WARNING</span></td>
+        <td class="for-col">5m</td>
+        <td class="fires-when">Named container absent from cAdvisor for &gt; 5 minutes — may have exited cleanly (distinct from crash looping)</td>
       </tr>
     </tbody>
   </table>

@@ -758,6 +758,96 @@ groups:
                       - 5
               refId: threshold
 
+      - uid: vcenter-vm-powered-off
+        title: VM Powered Off Unexpectedly
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $values.count.Value | printf \"%.0f\" }} VM(s) powered off — use platform suppression or Alertmanager silence to acknowledge known intentional shutdowns"
+          panelUrl: "/d/vms?orgId=1&viewPanel=129"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count(vcenter_vm_powered_off) or vector(0)'
+              refId: A
+          - refId: count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: vcenter-vm-backup-overdue
+        title: VM Backup Overdue
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $values.count.Value | printf \"%.0f\" }} VM(s) have not been backed up in over 7 days — check the VM Backup Status dashboard"
+          panelUrl: "/d/vm-backup-status?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count(time() - vcenter_vm_last_backup_timestamp >= 604800) or vector(0)'
+              refId: A
+          - refId: count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
   - orgId: 1
     name: iDRAC
     folder: Hardware
@@ -2514,7 +2604,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} * 100'
+              expr: '(node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} * 100) unless on(instance) node_memory_exempt'
               refId: A
           - refId: avail_pct
             relativeTimeRange:
@@ -2537,6 +2627,51 @@ groups:
               conditions:
                 - evaluator:
                     type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: linux-swap-in-warning
+        title: Linux Active Swapping
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} is actively reading from swap at {{ $values.swapin_rate.Value | printf \"%.1f\" }} pages/s — possible memory pressure"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=30"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(node_vmstat_pswpin{job="node"}[5m])'
+              refId: A
+          - refId: swapin_rate
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: swapin_rate
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: swapin_rate
+              conditions:
+                - evaluator:
+                    type: gt
                     params:
                       - 10
               refId: threshold
@@ -2673,6 +2808,52 @@ groups:
                     type: gt
                     params:
                       - 0.1
+              refId: threshold
+
+      # Only fires for hosts seen in the last 7d — avoids noise from decommissioned scrape targets
+      - uid: host-exporter-offline
+        title: Host Exporter Offline
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} ({{ $labels.job }}) exporter is not responding — all host metrics lost for this target"
+          panelUrl: "/d/vms?orgId=1&viewPanel=133"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'up{job=~"node|windows"} == 0 and on(instance) max_over_time(up{job=~"node|windows"}[7d]) == 1'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
               refId: threshold
 
   - orgId: 1
@@ -2834,7 +3015,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'windows_memory_available_bytes{job="windows"} / windows_cs_physical_memory_bytes{job="windows"} * 100'
+              expr: '(windows_memory_available_bytes{job="windows"} / windows_cs_physical_memory_bytes{job="windows"} * 100) unless on(instance) node_memory_exempt'
               refId: A
           - refId: avail_pct
             relativeTimeRange:
@@ -2857,6 +3038,51 @@ groups:
               conditions:
                 - evaluator:
                     type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: windows-swap-in-warning
+        title: Windows Active Swapping
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} is actively reading from page file at {{ $values.swapin_rate.Value | printf \"%.1f\" }} reads/s — possible memory pressure"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=30"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m])'
+              refId: A
+          - refId: swapin_rate
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: swapin_rate
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: swapin_rate
+              conditions:
+                - evaluator:
+                    type: gt
                     params:
                       - 10
               refId: threshold
@@ -3322,6 +3548,103 @@ groups:
                       - 10
               refId: threshold
 
+      # Metric name requires verification against Crown's UniFi exporter instance.
+      # Threshold (<1) fires when ALL tunnels are gone — set to expected tunnel count if known.
+      - uid: network-vpn-tunnel-drop
+        title: VPN Tunnel Drop
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "Active VPN tunnels dropped to {{ $values.tunnel_count.Value | printf \"%.0f\" }} — site-to-site connectivity may be lost"
+          panelUrl: "/d/crown-unifi-network?orgId=1&viewPanel=10"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_vpn_tunnels_active{job="unifi_local"}'
+              refId: A
+          - refId: tunnel_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: tunnel_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: tunnel_count
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      # set to expected active tunnel count (e.g. 2 for two site-to-site tunnels)
+                      - 1
+              refId: threshold
+
+      # Metric names and threshold require verification against Crown's UniFi exporter.
+      # Threshold 100000000 = 100 MB/s = 80% of 1 Gbps symmetric; adjust for actual link speed.
+      # Fires per-direction: Grafana evaluates RX and TX series independently.
+      - uid: network-wan-utilisation
+        title: WAN High Utilisation
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "WAN {{ $labels.direction }} throughput {{ $values.bytes_per_sec.Value | printf \"%.0f\" }} bytes/s — above 80% of link capacity"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'label_replace(rate(unifi_wan_rx_bytes_total{job="unifi_local"}[5m]), "direction", "rx", "", "") or label_replace(rate(unifi_wan_tx_bytes_total{job="unifi_local"}[5m]), "direction", "tx", "", "")'
+              refId: A
+          - refId: bytes_per_sec
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: bytes_per_sec
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: bytes_per_sec
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 100000000
+              refId: threshold
+
   - orgId: 1
     name: Containers
     folder: Platform
@@ -3460,6 +3783,51 @@ groups:
                     type: gt
                     params:
                       - 50
+              refId: threshold
+
+      - uid: container-stopped
+        title: Container Stopped
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} has not been seen by cAdvisor for {{ $values.absent_s.Value | printf \"%.0f\" }}s — may have exited"
+          panelUrl: "/d/docker-containers?orgId=1&viewPanel=154"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'time() - container_last_seen{job="integrations/cadvisor",name!=""} > 300'
+              refId: A
+          - refId: absent_s
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: absent_s
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: absent_s
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
               refId: threshold
 
   - orgId: 1
