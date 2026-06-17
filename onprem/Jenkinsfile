@@ -1,15 +1,33 @@
-// Auto-redeploy the on-prem monitoring collector stack (onprem/docker-compose.yml)
-// on poc-containers when `master` changes. Mirrors the dmsb/dmf pattern: pollSCM ->
-// SSH to the host -> git reset to origin/master -> `docker compose up -d --build`.
+// Auto-redeploy the on-prem monitoring footprint on poc-containers when
+// `master` changes, and trigger the AWS-side rebuild of the Grafana/Loki/
+// Prometheus images. Automates the existing manual `git pull + docker compose
+// up` of the live stacks — no change to how/where anything runs.
 //
-// The compose is pinned to project name `monitoring` (-p) so it updates the existing
-// monitoring-* stack in place regardless of the checkout directory name.
+// On-prem (via SSH to the host — NOT the mounted docker socket — so compose
+// bind-mounts resolve against the real host filesystem):
+//   project `monitoring`            <- onprem/docker-compose.yml              (exporters + genus-monitor + postgres/postgrest + pushgateway)
+//   project `monitoring-collectors` <- onprem/collectors-compose.yml          (metrics-proxy + alloy: the AWS bridge/relays)
+//   project `file-gateway`          <- onprem/file-gateway/docker-compose.yml (S3 gateway over the NFS mounts)
 //
-// Prereqs (Jenkins/host config, not in this repo):
-//   - A Jenkins SSH credential `poc-containers-ssh` whose user can run docker on
-//     poc-containers and read/write DEPLOY_PATH.
-//   - DEPLOY_PATH: a checkout of THIS repo on poc-containers (replacing the stale
-//     /home/docker/monitoring checkout that pointed at the archived monitoring repo).
+// AWS: starts the `crown-eng-mcp-monitoring-build` CodeBuild project (builds
+// images/{grafana,loki,prometheus} -> ECR -> force-new-deployment on ECS). It
+// has no GitHub webhook, so this job is its trigger. Run via the aws-cli docker
+// image (the Jenkins container has the docker socket but no aws binary), using a
+// tightly-scoped key (codebuild:StartBuild on this one project).
+//
+// Why plain `docker compose up -d` (no --build): the `monitoring` project
+// includes powerstore-exporter, whose Dockerfile COPYs a vendored
+// `powerstore-monitor/` dir that is NOT in a clean checkout (pre-existing
+// defect — `--build` fails there). Plain `up -d` reuses existing images and
+// applies compose / config / new-service changes; it does NOT rebuild changed
+// custom-exporter source. Until the powerstore build context is fixed, a
+// custom-exporter CODE change still needs a manual `docker compose build <svc>`.
+//
+// Prereqs (Jenkins/host, set up outside this repo):
+//   - SSH credential `poc-containers-ssh` (root on poc-containers; runs docker).
+//   - AWS credential `monitoring-codebuild-aws` (key scoped to StartBuild on the
+//     CodeBuild project).
+//   - DEPLOY_PATH is the live checkout of this repo (already present, running).
 pipeline {
     agent any
 
@@ -24,14 +42,19 @@ pipeline {
     }
 
     environment {
-        POC_SERVER = 'poc-containers'
+        // Builds run inside the Jenkins container on poc-containers, which can't
+        // resolve the `poc-containers` hostname — use the host LAN IP and the
+        // `root` user the deploy key (`poc-containers-ssh`) is authorized for.
+        POC_SERVER = 'root@192.168.164.184'
         POC_SSH_CREDENTIAL_ID = 'poc-containers-ssh'
         DEPLOY_PATH = '/home/docker/engineering-plugin-monitoring'
-        COMPOSE_PROJECT_NAME = 'monitoring'
+        AWS_CRED = 'monitoring-codebuild-aws'
+        CODEBUILD_PROJECT = 'crown-eng-mcp-monitoring-build'
+        AWS_REGION = 'eu-west-2'
     }
 
     stages {
-        stage('Deploy master') {
+        stage('Redeploy on-prem collectors') {
             when { branch 'master' }
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
@@ -43,8 +66,31 @@ pipeline {
                                 git fetch origin master
                                 git reset --hard origin/master
                                 cd onprem
-                                docker compose -p ${COMPOSE_PROJECT_NAME} up -d --build
+                                docker compose -p monitoring            -f docker-compose.yml     up -d --remove-orphans
+                                docker compose -p monitoring-collectors -f collectors-compose.yml up -d
+                                cd file-gateway && docker compose -p file-gateway up -d
                             '
+                        """
+                    }
+                }
+            }
+        }
+        stage('Rebuild AWS monitoring (grafana/loki/prometheus)') {
+            when { branch 'master' }
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    withCredentials([usernamePassword(
+                        credentialsId: env.AWS_CRED,
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY',
+                    )]) {
+                        sh """
+                            docker run --rm \
+                                -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
+                                -e AWS_DEFAULT_REGION=${AWS_REGION} \
+                                amazon/aws-cli codebuild start-build \
+                                --project-name ${CODEBUILD_PROJECT} \
+                                --query 'build.id' --output text
                         """
                     }
                 }
