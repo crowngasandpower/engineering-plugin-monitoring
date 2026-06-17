@@ -9,11 +9,6 @@ data/
 docker-compose.override.yml
 local-datasources.yml
 
-# PowerStore exporter — cloned from github.com/dell/powerstore-metrics-exporter
-# config.yml contains credentials, neither file is committed
-powerstore-monitor/
-
-
 # Python
 __pycache__/
 *.pyc

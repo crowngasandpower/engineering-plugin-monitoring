@@ -15,13 +15,11 @@
 // image (the Jenkins container has the docker socket but no aws binary), using a
 // tightly-scoped key (codebuild:StartBuild on this one project).
 //
-// Why plain `docker compose up -d` (no --build): the `monitoring` project
-// includes powerstore-exporter, whose Dockerfile COPYs a vendored
-// `powerstore-monitor/` dir that is NOT in a clean checkout (pre-existing
-// defect — `--build` fails there). Plain `up -d` reuses existing images and
-// applies compose / config / new-service changes; it does NOT rebuild changed
-// custom-exporter source. Until the powerstore build context is fixed, a
-// custom-exporter CODE change still needs a manual `docker compose build <svc>`.
+// `up -d --build` rebuilds the custom exporters so code changes deploy. This
+// is safe now that powerstore-exporter's Dockerfile clones its pinned upstream
+// at build time (it previously needed a manually-cloned powerstore-monitor/
+// dir absent from a clean checkout, which broke --build). Layer caching keeps
+// repeat builds fast; only changed build contexts actually rebuild.
 //
 // Prereqs (Jenkins/host, set up outside this repo):
 //   - SSH credential `poc-containers-ssh` (root on poc-containers; runs docker).
@@ -66,9 +64,9 @@ pipeline {
                                 git fetch origin master
                                 git reset --hard origin/master
                                 cd onprem
-                                docker compose -p monitoring            -f docker-compose.yml     up -d --remove-orphans
+                                docker compose -p monitoring            -f docker-compose.yml     up -d --build --remove-orphans
                                 docker compose -p monitoring-collectors -f collectors-compose.yml up -d
-                                cd file-gateway && docker compose -p file-gateway up -d
+                                cd file-gateway && docker compose -p file-gateway up -d --build
                             '
                         """
                     }
