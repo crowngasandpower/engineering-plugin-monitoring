@@ -2560,10 +2560,23 @@
       "type": "table"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 64
+      },
+      "id": 25,
+      "panels": [],
+      "title": "Swap",
+      "type": "row"
+    },
+    {
       "id": 30,
       "type": "table",
-      "title": "Swap > 20% — Active Now",
-      "description": "Hosts currently using more than 20% of their swap space. Linux swap and Windows page file are both included. High swap usage indicates memory pressure — the host is running low on RAM.",
+      "title": "Active Swap-In — Now",
+      "description": "Hosts currently reading pages back from swap (> 1 page/s). This is the real indicator of memory pressure — not swap utilisation, which can be high from old cold pages.",
       "datasource": {
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
@@ -2600,7 +2613,7 @@
             "align": "left",
             "inspect": false
           },
-          "unit": "percent",
+          "unit": "short",
           "decimals": 1,
           "thresholds": {
             "mode": "absolute",
@@ -2611,11 +2624,11 @@
               },
               {
                 "color": "red",
-                "value": 50
+                "value": 10
               }
             ]
           },
-          "noValue": "No hosts currently above 20% swap"
+          "noValue": "No hosts currently reading from swap"
         },
         "overrides": [
           {
@@ -2643,7 +2656,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Swap %"
+              "options": "Swap-In (pages/s)"
             },
             "properties": [
               {
@@ -2661,7 +2674,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "(\n  (1 - (node_memory_SwapFree_bytes{job=\"node\"} / node_memory_SwapTotal_bytes{job=\"node\"})) * 100 > 20\n) or (\n  (1 - (windows_os_paging_free_bytes{job=\"windows\"} / windows_os_paging_limit_bytes{job=\"windows\"})) * 100 > 20\n)",
+          "expr": "(\n  rate(node_vmstat_pswpin{job=\"node\"}[5m]) > 1\n) or (\n  rate(windows_memory_swap_page_reads_total{job=\"windows\"}[5m]) > 1\n)",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -2685,7 +2698,7 @@
           "options": {
             "renameByName": {
               "host": "Host",
-              "Value": "Swap %"
+              "Value": "Swap-In (pages/s)"
             }
           }
         },
@@ -2695,7 +2708,7 @@
             "fields": [
               {
                 "desc": true,
-                "displayName": "Swap %"
+                "displayName": "Swap-In (pages/s)"
               }
             ]
           }
@@ -2703,10 +2716,10 @@
       ]
     },
     {
-      "id": 31,
-      "type": "table",
-      "title": "Swap > 20% — Triggered Today",
-      "description": "Hosts that exceeded 20% swap usage at any point since midnight. Shows the peak value reached. Empty means no host had high swap usage today.",
+      "id": 32,
+      "type": "timeseries",
+      "title": "Swap-In Rate — History",
+      "description": "Swap-in rate per host over time. Lines only appear while a host is actively reading from swap. Orange dashed line = background noise threshold (5 pages/s). Red dashed line = alert threshold (10 pages/s).",
       "datasource": {
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
@@ -2716,6 +2729,131 @@
         "w": 12,
         "x": 12,
         "y": 65
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": false,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Background noise threshold" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 8] } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.showPoints", "value": "never" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Alert threshold" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 8] } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.showPoints", "value": "never" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_vmstat_pswpin{job=\"node\"}[5m]) > 0",
+          "legendFormat": "{{host}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(windows_memory_swap_page_reads_total{job=\"windows\"}[5m]) > 0",
+          "legendFormat": "{{host}}",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "vector(5)",
+          "legendFormat": "Background noise threshold",
+          "range": true,
+          "refId": "threshold_orange"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "vector(10)",
+          "legendFormat": "Alert threshold",
+          "range": true,
+          "refId": "threshold_red"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "table",
+      "title": "Active Swap-In — Today",
+      "description": "Hosts that had active swap-in at any point since midnight. Shows the peak rate reached. Empty means no host was reading from swap today.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 73
       },
       "timeFrom": "now/d",
       "options": {
@@ -2744,7 +2882,7 @@
             "align": "left",
             "inspect": false
           },
-          "unit": "percent",
+          "unit": "short",
           "decimals": 1,
           "thresholds": {
             "mode": "absolute",
@@ -2755,11 +2893,11 @@
               },
               {
                 "color": "red",
-                "value": 50
+                "value": 10
               }
             ]
           },
-          "noValue": "No hosts exceeded 20% swap today"
+          "noValue": "No hosts had active swap-in today"
         },
         "overrides": [
           {
@@ -2787,7 +2925,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Peak Swap %"
+              "options": "Peak Swap-In (pages/s)"
             },
             "properties": [
               {
@@ -2805,7 +2943,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max_over_time(\n  (\n    (1 - (node_memory_SwapFree_bytes{job=\"node\"} / node_memory_SwapTotal_bytes{job=\"node\"})) * 100\n    or\n    (1 - (windows_os_paging_free_bytes{job=\"windows\"} / windows_os_paging_limit_bytes{job=\"windows\"})) * 100\n  )\n  [$__range:5m]\n) > 20",
+          "expr": "max_over_time(\n  (\n    rate(node_vmstat_pswpin{job=\"node\"}[5m])\n    or\n    rate(windows_memory_swap_page_reads_total{job=\"windows\"}[5m])\n  )\n  [$__range:5m]\n) > 1",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -2829,7 +2967,7 @@
           "options": {
             "renameByName": {
               "host": "Host",
-              "Value": "Peak Swap %"
+              "Value": "Peak Swap-In (pages/s)"
             }
           }
         },
@@ -2839,7 +2977,7 @@
             "fields": [
               {
                 "desc": true,
-                "displayName": "Peak Swap %"
+                "displayName": "Peak Swap-In (pages/s)"
               }
             ]
           }

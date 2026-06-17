@@ -1532,7 +1532,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 14
       },
@@ -1903,8 +1903,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
+        "w": 8,
+        "x": 8,
         "y": 14
       },
       "id": 16,
@@ -2049,6 +2049,90 @@
         }
       ],
       "title": "Memory - OS Breakdown vs vCenter Active",
+      "type": "timeseries"
+    },
+    {
+      "id": 41,
+      "interval": "20s",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": false,
+            "showPoints": "never",
+            "thresholdsStyle": { "mode": "line" }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "rate(node_vmstat_pswpin{job=\"node\", host=~\"$vm\"}[5m])",
+          "legendFormat": "Swap-In (pages/s)",
+          "range": true,
+          "refId": "linux_swapin"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "rate(windows_memory_swap_page_reads_total{job=\"windows\", host=~\"$vm\"}[5m])",
+          "legendFormat": "Page File Reads/s",
+          "range": true,
+          "refId": "win_swapin"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "vector(5)",
+          "legendFormat": "Background noise threshold",
+          "range": true,
+          "refId": "threshold_orange"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "vector(10)",
+          "legendFormat": "Alert threshold",
+          "range": true,
+          "refId": "threshold_red"
+        }
+      ],
+      "title": "Swap-In Rate",
       "type": "timeseries"
     },
     {
@@ -3175,6 +3259,110 @@
         }
       ],
       "title": "OS Network Throughput",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "id": 104,
+      "panels": [],
+      "title": "Swap",
+      "type": "row"
+    },
+    {
+      "id": 40,
+      "interval": "20s",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": false,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_vmstat_pswpin{job=\"node\", host=~\"$vm\"}[5m])",
+          "legendFormat": "Swap-In (pages/s)",
+          "range": true,
+          "refId": "linux_swapin"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(windows_memory_swap_page_reads_total{job=\"windows\", host=~\"$vm\"}[5m])",
+          "legendFormat": "Page File Reads/s",
+          "range": true,
+          "refId": "win_swapin"
+        }
+      ],
+      "title": "Swap-In Rate",
       "type": "timeseries"
     }
   ],
