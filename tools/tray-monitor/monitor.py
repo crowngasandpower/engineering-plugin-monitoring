@@ -396,13 +396,21 @@ def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
     if not api_key:
         return None
     try:
+        params: dict = {
+            "statuses[]": ["triggered", "acknowledged"],
+            "include[]":  ["body", "alerts"],
+            "limit":      100,
+        }
+        service_id = profile.get("pd_service_id", "").strip()
+        if service_id:
+            params["service_ids[]"] = [service_id]
         r = requests.get(
             "https://api.pagerduty.com/incidents",
             headers={
                 "Authorization": f"Token token={api_key}",
                 "Accept": "application/vnd.pagerduty+json;version=2",
             },
-            params={"statuses[]": ["triggered", "acknowledged"], "include[]": ["body", "alerts"], "limit": 100},
+            params=params,
             timeout=10,
         )
         if r.status_code != 200:
@@ -654,6 +662,9 @@ class SettingsDialog:
         self._field(pd_frm, "Your email  (used for acknowledge / note API calls)")
         pd_email_var = tk.StringVar(value=profiles[edit_idx[0]].get("pd_user_email", ""))
         self._entry(pd_frm, pd_email_var, **pad)
+        self._field(pd_frm, "Service ID  (optional — leave blank to show all services)")
+        pd_service_id_var = tk.StringVar(value=profiles[edit_idx[0]].get("pd_service_id", ""))
+        self._entry(pd_frm, pd_service_id_var, **pad)
         tk.Frame(pd_frm, bg=self.SEP, height=1).pack(fill="x", pady=(10, 0))
         tk.Label(pd_frm, text="Optional — for Silence in Grafana action",
                  bg=self.BG, fg=self.FG_DIM, font=("Segoe UI", 8), anchor="w").pack(
@@ -695,6 +706,7 @@ class SettingsDialog:
             token_var.set(p.get("api_token", ""))
             pd_key_var.set(p.get("pd_api_key", ""))
             pd_email_var.set(p.get("pd_user_email", ""))
+            pd_service_id_var.set(p.get("pd_service_id", ""))
             pd_gurl_var.set(p.get("grafana_url", "") if p.get("source_type") == "pagerduty" else "")
             pd_gtoken_var.set(p.get("api_token", "") if p.get("source_type") == "pagerduty" else "")
             _toggle_source()
@@ -755,6 +767,7 @@ class SettingsDialog:
                     "source_type":   "pagerduty",
                     "pd_api_key":    pd_key_var.get().strip(),
                     "pd_user_email": pd_email_var.get().strip(),
+                    "pd_service_id": pd_service_id_var.get().strip(),
                     "grafana_url":   pd_gurl_var.get().rstrip("/"),
                     "api_token":     pd_gtoken_var.get().strip(),
                     "auth_type":     "token",
