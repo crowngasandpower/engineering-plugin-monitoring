@@ -1,4 +1,4 @@
-{
+﻿{
   "annotations": {
     "list": [
       {
@@ -95,6 +95,23 @@
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "PCC52D03280B7034C"
+        },
+        "definition": "SELECT COALESCE(string_agg(identifier, '|'), '^$') FROM platform_suppressions WHERE category = 'high_memory_host'",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "suppressed_high_memory",
+        "options": [],
+        "query": "SELECT COALESCE(string_agg(identifier, '|'), '^$') FROM platform_suppressions WHERE category = 'high_memory_host'",
+        "refresh": 2,
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
@@ -106,7 +123,7 @@
   "timezone": "browser",
   "title": "Platform Overview",
   "uid": "vms",
-  "version": 14,
+  "version": 50,
   "weekStart": "",
   "panels": [
     {
@@ -124,8 +141,8 @@
     },
     {
       "datasource": {
-        "type": "grafana",
-        "uid": "-- Grafana --"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -136,9 +153,14 @@
             {
               "options": {
                 "0": {
-                  "color": "green",
+                  "color": "red",
                   "index": 0,
-                  "text": "None"
+                  "text": "Down"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "OK"
                 }
               },
               "type": "value"
@@ -148,16 +170,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               },
               {
-                "color": "orange",
+                "color": "green",
                 "value": 1
               }
             ]
           },
-          "noValue": "0"
+          "noValue": "?"
         },
         "overrides": []
       },
@@ -165,16 +187,9 @@
         "h": 3,
         "w": 3,
         "x": 0,
-        "y": 1
+        "y": 13
       },
-      "id": 132,
-      "links": [
-        {
-          "title": "View Alerts",
-          "url": "/alerting/list",
-          "targetBlank": false
-        }
-      ],
+      "id": 501,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -182,7 +197,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "last"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -192,46 +207,22 @@
       "targets": [
         {
           "datasource": {
-            "type": "grafana",
-            "uid": "-- Grafana --"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "queryType": "alertInstances",
-          "refId": "A",
-          "stateFilter": {
-            "firing": true,
-            "pending": false,
-            "noData": false,
-            "normal": false,
-            "error": false,
-            "inactive": false
-          },
-          "matchers": [
-            {
-              "name": "severity",
-              "value": "warning",
-              "isRegex": false,
-              "isEqual": true
-            }
-          ]
+          "expr": "min(genus_up)",
+          "instant": true,
+          "refId": "A"
         }
       ],
-      "title": "Warning Alerts",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "countRows",
-          "options": {}
-        }
-      ],
+      "title": "Genus DB",
+      "transformations": [],
       "type": "stat"
     },
     {
       "datasource": {
-        "type": "grafana",
-        "uid": "-- Grafana --"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -244,7 +235,7 @@
                 "0": {
                   "color": "green",
                   "index": 0,
-                  "text": "None"
+                  "text": "OK"
                 }
               },
               "type": "value"
@@ -270,17 +261,10 @@
       "gridPos": {
         "h": 3,
         "w": 3,
-        "x": 3,
+        "x": 0,
         "y": 1
       },
-      "id": 500,
-      "links": [
-        {
-          "title": "View Alerts",
-          "url": "/alerting/list",
-          "targetBlank": false
-        }
-      ],
+      "id": 502,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -288,7 +272,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "last"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -298,40 +282,16 @@
       "targets": [
         {
           "datasource": {
-            "type": "grafana",
-            "uid": "-- Grafana --"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "queryType": "alertInstances",
-          "refId": "A",
-          "stateFilter": {
-            "firing": true,
-            "pending": false,
-            "noData": false,
-            "normal": false,
-            "error": false,
-            "inactive": false
-          },
-          "matchers": [
-            {
-              "name": "severity",
-              "value": "warning",
-              "isRegex": false,
-              "isEqual": false
-            }
-          ]
+          "expr": "count(supervisor_worker_up{job=\"supervisor\"} == 0) OR on() vector(0)",
+          "instant": true,
+          "refId": "A"
         }
       ],
-      "title": "Critical / High Alerts",
-      "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "countRows",
-          "options": {}
-        }
-      ],
+      "title": "Fatal Workers",
+      "transformations": [],
       "type": "stat"
     },
     {
@@ -375,8 +335,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 2,
-        "x": 6,
+        "w": 5,
+        "x": 3,
         "y": 1
       },
       "id": 133,
@@ -1055,7 +1015,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 5,
+        "w": 3,
         "x": 10,
         "y": 5
       },
@@ -1138,8 +1098,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 5,
-        "x": 15,
+        "w": 3,
+        "x": 13,
         "y": 5
       },
       "id": 158,
@@ -1171,7 +1131,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(\n  avg_over_time(((1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"})) * 100)[10m:1m]) > 90\n  or\n  avg_over_time(((1 - (windows_memory_available_bytes{job=\"windows\"} / windows_os_visible_memory_bytes{job=\"windows\"})) * 100)[10m:1m]) > 90\n) or vector(0)",
+          "expr": "count(\n  avg_over_time(((1 - (node_memory_MemAvailable_bytes{job=\"node\",instance!~\"$suppressed_high_memory\"} / node_memory_MemTotal_bytes{job=\"node\",instance!~\"$suppressed_high_memory\"})) * 100)[10m:1m]) > 90\n  or\n  avg_over_time(((1 - (windows_memory_available_bytes{job=\"windows\",instance!~\"$suppressed_high_memory\"} / windows_os_visible_memory_bytes{job=\"windows\",instance!~\"$suppressed_high_memory\"})) * 100)[10m:1m]) > 90\n) or vector(0)",
           "legendFormat": "Memory > 90%",
           "range": true,
           "refId": "A"
@@ -1212,6 +1172,10 @@
               {
                 "color": "orange",
                 "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
               }
             ]
           },
@@ -1222,14 +1186,14 @@
       "gridPos": {
         "h": 3,
         "w": 4,
-        "x": 20,
+        "x": 16,
         "y": 5
       },
       "id": 343,
       "links": [
         {
           "title": "View swap detail",
-          "url": "/d/infra-detail?viewPanel=30",
+          "url": "/d/swap-detail",
           "targetBlank": false
         }
       ],
@@ -1254,13 +1218,100 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(\n  (1 - (node_memory_SwapFree_bytes{job=\"node\"} / node_memory_SwapTotal_bytes{job=\"node\"})) * 100 > 20\n  or\n  (1 - (windows_os_paging_free_bytes{job=\"windows\"} / windows_os_paging_limit_bytes{job=\"windows\"})) * 100 > 20\n) or vector(0)",
-          "legendFormat": "Swap In Use",
+          "expr": "count(rate(node_vmstat_pswpin{job=\"node\"}[5m]) > 10) or vector(0)",
+          "legendFormat": "Linux hosts swapping",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Swap In Use (>20%)",
+      "title": "Linux Swapping",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 5
+      },
+      "id": 344,
+      "links": [
+        {
+          "title": "View swap detail",
+          "url": "/d/swap-detail",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(rate(windows_memory_swap_page_reads_total{job=\"windows\"}[5m]) > 10) or vector(0)",
+          "legendFormat": "Windows hosts swapping",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Windows Swapping",
       "type": "stat"
     },
     {
@@ -1638,8 +1689,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 8,
-        "x": 0,
+        "w": 4,
+        "x": 3,
         "y": 13
       },
       "id": 346,
@@ -1726,8 +1777,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 8,
-        "x": 8,
+        "w": 3,
+        "x": 7,
         "y": 13
       },
       "id": 347,
@@ -1815,8 +1866,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 8,
-        "x": 16,
+        "w": 4,
+        "x": 17,
         "y": 13
       },
       "id": 348,
@@ -1839,7 +1890,7 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value_and_name"
+        "textMode": "auto"
       },
       "targets": [
         {
@@ -1852,20 +1903,9 @@
           "legendFormat": "Gas",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "genus_replica_lag_seconds{fuel=\"elec\"}",
-          "legendFormat": "Power",
-          "range": true,
-          "refId": "B"
         }
       ],
-      "title": "Genus Replica Lag",
+      "title": "Genus Gas Lag",
       "type": "stat"
     },
     {
@@ -2238,7 +2278,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 21
       },
       "id": 204,
       "panels": [],
@@ -3201,6 +3241,247 @@
         }
       ],
       "title": "Site Pings",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 10,
+        "y": 13
+      },
+      "id": 504,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "count(up{job=\"mysql\"} == 0) OR on() vector(0)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Down",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 14,
+        "y": 13
+      },
+      "id": 505,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(mysql_global_status_innodb_deadlocks[5m])) OR on() vector(0)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Deadlocks (5m)",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "0s"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 13
+      },
+      "id": 503,
+      "links": [
+        {
+          "title": "View Genus Detail",
+          "url": "/d/genus-details",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "genus_replica_lag_seconds{fuel=\"elec\"}",
+          "legendFormat": "Power",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Genus Power Lag",
       "type": "stat"
     }
   ]
