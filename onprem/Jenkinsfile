@@ -1,0 +1,54 @@
+// Auto-redeploy the on-prem monitoring collector stack (onprem/docker-compose.yml)
+// on poc-containers when `master` changes. Mirrors the dmsb/dmf pattern: pollSCM ->
+// SSH to the host -> git reset to origin/master -> `docker compose up -d --build`.
+//
+// The compose is pinned to project name `monitoring` (-p) so it updates the existing
+// monitoring-* stack in place regardless of the checkout directory name.
+//
+// Prereqs (Jenkins/host config, not in this repo):
+//   - A Jenkins SSH credential `poc-containers-ssh` whose user can run docker on
+//     poc-containers and read/write DEPLOY_PATH.
+//   - DEPLOY_PATH: a checkout of THIS repo on poc-containers (replacing the stale
+//     /home/docker/monitoring checkout that pointed at the archived monitoring repo).
+pipeline {
+    agent any
+
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
+    options {
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+    }
+
+    environment {
+        POC_SERVER = 'poc-containers'
+        POC_SSH_CREDENTIAL_ID = 'poc-containers-ssh'
+        DEPLOY_PATH = '/home/docker/engineering-plugin-monitoring'
+        COMPOSE_PROJECT_NAME = 'monitoring'
+    }
+
+    stages {
+        stage('Deploy master') {
+            when { branch 'master' }
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    sshagent(credentials: [env.POC_SSH_CREDENTIAL_ID]) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${POC_SERVER} '
+                                set -e
+                                cd ${DEPLOY_PATH}
+                                git fetch origin master
+                                git reset --hard origin/master
+                                cd onprem
+                                docker compose -p ${COMPOSE_PROJECT_NAME} up -d --build
+                            '
+                        """
+                    }
+                }
+            }
+        }
+    }
+}

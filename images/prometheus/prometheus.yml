@@ -13,7 +13,7 @@ scrape_configs:
 
   # Scrapes Grafana's built-in Prometheus ruler to expose the ALERTS metric
   # with full rule labels (severity, alertname, etc.) so dashboards can split
-  # by severity via PromQL. Password must match GRAFANA_ADMIN_PASSWORD.
+  # by severity via PromQL.
   - job_name: 'grafana-alerts'
     honor_labels: true
     metrics_path: /api/prometheus/grafana/federate
@@ -25,7 +25,8 @@ scrape_configs:
       - targets: ['grafana.mcp.local:3000']
     basic_auth:
       username: admin
-      password: crown2026
+      password: ${GRAFANA_ADMIN_PASSWORD}
+
 
   - job_name: 'pushgateway'
     honor_labels: true
@@ -421,7 +422,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 30s
     static_configs:
-      - targets: ['192.168.164.184:9526']
+      - targets: ['192.168.164.184:9532']
 
   # UniFi local controllers — per-device metrics via direct API
   # (host port 9531 — 9525 is taken by crown-mcp-conversations-api on poc-containers)

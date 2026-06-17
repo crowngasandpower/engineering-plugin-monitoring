@@ -2924,7 +2924,7 @@
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
       },
-      "description": "UniFi consoles currently offline and exempted from alerting. Manage exemptions at http://localhost/exemptions/suppress",
+      "description": "UniFi consoles currently offline and exempted from alerting. Manage exemptions at http://poc-containers/exemptions/suppress",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -3018,7 +3018,7 @@
           },
           "id": 159,
           "options": {
-            "content": "## Suppressing alerts from this dashboard\n\nCertain stat panels on this dashboard (**Powered Off**, **Active Alerts**, **Backups Overdue**) can be configured to ignore specific VMs or alerts that are known/intentional.\n\n**Manage suppressions:** open [http://localhost/exemptions/suppress](http://localhost/exemptions/suppress) -- the page lists all current suppressions and has a form to add or remove them.\n\n| Panel | Category | Identifier |\n|---|---|---|\n| Powered Off | `powered_off` | VM name (e.g. `my-vm-01`) |\n| Backups Overdue | `backup_overdue` | VM name (e.g. `my-vm-01`) |\n| Active Alerts | `active_alert` | Alert name (e.g. `HostHighCPU`) |\n\nChanges take effect within 30 seconds (next dashboard refresh).\n\n---\n\n## UniFi Device Exemptions\n\nDevices can be excluded from the **network-unifi-offline** alert and hidden from the Device Status table in the UniFi Site Detail dashboard when offline. Use the dropdown in the **UniFi Device Exemptions** section at [http://localhost/exemptions/suppress](http://localhost/exemptions/suppress).\n\nChanges take effect within 60 seconds.",
+            "content": "## Suppressing alerts from this dashboard\n\nCertain stat panels on this dashboard (**Powered Off**, **Active Alerts**, **Backups Overdue**) can be configured to ignore specific VMs or alerts that are known/intentional.\n\n**Manage suppressions:** open [http://poc-containers/exemptions/suppress](http://poc-containers/exemptions/suppress) -- the page lists all current suppressions and has a form to add or remove them.\n\n| Panel | Category | Identifier |\n|---|---|---|\n| Powered Off | `powered_off` | VM name (e.g. `my-vm-01`) |\n| Backups Overdue | `backup_overdue` | VM name (e.g. `my-vm-01`) |\n| Active Alerts | `active_alert` | Alert name (e.g. `HostHighCPU`) |\n\nChanges take effect within 30 seconds (next dashboard refresh).\n\n---\n\n## UniFi Device Exemptions\n\nDevices can be excluded from the **network-unifi-offline** alert and hidden from the Device Status table in the UniFi Site Detail dashboard when offline. Use the dropdown in the **UniFi Device Exemptions** section at [http://poc-containers/exemptions/suppress](http://poc-containers/exemptions/suppress).\n\nChanges take effect within 60 seconds.",
             "mode": "markdown"
           },
           "title": "",
