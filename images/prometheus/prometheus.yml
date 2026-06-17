@@ -11,6 +11,22 @@ scrape_configs:
     static_configs:
       - targets: ['grafana.mcp.local:3000']
 
+  # Scrapes Grafana's built-in Prometheus ruler to expose the ALERTS metric
+  # with full rule labels (severity, alertname, etc.) so dashboards can split
+  # by severity via PromQL. Password must match GRAFANA_ADMIN_PASSWORD.
+  - job_name: 'grafana-alerts'
+    honor_labels: true
+    metrics_path: /api/prometheus/grafana/federate
+    params:
+      match[]:
+        - 'ALERTS'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['grafana.mcp.local:3000']
+    basic_auth:
+      username: admin
+      password: crown2026
+
   - job_name: 'pushgateway'
     honor_labels: true
     static_configs:
@@ -457,6 +473,13 @@ scrape_configs:
   - job_name: 'unifi_exempt'
     scrape_interval: 60s
     metrics_path: /unifi/metrics
+    static_configs:
+      - targets: ['192.168.164.184:9529']
+
+  # DB hosts suppressed from memory utilisation alerts — managed via http://poc-containers/exemptions/suppress
+  - job_name: 'node_memory_exempt'
+    scrape_interval: 60s
+    metrics_path: /node-memory-exempt/metrics
     static_configs:
       - targets: ['192.168.164.184:9529']
 

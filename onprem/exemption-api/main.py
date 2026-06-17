@@ -36,6 +36,7 @@ CATEGORY_LABELS = {
     "powered_off": "Powered Off VMs",
     "backup_overdue": "Backups Overdue",
     "active_alert": "Active Alerts",
+    "high_memory_host": "High Memory Hosts (DB)",
 }
 
 def _get_unifi_sites() -> list[str]:
@@ -215,6 +216,27 @@ def remove_exempt(host: str = Query(...)):
         )
     return _page(f"✓ <strong>{html.escape(host)}</strong> removed from exemption list.")
 
+@app.get("/node-memory-exempt/metrics")
+def node_memory_exempt_metrics():
+    """Prometheus text format — one gauge per host suppressed from memory % alerts.
+    Scraped by the node_memory_exempt job so alert rules can filter DB hosts via
+    `unless on(instance) node_memory_exempt`. Identifiers must match the instance
+    label used by node_exporter / windows_exporter (short hostname, no domain)."""
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT identifier FROM platform_suppressions WHERE category = 'high_memory_host' ORDER BY identifier"
+        )
+        rows = cur.fetchall()
+    lines = [
+        "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)",
+        "# TYPE node_memory_exempt gauge",
+    ]
+    for (identifier,) in rows:
+        lines.append(f'node_memory_exempt{{instance="{_escape_label(identifier)}"}} 1')
+    return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
+
 @app.get("/suppress/add")
 def suppress_add(
     category: str = Query(...),
@@ -346,6 +368,7 @@ def suppress_list():
       <option value="powered_off">Powered Off VMs</option>
       <option value="backup_overdue">Backups Overdue</option>
       <option value="active_alert">Active Alerts</option>
+      <option value="high_memory_host">High Memory Hosts (DB)</option>
     </select>
   </label>
   <label>Identifier (VM name or alert name)
@@ -356,6 +379,18 @@ def suppress_list():
   </label>
   <button type="submit">Add</button>
 </form>
+
+<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:4px;padding:0.8rem 1rem;margin-top:1rem;font-size:0.9rem">
+  <strong>High Memory Hosts (DB)</strong> — use this category to suppress false positives from the
+  <em>Memory &gt; 90%</em> alert and dashboard panel for database servers (MySQL, SQL Server, etc.)
+  that legitimately claim all available RAM for their buffer pool.<br><br>
+  The identifier must match the short hostname as it appears in Prometheus (e.g. <code>apps-prod-mysql</code>,
+  no domain suffix).<br><br>
+  ⚠ Suppressing a host here only silences the memory <em>utilisation</em> alert. Genuine memory pressure
+  on these hosts will still be caught by the <strong>Active Swapping</strong> alert, which fires when the
+  host is actively reading pages back from swap. Check the <em>Active Swap-In</em> panels in the
+  Infrastructure Detail dashboard for more detail.
+</div>
 
 <hr>
 <h2>UniFi Device Exemptions</h2>
