@@ -286,21 +286,11 @@ services:
       - pushgateway
     restart: unless-stopped
 
-  alloy:
-    image: grafana/alloy:latest
-    container_name: monitoring-alloy
-    hostname: poc-containers
-    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/alloy.config"]
-    volumes:
-      - ./alloy/alloy.config:/etc/alloy/alloy.config:ro
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    ports:
-      - "9527:12345"
-    restart: unless-stopped
+# NOTE: the `alloy` relay is defined in collectors-compose.yml (project
+# monitoring-collectors), which owns the must-stay-on-prem relays. It was
+# previously duplicated here with the same container_name (monitoring-alloy),
+# which made the two compose files collide on deploy. Keep relays in
+# collectors-compose.yml only; this file owns the exporters + postgres/postgrest.
 
 volumes:
   pushgateway_data: null
