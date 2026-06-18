@@ -49,6 +49,14 @@ CATEGORY_LABELS = {
     "high_memory_host": "High Memory Hosts (DB)",
 }
 
+# Allowlist for identifiers stored in platform_suppressions. These values are
+# interpolated into PromQL regex via string_agg(..., '|') in dashboard template
+# variables, so characters that are PromQL regex metacharacters must not appear.
+# Dots are permitted (IP addresses, FQDNs) and are the only allowed metacharacter —
+# they match any character in regex but in practice within a controlled internal
+# network this is an acceptable tradeoff.
+_SAFE_IDENTIFIER_RE = re.compile(r'^[a-zA-Z0-9._:\-]+$')
+
 def _get_unifi_sites() -> list[str]:
     """Return all console names: parsed from local exporter metrics (includes offline) merged with Site Manager."""
     names: set[str] = set()
@@ -363,6 +371,8 @@ def suppress_add(
 ):
     if category not in CATEGORY_LABELS:
         raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
+    if not _SAFE_IDENTIFIER_RE.match(identifier):
+        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
     with get_conn() as conn:
         conn.cursor().execute(
             """INSERT INTO platform_suppressions(category, identifier, reason)

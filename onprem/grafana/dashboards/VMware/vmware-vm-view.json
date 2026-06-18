@@ -2084,7 +2084,7 @@
             "fillOpacity": 5,
             "spanNulls": false,
             "showPoints": "never",
-            "thresholdsStyle": { "mode": "line" }
+            "thresholdsStyle": { "mode": "dashed" }
           }
         },
         "overrides": []
