@@ -1,3 +1,7 @@
+# ${EXEMPTION_API_HOST} is substituted by entrypoint.sh at container startup from the
+# EXEMPTION_API_HOST environment variable (e.g. 192.168.164.184:9529).
+# GRAFANA_ADMIN_PASSWORD is written to /run/prometheus/grafana-credentials by the same script.
+
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -79,7 +83,7 @@ scrape_configs:
   - job_name: 'node'
     scrape_interval: 15s
     http_sd_configs:
-      - url: http://192.168.164.184:9529/vcenter/linux-targets
+      - url: http://${EXEMPTION_API_HOST}/vcenter/linux-targets
         refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
@@ -102,7 +106,7 @@ scrape_configs:
     scrape_interval: 30s
     scrape_timeout: 25s
     http_sd_configs:
-      - url: http://192.168.164.184:9529/vcenter/windows-targets
+      - url: http://${EXEMPTION_API_HOST}/vcenter/windows-targets
         refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
@@ -448,7 +452,7 @@ scrape_configs:
     scrape_interval: 5m
     scrape_timeout: 30s
     http_sd_configs:
-      - url: http://192.168.164.184:9529/cert/targets
+      - url: http://${EXEMPTION_API_HOST}/cert/targets
         refresh_interval: 1m
     relabel_configs:
       - source_labels: [__address__]
@@ -468,28 +472,28 @@ scrape_configs:
     scrape_timeout: 4m
     metrics_path: /cert/metrics
     static_configs:
-      - targets: ['192.168.164.184:9529']
+      - targets: ['${EXEMPTION_API_HOST}']
 
   # UniFi device exemptions — managed via http://poc-containers/exemptions/suppress
   - job_name: 'unifi_exempt'
     scrape_interval: 60s
     metrics_path: /unifi/metrics
     static_configs:
-      - targets: ['192.168.164.184:9529']
+      - targets: ['${EXEMPTION_API_HOST}']
 
   # DB hosts suppressed from memory utilisation alerts — managed via http://poc-containers/exemptions/suppress
   - job_name: 'node_memory_exempt'
     scrape_interval: 60s
     metrics_path: /node-memory-exempt/metrics
     static_configs:
-      - targets: ['192.168.164.184:9529']
+      - targets: ['${EXEMPTION_API_HOST}']
 
   # VMs suppressed from the powered-off alert — managed via http://poc-containers/exemptions/suppress
   - job_name: 'vcenter_vm_powered_off_exempt'
     scrape_interval: 60s
     metrics_path: /vm-powered-off-exempt/metrics
     static_configs:
-      - targets: ['192.168.164.184:9529']
+      - targets: ['${EXEMPTION_API_HOST}']
 
   # Ping target registry — exposes configured targets as a gauge so the
   # dashboard can show them as DOWN before a site script has pushed any data.
@@ -497,7 +501,7 @@ scrape_configs:
     scrape_interval: 30s
     metrics_path: /ping/metrics
     static_configs:
-      - targets: ['192.168.164.184:9529']
+      - targets: ['${EXEMPTION_API_HOST}']
 
   # Ad-hoc connectivity checks — managed via http://poc-containers/exemptions/connectivity
   - job_name: 'connectivity_check'
@@ -507,7 +511,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 10s
     http_sd_configs:
-      - url: http://192.168.164.184:9529/connectivity/targets
+      - url: http://${EXEMPTION_API_HOST}/connectivity/targets
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]
@@ -525,7 +529,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 10s
     http_sd_configs:
-      - url: http://192.168.164.184:9529/ping/targets
+      - url: http://${EXEMPTION_API_HOST}/ping/targets
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]

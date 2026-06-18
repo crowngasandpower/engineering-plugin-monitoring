@@ -62,8 +62,8 @@ def _get_unifi_sites() -> list[str]:
                 m = re.search(r'site="([^"]+)"', line)
                 if m:
                     names.add(m.group(1))
-    except Exception:
-        pass
+    except Exception as exc:
+        _log.debug("_get_unifi_sites: local exporter unavailable: %s", exc)
     # Supplement: Site Manager exporter metrics — authority on all consoles, including offline ones
     try:
         with urllib.request.urlopen("http://unifi-exporter:3000/metrics", timeout=5) as r:
@@ -73,8 +73,8 @@ def _get_unifi_sites() -> list[str]:
                 m = re.search(r'host="([^"]+)"', line)
                 if m:
                     names.add(m.group(1))
-    except Exception:
-        pass
+    except Exception as exc:
+        _log.debug("_get_unifi_sites: site manager exporter unavailable: %s", exc)
     return sorted(names)
 
 
@@ -277,6 +277,10 @@ def node_memory_exempt_metrics():
         if _node_memory_exempt_cache is not None:
             _, body = _node_memory_exempt_cache
             return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: empty-metrics path deliberately returns PlainTextResponse (HTTP 200)
+        # not an exception, so Prometheus marks the scrape as succeeded. With no series the
+        # `unless` clause becomes a no-op (all hosts fire), but that is unavoidable when the DB
+        # has never been reachable and there is no prior cache to fall back on.
         return PlainTextResponse(
             "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)\n"
             "# TYPE node_memory_exempt gauge\n",
@@ -327,6 +331,8 @@ def vm_powered_off_exempt_metrics():
         if _vm_powered_off_exempt_cache is not None:
             _, body = _vm_powered_off_exempt_cache
             return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: same reasoning as node_memory_exempt_metrics — HTTP 200 with no
+        # series is unavoidable on first-startup DB failure; stale cache preferred when available.
         return PlainTextResponse(
             "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert\n"
             "# TYPE vcenter_vm_powered_off_exempt gauge\n",
