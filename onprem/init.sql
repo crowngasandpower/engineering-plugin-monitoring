@@ -28,3 +28,20 @@ CREATE TABLE IF NOT EXISTS eps_failed_to_price (
     sent_to_price_at TIMESTAMP,
     status           TEXT
 );
+
+-- Read-only user for the Grafana PostgreSQL Monitoring datasource.
+-- The Grafana datasource should never have write access to this DB —
+-- it only runs SELECT queries for dashboard template variables.
+-- For existing deployments: docker exec monitoring-postgres psql -U monitoring -c "
+--   CREATE USER grafana_ro WITH PASSWORD 'grafana_ro';
+--   GRANT CONNECT ON DATABASE monitoring TO grafana_ro;
+--   GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;
+-- "
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grafana_ro') THEN
+    CREATE USER grafana_ro WITH PASSWORD 'grafana_ro';
+  END IF;
+END $$;
+GRANT CONNECT ON DATABASE monitoring TO grafana_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;

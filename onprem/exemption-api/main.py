@@ -523,8 +523,9 @@ def suppress_list():
   <strong>High Memory Hosts (DB)</strong> — use this category to suppress false positives from the
   <em>Memory &gt; 90%</em> alert and dashboard panel for database servers (MySQL, SQL Server, etc.)
   that legitimately claim all available RAM for their buffer pool.<br><br>
-  The identifier must match the short hostname as it appears in Prometheus (e.g. <code>apps-prod-mysql</code>,
-  no domain suffix).<br><br>
+  The identifier must match the Prometheus <code>instance</code> label exactly — include the port suffix
+  (e.g. <code>apps-prod-mysql:9100</code> for Linux hosts, <code>apps-prod-win:9182</code> for Windows).
+  Check Prometheus targets or the Infrastructure Detail dashboard to find the exact label value.<br><br>
   ⚠ Suppressing a host here only silences the memory <em>utilisation</em> alert. Genuine memory pressure
   on these hosts will still be caught by the <strong>Active Swapping</strong> alert, which fires when the
   host is actively reading pages back from swap. Check the <em>Active Swap-In</em> panels in the

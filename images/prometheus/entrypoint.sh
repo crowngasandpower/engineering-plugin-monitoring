@@ -14,7 +14,7 @@ chmod 600 /run/prometheus/grafana-credentials
 # Order matters: \ must be escaped first so the backslashes added for | and &
 # are not themselves re-escaped in subsequent passes.
 # / does not need escaping because | is used as the sed delimiter (s|...|...|g).
-_esc_host=$(printf '%s' "${EXEMPTION_API_HOST}" | sed 's/\\/\\\\/g; s/|/\\|/g; s/&/\\&/g')
+_esc_host=$(printf '%s' "${EXEMPTION_API_HOST}" | tr -d '\n' | sed 's/\\/\\\\/g; s/|/\\|/g; s/&/\\&/g')
 sed "s|\${EXEMPTION_API_HOST}|${_esc_host}|g" \
     /etc/prometheus/prometheus.yml > /run/prometheus/prometheus.yml
 
