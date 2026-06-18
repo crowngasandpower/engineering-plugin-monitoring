@@ -272,6 +272,40 @@ def node_memory_exempt_metrics():
     return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 
+# In-process cache — valid only because the Dockerfile pins --workers 1.
+_vm_powered_off_exempt_cache: tuple[float, str] | None = None
+
+@app.get("/vm-powered-off-exempt/metrics")
+def vm_powered_off_exempt_metrics():
+    """Prometheus text format — one gauge per VM suppressed from the powered-off alert.
+    Scraped by the vcenter_vm_powered_off_exempt job. The vm_name label must match
+    the vm_name label on vcenter_vm_powered_off emitted by vcenter-sd.
+
+    Intentionally unauthenticated; only reachable within the Docker compose network."""
+    global _vm_powered_off_exempt_cache
+    now = time.monotonic()
+    if _vm_powered_off_exempt_cache is not None:
+        cached_at, body = _vm_powered_off_exempt_cache
+        if now - cached_at < _NODE_MEMORY_EXEMPT_TTL:
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT identifier FROM platform_suppressions WHERE category = 'powered_off' ORDER BY identifier"
+        )
+        rows = cur.fetchall()
+    lines = [
+        "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert",
+        "# TYPE vcenter_vm_powered_off_exempt gauge",
+    ]
+    for (identifier,) in rows:
+        lines.append(f'vcenter_vm_powered_off_exempt{{vm_name="{_escape_label(identifier)}"}} 1')
+    body = "\n".join(lines) + "\n"
+    _vm_powered_off_exempt_cache = (now, body)
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+
+
 @app.get("/suppress/add")
 def suppress_add(
     category: str = Query(...),

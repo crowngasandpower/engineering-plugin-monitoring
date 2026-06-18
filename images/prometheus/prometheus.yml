@@ -484,6 +484,13 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.164.184:9529']
 
+  # VMs suppressed from the powered-off alert — managed via http://poc-containers/exemptions/suppress
+  - job_name: 'vcenter_vm_powered_off_exempt'
+    scrape_interval: 60s
+    metrics_path: /vm-powered-off-exempt/metrics
+    static_configs:
+      - targets: ['192.168.164.184:9529']
+
   # Ping target registry — exposes configured targets as a gauge so the
   # dashboard can show them as DOWN before a site script has pushed any data.
   - job_name: 'ping_targets_config'

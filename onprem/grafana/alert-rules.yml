@@ -767,7 +767,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "{{ $values.count.Value | printf \"%.0f\" }} VM(s) powered off — use platform suppression or Alertmanager silence to acknowledge known intentional shutdowns"
+          summary: "{{ $values.count.Value | printf \"%.0f\" }} VM(s) powered off unexpectedly — add to the powered_off suppression category at http://poc-containers/exemptions/suppress to silence known intentional shutdowns"
           panelUrl: "/d/vms?orgId=1&viewPanel=129"
         data:
           - refId: A
@@ -776,7 +776,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'count(vcenter_vm_powered_off) or vector(0)'
+              expr: 'count(vcenter_vm_powered_off unless on(vm_name) vcenter_vm_powered_off_exempt) or vector(0)'
               refId: A
           - refId: count
             relativeTimeRange:
