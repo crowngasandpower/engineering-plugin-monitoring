@@ -30,6 +30,13 @@ scrape_configs:
     basic_auth:
       username: admin
       credentials_file: /run/prometheus/grafana-credentials
+    metric_relabel_configs:
+      # Drop anything that is not the ALERTS metric. honor_labels: true means any
+      # unexpected series from a future Grafana recording rule would land unmodified;
+      # this keeps only what the federation match[] explicitly requests.
+      - source_labels: [__name__]
+        regex: ALERTS
+        action: keep
 
 
   - job_name: 'pushgateway'
