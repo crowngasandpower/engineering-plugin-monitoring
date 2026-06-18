@@ -221,7 +221,11 @@ def node_memory_exempt_metrics():
     """Prometheus text format — one gauge per host suppressed from memory % alerts.
     Scraped by the node_memory_exempt job so alert rules can filter DB hosts via
     `unless on(instance) node_memory_exempt`. Identifiers must match the instance
-    label used by node_exporter / windows_exporter (short hostname, no domain)."""
+    label used by node_exporter / windows_exporter (short hostname, no domain).
+
+    This endpoint is intentionally unauthenticated. It is not routed through the
+    Traefik/nginx proxy and is only reachable from within the Docker compose network
+    (the Prometheus container is the sole intended consumer)."""
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute(

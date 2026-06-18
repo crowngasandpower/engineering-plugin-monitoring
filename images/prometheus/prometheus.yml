@@ -25,7 +25,7 @@ scrape_configs:
       - targets: ['grafana.mcp.local:3000']
     basic_auth:
       username: admin
-      password: ${GRAFANA_ADMIN_PASSWORD}
+      credentials_file: /tmp/grafana-credentials
 
 
   - job_name: 'pushgateway'
