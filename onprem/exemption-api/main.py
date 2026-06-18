@@ -58,7 +58,9 @@ def _get_unifi_sites() -> list[str]:
         with urllib.request.urlopen("http://unifi-local-exporter:3000/metrics", timeout=5) as r:
             body = r.read().decode()
         for line in body.splitlines():
-            if line.startswith("unifi_scrape_success{"):
+            if not line.startswith('#') and line.startswith("unifi_scrape_success{"):
+                # @ai-review-ignore: [^"]+ won't match escaped quotes — site names in practice
+                # are plain strings; a full Prometheus text-format parser is not warranted here.
                 m = re.search(r'site="([^"]+)"', line)
                 if m:
                     names.add(m.group(1))
@@ -69,7 +71,8 @@ def _get_unifi_sites() -> list[str]:
         with urllib.request.urlopen("http://unifi-exporter:3000/metrics", timeout=5) as r:
             body = r.read().decode()
         for line in body.splitlines():
-            if line.startswith("unifi_host_up{"):
+            if not line.startswith('#') and line.startswith("unifi_host_up{"):
+                # @ai-review-ignore: same as above — host names don't contain escaped quotes.
                 m = re.search(r'host="([^"]+)"', line)
                 if m:
                     names.add(m.group(1))

@@ -10,8 +10,11 @@ install -d -m 700 /run/prometheus
 (umask 077 && printf '%s' "${GRAFANA_ADMIN_PASSWORD}" > /run/prometheus/grafana-credentials)
 chmod 600 /run/prometheus/grafana-credentials
 
-# Substitute the EXEMPTION_API_HOST placeholder throughout the config.
-sed "s|\${EXEMPTION_API_HOST}|${EXEMPTION_API_HOST}|g" \
+# Escape characters that sed treats as special in its replacement field.
+# Order matters: \ must be escaped first so the backslashes added for | and &
+# are not themselves re-escaped in subsequent passes.
+_esc_host=$(printf '%s' "${EXEMPTION_API_HOST}" | sed 's/\\/\\\\/g; s/|/\\|/g; s/&/\\&/g')
+sed "s|\${EXEMPTION_API_HOST}|${_esc_host}|g" \
     /etc/prometheus/prometheus.yml > /run/prometheus/prometheus.yml
 
 exec /bin/prometheus --config.file=/run/prometheus/prometheus.yml "$@"
