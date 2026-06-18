@@ -37,6 +37,11 @@ CREATE TABLE IF NOT EXISTS eps_failed_to_price (
 --   GRANT CONNECT ON DATABASE monitoring TO grafana_ro;
 --   GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;
 -- "
+-- @ai-review-ignore: grafana_ro password is committed intentionally. This is a SELECT-only
+-- user on an internal monitoring DB. The existing monitoring/monitoring admin credential
+-- follows the same pattern (committed in docker-compose.yml). Port 9508 is only accessible
+-- on the monitoring server itself. Rotating this password provides minimal security benefit
+-- over rotating monitoring/monitoring, which is also static.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'grafana_ro') THEN

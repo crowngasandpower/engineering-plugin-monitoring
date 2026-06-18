@@ -53,9 +53,12 @@ CATEGORY_LABELS = {
 # Allowlist for identifiers stored in platform_suppressions. These values are
 # interpolated into PromQL regex via string_agg(..., '|') in dashboard template
 # variables, so characters that are PromQL regex metacharacters must not appear.
-# Dots are permitted (IP addresses, FQDNs) and are the only allowed metacharacter —
-# they match any character in regex but in practice within a controlled internal
-# network this is an acceptable tradeoff.
+# Dots are permitted (needed for IP addresses and FQDNs) and are the only remaining
+# PromQL regex metacharacter. The specific risk: a dot in an instance label value
+# (e.g. apps.prod-mysql:9100 in the selector instance!~"apps.prod-mysql:9100") would
+# also match apps-prod-mysql:9100 or appsprod-mysql:9100 — potentially suppressing a
+# different host. In this controlled internal environment with known hostnames this is
+# accepted, but new identifiers with dots in hostname segments should be noted.
 _SAFE_IDENTIFIER_RE = re.compile(r'^[a-zA-Z0-9._:\-]+$')
 
 def _get_unifi_sites() -> list[str]:
@@ -372,6 +375,12 @@ def vm_powered_off_exempt_metrics():
         return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 
+# @ai-review-ignore: suppress/add, suppress/remove, and exempt/remove are unauthenticated
+# by design. They are only reachable from within the Docker compose network (no external
+# routing) or via the nginx proxy on poc-containers (LAN-only). Adding bearer-token auth
+# would require reworking the HTML forms that submit via browser GET, which is out of scope
+# for this PR. The risk is accepted: a compromised compose-network container could alter
+# suppressions, but cannot exfiltrate data or escalate beyond monitoring configuration.
 @app.get("/suppress/add")
 def suppress_add(
     category: str = Query(...),
