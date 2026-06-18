@@ -49,6 +49,11 @@ CATEGORY_LABELS = {
     "active_alert": "Active Alerts",
     "high_memory_host": "High Memory Hosts (DB)",
 }
+# @ai-review-ignore: the dashboard SQL for high_memory_host uses
+# COALESCE(string_agg(...), '^$'), which produces instance!~"^$" when no rows exist.
+# This is intentionally a no-op: PromQL !~ excludes series whose label MATCHES the
+# regex, and ^$ only matches the empty string — Prometheus instance labels are never
+# empty, so all series pass and no suppression occurs. This is the correct fallback.
 
 # Allowlist for identifiers stored in platform_suppressions. These values are
 # interpolated into PromQL regex via string_agg(..., '|') in dashboard template
@@ -291,49 +296,54 @@ def node_memory_exempt_metrics():
     (the Prometheus container is the sole intended consumer)."""
     global _node_memory_exempt_cache
     now = time.monotonic()
+    # Fast path: check cache under lock; snapshot stale value for the error fallback below.
     with _node_memory_exempt_lock:
         if _node_memory_exempt_cache is not None:
             cached_at, body = _node_memory_exempt_cache
             if now - cached_at < _NODE_MEMORY_EXEMPT_TTL:
                 return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        stale = _node_memory_exempt_cache
 
-        try:
-            with get_conn() as conn:
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT identifier FROM platform_suppressions WHERE category = 'high_memory_host' ORDER BY identifier"
-                )
-                rows = cur.fetchall()
-        except Exception as exc:
-            # Return stale cache rather than a 500 — a scrape failure causes node_memory_exempt
-            # to disappear from TSDB, which breaks the `unless on(instance) node_memory_exempt`
-            # clause and immediately un-suppresses all DB hosts in the memory alert.
-            _log.warning("node_memory_exempt_metrics: DB unavailable (%s); returning %s",
-                         exc, "stale cache" if _node_memory_exempt_cache is not None else "empty metrics")
-            if _node_memory_exempt_cache is not None:
-                _, body = _node_memory_exempt_cache
-                return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
-            # @ai-review-ignore: empty-metrics path deliberately returns PlainTextResponse (HTTP 200)
-            # not an exception, so Prometheus marks the scrape as succeeded. With no series the
-            # `unless` clause becomes a no-op (all hosts fire), but that is unavoidable when the DB
-            # has never been reachable and there is no prior cache to fall back on.
-            return PlainTextResponse(
-                "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)\n"
-                "# TYPE node_memory_exempt gauge\n",
-                media_type="text/plain; version=0.0.4",
+    # Cache miss — query DB outside the lock so a slow call does not block other threads.
+    # Two threads may both reach here on expiry; the duplicate query is harmless.
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT identifier FROM platform_suppressions WHERE category = 'high_memory_host' ORDER BY identifier"
             )
+            rows = cur.fetchall()
+    except Exception as exc:
+        # Return stale cache rather than a 500 — a scrape failure causes node_memory_exempt
+        # to disappear from TSDB, which breaks the `unless on(instance) node_memory_exempt`
+        # clause and immediately un-suppresses all DB hosts in the memory alert.
+        _log.warning("node_memory_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if stale is not None else "empty metrics")
+        if stale is not None:
+            _, body = stale
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: empty-metrics path deliberately returns PlainTextResponse (HTTP 200)
+        # not an exception, so Prometheus marks the scrape as succeeded. With no series the
+        # `unless` clause becomes a no-op (all hosts fire), but that is unavoidable when the DB
+        # has never been reachable and there is no prior cache to fall back on.
+        return PlainTextResponse(
+            "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)\n"
+            "# TYPE node_memory_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
+        )
 
-        lines = [
-            "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)",
-            "# TYPE node_memory_exempt gauge",
-        ]
-        for (identifier,) in rows:
-            # _escape_label is mandatory here — identifier is user-supplied via /suppress/add
-            # and a raw value would allow Prometheus text-format label injection.
-            lines.append(f'node_memory_exempt{{instance="{_escape_label(identifier)}"}} 1')
-        body = "\n".join(lines) + "\n"
+    lines = [
+        "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)",
+        "# TYPE node_memory_exempt gauge",
+    ]
+    for (identifier,) in rows:
+        # _escape_label is mandatory here — identifier is user-supplied via /suppress/add
+        # and a raw value would allow Prometheus text-format label injection.
+        lines.append(f'node_memory_exempt{{instance="{_escape_label(identifier)}"}} 1')
+    body = "\n".join(lines) + "\n"
+    with _node_memory_exempt_lock:
         _node_memory_exempt_cache = (now, body)
-        return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 
 # In-process cache — valid only because the Dockerfile pins --workers 1.
@@ -346,47 +356,52 @@ def vm_powered_off_exempt_metrics():
     Intentionally unauthenticated; only reachable within the Docker compose network."""
     global _vm_powered_off_exempt_cache
     now = time.monotonic()
+    # Fast path: check cache under lock; snapshot stale value for the error fallback below.
     with _vm_powered_off_exempt_lock:
         if _vm_powered_off_exempt_cache is not None:
             cached_at, body = _vm_powered_off_exempt_cache
             if now - cached_at < _VM_POWERED_OFF_EXEMPT_TTL:
                 return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        stale = _vm_powered_off_exempt_cache
 
-        try:
-            with get_conn() as conn:
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT identifier FROM platform_suppressions WHERE category = 'powered_off' ORDER BY identifier"
-                )
-                rows = cur.fetchall()
-        except Exception as exc:
-            # Same rationale as node_memory_exempt_metrics: a scrape failure would cause the
-            # vcenter_vm_powered_off_exempt series to disappear, breaking the `unless on(vm_name)`
-            # suppression and firing alerts for all suppressed VMs.
-            _log.warning("vm_powered_off_exempt_metrics: DB unavailable (%s); returning %s",
-                         exc, "stale cache" if _vm_powered_off_exempt_cache is not None else "empty metrics")
-            if _vm_powered_off_exempt_cache is not None:
-                _, body = _vm_powered_off_exempt_cache
-                return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
-            # @ai-review-ignore: same reasoning as node_memory_exempt_metrics — HTTP 200 with no
-            # series is unavoidable on first-startup DB failure; stale cache preferred when available.
-            return PlainTextResponse(
-                "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert\n"
-                "# TYPE vcenter_vm_powered_off_exempt gauge\n",
-                media_type="text/plain; version=0.0.4",
+    # Cache miss — query DB outside the lock so a slow call does not block other threads.
+    # Two threads may both reach here on expiry; the duplicate query is harmless.
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT identifier FROM platform_suppressions WHERE category = 'powered_off' ORDER BY identifier"
             )
+            rows = cur.fetchall()
+    except Exception as exc:
+        # Same rationale as node_memory_exempt_metrics: a scrape failure would cause the
+        # vcenter_vm_powered_off_exempt series to disappear, breaking the `unless on(vm_name)`
+        # suppression and firing alerts for all suppressed VMs.
+        _log.warning("vm_powered_off_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if stale is not None else "empty metrics")
+        if stale is not None:
+            _, body = stale
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: same reasoning as node_memory_exempt_metrics — HTTP 200 with no
+        # series is unavoidable on first-startup DB failure; stale cache preferred when available.
+        return PlainTextResponse(
+            "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert\n"
+            "# TYPE vcenter_vm_powered_off_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
+        )
 
-        lines = [
-            "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert",
-            "# TYPE vcenter_vm_powered_off_exempt gauge",
-        ]
-        for (identifier,) in rows:
-            # _escape_label is mandatory here — identifier is user-supplied via /suppress/add
-            # and a raw value would allow Prometheus text-format label injection.
-            lines.append(f'vcenter_vm_powered_off_exempt{{vm_name="{_escape_label(identifier)}"}} 1')
-        body = "\n".join(lines) + "\n"
+    lines = [
+        "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert",
+        "# TYPE vcenter_vm_powered_off_exempt gauge",
+    ]
+    for (identifier,) in rows:
+        # _escape_label is mandatory here — identifier is user-supplied via /suppress/add
+        # and a raw value would allow Prometheus text-format label injection.
+        lines.append(f'vcenter_vm_powered_off_exempt{{vm_name="{_escape_label(identifier)}"}} 1')
+    body = "\n".join(lines) + "\n"
+    with _vm_powered_off_exempt_lock:
         _vm_powered_off_exempt_cache = (now, body)
-        return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 
 # @ai-review-ignore: suppress/add, suppress/remove, and exempt/remove are unauthenticated
