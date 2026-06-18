@@ -59,6 +59,10 @@ CATEGORY_LABELS = {
 # also match apps-prod-mysql:9100 or appsprod-mysql:9100 — potentially suppressing a
 # different host. In this controlled internal environment with known hostnames this is
 # accepted, but new identifiers with dots in hostname segments should be noted.
+# @ai-review-ignore: all PromQL regex metacharacters except . are rejected — (, ), [, ],
+# {, }, ^, $, *, +, ?, |, and \ are absent from the allowlist. . is the only permitted
+# metacharacter and is escaped to \. by replace(identifier, '.', '\\.') in the SQL before
+# interpolation. \- is an explicit escaped hyphen at the end of the class, not a range.
 _SAFE_IDENTIFIER_RE = re.compile(r'^[a-zA-Z0-9._:\-]+$')  # colon allowed — Prometheus instance labels (host:port)
 _SAFE_NAME_RE = re.compile(r'^[a-zA-Z0-9._\-]+$')           # no colon — VM names, alert names
 # Categories whose identifiers are Prometheus instance labels and legitimately contain colons.
