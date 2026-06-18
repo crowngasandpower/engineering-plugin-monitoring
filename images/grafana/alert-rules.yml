@@ -2697,9 +2697,10 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              # > 0 ensures only actively swapping hosts appear; Grafana creates one alert
-              # instance per series (one per host) even with the reduce step below.
-              expr: 'rate(node_vmstat_pswpin{job="node"}[5m]) > 0'
+              # No > 0 filter here — the threshold condition below handles that.
+              # Keeping the series alive at 0 prevents a brief exporter gap from
+              # silently clearing an in-flight alert via noDataState: OK.
+              expr: 'rate(node_vmstat_pswpin{job="node"}[5m])'
               refId: A
           - refId: swapin_rate
             relativeTimeRange:
@@ -3111,9 +3112,10 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              # > 0 ensures only actively swapping hosts appear; Grafana creates one alert
-              # instance per series (one per host) even with the reduce step below.
-              expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m]) > 0'
+              # No > 0 filter here — the threshold condition below handles that.
+              # Keeping the series alive at 0 prevents a brief exporter gap from
+              # silently clearing an in-flight alert via noDataState: OK.
+              expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m])'
               refId: A
           - refId: pagein_rate
             relativeTimeRange:

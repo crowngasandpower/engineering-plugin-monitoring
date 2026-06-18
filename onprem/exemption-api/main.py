@@ -416,6 +416,8 @@ def suppress_add(
     label = CATEGORY_LABELS[category]
     return _page(f"✓ <strong>{html.escape(identifier)}</strong> suppressed from <strong>{html.escape(label)}</strong>.")
 
+# @ai-review-ignore: suppress_remove accepts only category and identifier — there is
+# no reason parameter on this endpoint and the DELETE query never writes to reason.
 @app.get("/suppress/remove")
 def suppress_remove(category: str = Query(...), identifier: str = Query(...)):
     if category not in CATEGORY_LABELS:
