@@ -1,5 +1,6 @@
 import base64
 import datetime
+import time
 import html
 import ipaddress
 import json
@@ -216,6 +217,9 @@ def remove_exempt(host: str = Query(...)):
         )
     return _page(f"✓ <strong>{html.escape(host)}</strong> removed from exemption list.")
 
+_node_memory_exempt_cache: tuple[float, str] | None = None
+_NODE_MEMORY_EXEMPT_TTL = 60.0
+
 @app.get("/node-memory-exempt/metrics")
 def node_memory_exempt_metrics():
     """Prometheus text format — one gauge per host suppressed from memory % alerts.
@@ -226,6 +230,13 @@ def node_memory_exempt_metrics():
     This endpoint is intentionally unauthenticated. It is not routed through the
     Traefik/nginx proxy and is only reachable from within the Docker compose network
     (the Prometheus container is the sole intended consumer)."""
+    global _node_memory_exempt_cache
+    now = time.monotonic()
+    if _node_memory_exempt_cache is not None:
+        cached_at, body = _node_memory_exempt_cache
+        if now - cached_at < _NODE_MEMORY_EXEMPT_TTL:
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -238,7 +249,9 @@ def node_memory_exempt_metrics():
     ]
     for (identifier,) in rows:
         lines.append(f'node_memory_exempt{{instance="{_escape_label(identifier)}"}} 1')
-    return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+    body = "\n".join(lines) + "\n"
+    _node_memory_exempt_cache = (now, body)
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 
 @app.get("/suppress/add")
