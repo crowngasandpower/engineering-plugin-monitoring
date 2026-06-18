@@ -21,6 +21,9 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import ocsp as crypto_ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID
 
+import logging as _logging
+_log = _logging.getLogger(__name__)
+
 app = FastAPI(title="Exemption API")
 
 SD_DIR = os.environ.get("SD_DIR", "/sd")
@@ -179,6 +182,19 @@ def create_tables():
                 added_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
+
+@app.on_event("startup")
+def _warn_if_multi_worker():
+    workers = os.environ.get("WEB_CONCURRENCY", "1")
+    if workers != "1":
+        _log.warning(
+            "exemption-api: WEB_CONCURRENCY=%s but node_memory_exempt uses an "
+            "in-process TTL cache that is not shared across workers — results may "
+            "be stale. Pin --workers 1 or switch to a shared cache backend.",
+            workers,
+        )
+    else:
+        _log.info("exemption-api: single-worker mode confirmed; in-process cache active")
 
 def _page(msg: str) -> HTMLResponse:
     return HTMLResponse(f"""<!DOCTYPE html>
