@@ -2654,6 +2654,8 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
+              # > 0 filters zero-rate series so reduce(last) doesn't pick an idle host.
+              # The threshold below fires on any non-zero rate, consistent with the > 0 filter.
               expr: 'rate(node_vmstat_pswpin{job="node"}[5m]) > 0'
               refId: A
           - refId: swapin_rate
@@ -2678,7 +2680,7 @@ groups:
                 - evaluator:
                     type: gt
                     params:
-                      - 10
+                      - 0
               refId: threshold
 
       - uid: linux-iowait-warning
@@ -3066,6 +3068,8 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
+              # > 0 filters zero-rate series so reduce(last) doesn't pick an idle host.
+              # The threshold below fires on any non-zero rate, consistent with the > 0 filter.
               expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m]) > 0'
               refId: A
           - refId: swapin_rate
@@ -3090,7 +3094,7 @@ groups:
                 - evaluator:
                     type: gt
                     params:
-                      - 10
+                      - 0
               refId: threshold
 
   - orgId: 1
@@ -3794,7 +3798,7 @@ groups:
       - uid: container-stopped
         title: Container Stopped
         condition: threshold
-        for: 0s
+        for: 5m
         noDataState: OK
         execErrState: Error
         labels:
