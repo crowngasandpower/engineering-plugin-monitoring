@@ -261,12 +261,28 @@ def node_memory_exempt_metrics():
         if now - cached_at < _NODE_MEMORY_EXEMPT_TTL:
             return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT identifier FROM platform_suppressions WHERE category = 'high_memory_host' ORDER BY identifier"
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT identifier FROM platform_suppressions WHERE category = 'high_memory_host' ORDER BY identifier"
+            )
+            rows = cur.fetchall()
+    except Exception as exc:
+        # Return stale cache rather than a 500 — a scrape failure causes node_memory_exempt
+        # to disappear from TSDB, which breaks the `unless on(instance) node_memory_exempt`
+        # clause and immediately un-suppresses all DB hosts in the memory alert.
+        _log.warning("node_memory_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if _node_memory_exempt_cache is not None else "empty metrics")
+        if _node_memory_exempt_cache is not None:
+            _, body = _node_memory_exempt_cache
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        return PlainTextResponse(
+            "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)\n"
+            "# TYPE node_memory_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
         )
-        rows = cur.fetchall()
+
     lines = [
         "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)",
         "# TYPE node_memory_exempt gauge",
@@ -295,12 +311,28 @@ def vm_powered_off_exempt_metrics():
         if now - cached_at < _VM_POWERED_OFF_EXEMPT_TTL:
             return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
-    with get_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT identifier FROM platform_suppressions WHERE category = 'powered_off' ORDER BY identifier"
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT identifier FROM platform_suppressions WHERE category = 'powered_off' ORDER BY identifier"
+            )
+            rows = cur.fetchall()
+    except Exception as exc:
+        # Same rationale as node_memory_exempt_metrics: a scrape failure would cause the
+        # vcenter_vm_powered_off_exempt series to disappear, breaking the `unless on(vm_name)`
+        # suppression and firing alerts for all suppressed VMs.
+        _log.warning("vm_powered_off_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if _vm_powered_off_exempt_cache is not None else "empty metrics")
+        if _vm_powered_off_exempt_cache is not None:
+            _, body = _vm_powered_off_exempt_cache
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        return PlainTextResponse(
+            "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert\n"
+            "# TYPE vcenter_vm_powered_off_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
         )
-        rows = cur.fetchall()
+
     lines = [
         "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert",
         "# TYPE vcenter_vm_powered_off_exempt gauge",
