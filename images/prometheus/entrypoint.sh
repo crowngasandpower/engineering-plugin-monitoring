@@ -6,4 +6,5 @@ set -e
 [ -n "${GRAFANA_ADMIN_PASSWORD}" ] || { echo 'GRAFANA_ADMIN_PASSWORD is not set'; exit 1; }
 install -d -m 700 /run/prometheus
 (umask 077 && printf '%s' "${GRAFANA_ADMIN_PASSWORD}" > /run/prometheus/grafana-credentials)
+chmod 600 /run/prometheus/grafana-credentials
 exec /bin/prometheus "$@"

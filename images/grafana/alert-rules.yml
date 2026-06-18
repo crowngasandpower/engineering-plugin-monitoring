@@ -2645,7 +2645,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.instance }} is actively reading from swap at {{ $values.swapin_rate.Value | printf \"%.1f\" }} pages/s — possible memory pressure"
+          summary: "{{ $labels.instance }} is actively reading from swap at {{ $values.A.Value | printf \"%.1f\" }} pages/s — possible memory pressure"
           panelUrl: "/d/infra-detail?orgId=1&viewPanel=30"
         data:
           - refId: A
@@ -2654,20 +2654,10 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              # > 0 filters zero-rate series so reduce(last) doesn't pick an idle host.
-              # The threshold below fires on any non-zero rate, consistent with the > 0 filter.
+              # > 0 ensures only actively swapping hosts appear; threshold fires once per
+              # series so one alert instance fires per host (no reduce step to collapse them).
               expr: 'rate(node_vmstat_pswpin{job="node"}[5m]) > 0'
               refId: A
-          - refId: swapin_rate
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: swapin_rate
           - refId: threshold
             relativeTimeRange:
               from: 0
@@ -2675,7 +2665,7 @@ groups:
             datasourceUid: __expr__
             model:
               type: threshold
-              expression: swapin_rate
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
@@ -3059,7 +3049,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.instance }} is actively reading from page file at {{ $values.swapin_rate.Value | printf \"%.1f\" }} reads/s — possible memory pressure"
+          summary: "{{ $labels.instance }} is actively reading from page file at {{ $values.A.Value | printf \"%.1f\" }} reads/s — possible memory pressure"
           panelUrl: "/d/infra-detail?orgId=1&viewPanel=30"
         data:
           - refId: A
@@ -3068,20 +3058,10 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              # > 0 filters zero-rate series so reduce(last) doesn't pick an idle host.
-              # The threshold below fires on any non-zero rate, consistent with the > 0 filter.
+              # > 0 ensures only actively swapping hosts appear; threshold fires once per
+              # series so one alert instance fires per host (no reduce step to collapse them).
               expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m]) > 0'
               refId: A
-          - refId: swapin_rate
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: swapin_rate
           - refId: threshold
             relativeTimeRange:
               from: 0
@@ -3089,7 +3069,7 @@ groups:
             datasourceUid: __expr__
             model:
               type: threshold
-              expression: swapin_rate
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
