@@ -1165,6 +1165,10 @@ def _check_one_cert(target: dict) -> dict:
 
 
 def _escape_label(v: str) -> str:
+    """Escape a Prometheus label value per the text exposition format spec.
+    Order is mandatory: backslash first, then double-quote, then newline.
+    https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details
+    """
     return v.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 

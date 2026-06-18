@@ -2631,6 +2631,11 @@ groups:
                       - 10
               refId: threshold
 
+      # Intentionally does NOT carry the node_memory_exempt exclusion.
+      # DB servers in the high_memory_host suppression category are exempt from
+      # Memory > 90% alerts (expected behaviour for buffer-pool caching), but active
+      # swap-in means the OS is paging under genuine pressure — that is always worth
+      # alerting on, even for DB servers. See exemption-api /exemptions/suppress docs.
       - uid: linux-swap-in-warning
         title: Linux Active Swapping
         condition: threshold
@@ -3042,6 +3047,7 @@ groups:
                       - 10
               refId: threshold
 
+      # Intentionally does NOT carry the node_memory_exempt exclusion — see linux-swap-in-warning above.
       - uid: windows-swap-in-warning
         title: Windows Active Swapping
         condition: threshold
