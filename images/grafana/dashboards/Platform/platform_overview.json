@@ -1276,7 +1276,7 @@
         "x": 20,
         "y": 5
       },
-      "id": 344,
+      "id": 506,
       "links": [
         {
           "title": "View swap detail",
@@ -2469,7 +2469,7 @@
         "x": 0,
         "y": 21
       },
-      "id": 300,
+      "id": 507,
       "links": [
         {
           "title": "View UniFi Network",
@@ -2552,7 +2552,7 @@
         "x": 3,
         "y": 21
       },
-      "id": 301,
+      "id": 508,
       "links": [
         {
           "title": "View UniFi Site Detail",

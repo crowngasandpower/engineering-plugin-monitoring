@@ -272,6 +272,8 @@ def node_memory_exempt_metrics():
         "# TYPE node_memory_exempt gauge",
     ]
     for (identifier,) in rows:
+        # _escape_label is mandatory here — identifier is user-supplied via /suppress/add
+        # and a raw value would allow Prometheus text-format label injection.
         lines.append(f'node_memory_exempt{{instance="{_escape_label(identifier)}"}} 1')
     body = "\n".join(lines) + "\n"
     _node_memory_exempt_cache = (now, body)
@@ -304,6 +306,8 @@ def vm_powered_off_exempt_metrics():
         "# TYPE vcenter_vm_powered_off_exempt gauge",
     ]
     for (identifier,) in rows:
+        # _escape_label is mandatory here — identifier is user-supplied via /suppress/add
+        # and a raw value would allow Prometheus text-format label injection.
         lines.append(f'vcenter_vm_powered_off_exempt{{vm_name="{_escape_label(identifier)}"}} 1')
     body = "\n".join(lines) + "\n"
     _vm_powered_off_exempt_cache = (now, body)
