@@ -59,7 +59,10 @@ CATEGORY_LABELS = {
 # also match apps-prod-mysql:9100 or appsprod-mysql:9100 — potentially suppressing a
 # different host. In this controlled internal environment with known hostnames this is
 # accepted, but new identifiers with dots in hostname segments should be noted.
-_SAFE_IDENTIFIER_RE = re.compile(r'^[a-zA-Z0-9._:\-]+$')
+_SAFE_IDENTIFIER_RE = re.compile(r'^[a-zA-Z0-9._:\-]+$')  # colon allowed — Prometheus instance labels (host:port)
+_SAFE_NAME_RE = re.compile(r'^[a-zA-Z0-9._\-]+$')           # no colon — VM names, alert names
+# Categories whose identifiers are Prometheus instance labels and legitimately contain colons.
+_INSTANCE_LABEL_CATEGORIES = {"high_memory_host"}
 
 def _get_unifi_sites() -> list[str]:
     """Return all console names: parsed from local exporter metrics (includes offline) merged with Site Manager."""
@@ -395,8 +398,11 @@ def suppress_add(
 ):
     if category not in CATEGORY_LABELS:
         raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
-    if not _SAFE_IDENTIFIER_RE.match(identifier):
-        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+    id_re = _SAFE_IDENTIFIER_RE if category in _INSTANCE_LABEL_CATEGORIES else _SAFE_NAME_RE
+    if not id_re.match(identifier):
+        if category in _INSTANCE_LABEL_CATEGORIES:
+            raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, and underscores.")
     if len(reason) > 255:
         raise HTTPException(status_code=400, detail="Reason must be 255 characters or fewer.")
     with get_conn() as conn:
@@ -413,8 +419,11 @@ def suppress_add(
 def suppress_remove(category: str = Query(...), identifier: str = Query(...)):
     if category not in CATEGORY_LABELS:
         raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
-    if not _SAFE_IDENTIFIER_RE.match(identifier):
-        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+    id_re = _SAFE_IDENTIFIER_RE if category in _INSTANCE_LABEL_CATEGORIES else _SAFE_NAME_RE
+    if not id_re.match(identifier):
+        if category in _INSTANCE_LABEL_CATEGORIES:
+            raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, and underscores.")
     with get_conn() as conn:
         conn.cursor().execute(
             "DELETE FROM platform_suppressions WHERE category = %s AND identifier = %s",

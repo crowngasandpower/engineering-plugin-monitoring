@@ -18,6 +18,11 @@ scrape_configs:
   # Scrapes Grafana's built-in Prometheus ruler to expose the ALERTS metric
   # with full rule labels (severity, alertname, etc.) so dashboards can split
   # by severity via PromQL.
+  # @ai-review-ignore: honor_labels: true is required here. Without it, Prometheus would
+  # overwrite the instance label on every federated ALERTS series with the scrape target
+  # (grafana.mcp.local:3000), destroying per-host alert context. With it, instance retains
+  # the value Grafana's ruler derived from the evaluated metric (e.g. apps-prod-1:9100).
+  # The metric_relabel_configs keep rule below guards against future non-ALERTS series.
   - job_name: 'grafana-alerts'
     honor_labels: true
     metrics_path: /api/prometheus/grafana/federate
