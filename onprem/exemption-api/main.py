@@ -12,7 +12,7 @@ import urllib.parse
 import urllib.request
 import psycopg2
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from cryptography import x509
@@ -24,7 +24,13 @@ from cryptography.x509.oid import AuthorityInformationAccessOID
 import logging as _logging
 _log = _logging.getLogger(__name__)
 
-app = FastAPI(title="Exemption API")
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    _create_tables()
+    _warn_if_multi_worker()
+    yield
+
+app = FastAPI(title="Exemption API", lifespan=_lifespan)
 
 SD_DIR = os.environ.get("SD_DIR", "/sd")
 
@@ -97,8 +103,7 @@ def get_conn():
     finally:
         conn.close()
 
-@app.on_event("startup")
-def create_tables():
+def _create_tables():
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -183,7 +188,6 @@ def create_tables():
             )
         """)
 
-@app.on_event("startup")
 def _warn_if_multi_worker():
     workers = os.environ.get("WEB_CONCURRENCY", "1")
     if workers != "1":
@@ -233,10 +237,12 @@ def remove_exempt(host: str = Query(...)):
         )
     return _page(f"✓ <strong>{html.escape(host)}</strong> removed from exemption list.")
 
-# In-process cache — valid only because the Dockerfile pins --workers 1.
+# In-process caches — valid only because the Dockerfile pins --workers 1.
 # Multi-worker deployments would need a shared backend (Redis/Postgres).
 _node_memory_exempt_cache: tuple[float, str] | None = None
 _NODE_MEMORY_EXEMPT_TTL = 60.0
+_vm_powered_off_exempt_cache: tuple[float, str] | None = None
+_VM_POWERED_OFF_EXEMPT_TTL = 60.0
 
 @app.get("/node-memory-exempt/metrics")
 def node_memory_exempt_metrics():
@@ -273,8 +279,6 @@ def node_memory_exempt_metrics():
 
 
 # In-process cache — valid only because the Dockerfile pins --workers 1.
-_vm_powered_off_exempt_cache: tuple[float, str] | None = None
-
 @app.get("/vm-powered-off-exempt/metrics")
 def vm_powered_off_exempt_metrics():
     """Prometheus text format — one gauge per VM suppressed from the powered-off alert.
@@ -286,7 +290,7 @@ def vm_powered_off_exempt_metrics():
     now = time.monotonic()
     if _vm_powered_off_exempt_cache is not None:
         cached_at, body = _vm_powered_off_exempt_cache
-        if now - cached_at < _NODE_MEMORY_EXEMPT_TTL:
+        if now - cached_at < _VM_POWERED_OFF_EXEMPT_TTL:
             return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
     with get_conn() as conn:

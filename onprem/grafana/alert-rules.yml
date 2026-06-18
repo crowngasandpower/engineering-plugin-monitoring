@@ -2654,7 +2654,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'rate(node_vmstat_pswpin{job="node"}[5m])'
+              expr: 'rate(node_vmstat_pswpin{job="node"}[5m]) > 0'
               refId: A
           - refId: swapin_rate
             relativeTimeRange:
@@ -3066,7 +3066,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m])'
+              expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m]) > 0'
               refId: A
           - refId: swapin_rate
             relativeTimeRange:
