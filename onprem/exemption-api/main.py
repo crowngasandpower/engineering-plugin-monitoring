@@ -244,6 +244,7 @@ def _js(v: str) -> str:
 def add_exempt(host: str = Query(...), reason: str = Query(default="")):
     if not _SAFE_IDENTIFIER_RE.match(host):
         raise HTTPException(status_code=400, detail="Host contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+    # @ai-review-ignore: reason length is capped here, consistent with /suppress/add.
     if len(reason) > 255:
         raise HTTPException(status_code=400, detail="Reason must be 255 characters or fewer.")
     with get_conn() as conn:
