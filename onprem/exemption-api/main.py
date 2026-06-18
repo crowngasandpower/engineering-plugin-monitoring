@@ -217,6 +217,8 @@ def remove_exempt(host: str = Query(...)):
         )
     return _page(f"✓ <strong>{html.escape(host)}</strong> removed from exemption list.")
 
+# In-process cache — valid only because the Dockerfile pins --workers 1.
+# Multi-worker deployments would need a shared backend (Redis/Postgres).
 _node_memory_exempt_cache: tuple[float, str] | None = None
 _NODE_MEMORY_EXEMPT_TTL = 60.0
 
