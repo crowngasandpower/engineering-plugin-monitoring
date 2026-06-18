@@ -17,6 +17,7 @@
     "view_dashboards": ["engineer"]
   },
   "dashboard": {
+    "docs": "DOCS.md",
     "title": "Monitoring",
     "icon": "chart-line",
     "description": "Grafana dashboards for infrastructure, applications, and pricing monitoring",
