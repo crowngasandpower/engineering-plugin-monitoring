@@ -840,6 +840,7 @@ class AlertPanel:
     W       = 400
     ROW_H   = 64
     HEAD_H  = 44
+    MAX_H   = 600
 
     BG       = "#1e1e2e"
     HEAD_BG  = "#13131f"
@@ -869,6 +870,8 @@ class AlertPanel:
         self._suppress_focus_out = False
         self._menu_open          = False
         self._active_tab         = 0      # which profile's alerts are shown
+        self._canvas: tk.Canvas | None = None
+        self._body:   tk.Frame  | None = None
 
     # -- per-tab helpers -------------------------------------------------------
 
@@ -950,7 +953,7 @@ class AlertPanel:
     def _place(self) -> None:
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
-        h  = self._win.winfo_reqheight()
+        h  = min(self._win.winfo_reqheight(), self.MAX_H)
         self._win.geometry(f"{self.W}x{h}+{sw - self.W - 12}+{sh - h - 52}")
 
     def _build(self) -> None:
@@ -976,32 +979,70 @@ class AlertPanel:
         if maintenance:
             self._maintenance_banner(maintenance)
 
+        # Scrollable content area below the fixed header/banner
+        scroll_outer = tk.Frame(self._win, bg=self.BG)
+        scroll_outer.pack(fill="both", expand=True)
+
+        self._canvas = tk.Canvas(scroll_outer, bg=self.BG, highlightthickness=0, bd=0)
+        scrollbar = tk.Scrollbar(
+            scroll_outer, orient="vertical", command=self._canvas.yview,
+            bg="#2a2a3e", troughcolor="#13131f", activebackground="#7c6af7",
+            relief="flat", bd=0, width=10,
+        )
+        self._body = tk.Frame(self._canvas, bg=self.BG)
+        _cwin = self._canvas.create_window((0, 0), window=self._body, anchor="nw",
+                                           width=self.W)
+
+        def _on_frame_configure(_e):
+            self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+
+        def _on_canvas_configure(e):
+            self._canvas.itemconfig(_cwin, width=e.width)
+
+        def _on_mousewheel(e):
+            self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+
+        self._body.bind("<Configure>", _on_frame_configure)
+        self._canvas.bind("<Configure>", _on_canvas_configure)
+        self._win.bind("<MouseWheel>", _on_mousewheel)
+        self._canvas.configure(yscrollcommand=scrollbar.set)
+        self._canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Build content into scrollable body
         if not reachable:
             profile = self._tab_profile()
             src = "PagerDuty" if profile.get("source_type") == "pagerduty" else "Grafana"
             self._msg(f"Cannot reach {src}", self.FG_DIM)
-            return
-        if not alerts and not silenced:
+        elif not alerts and not silenced:
             self._all_clear_box()
-            return
-
-        if alerts:
-            alerts.sort(key=lambda a: (
-                {"critical": 0, "high": 1}.get(
-                    a.get("labels", {}).get("severity"), 2),
-                a.get("labels", {}).get("alertname", ""),
-            ))
-            self._alerts_section(alerts)
         else:
-            self._all_clear_box()
+            if alerts:
+                alerts.sort(key=lambda a: (
+                    {"critical": 0, "high": 1}.get(
+                        a.get("labels", {}).get("severity"), 2),
+                    a.get("labels", {}).get("alertname", ""),
+                ))
+                self._alerts_section(alerts)
+            else:
+                self._all_clear_box()
 
-        if acked:
-            acked.sort(key=lambda a: a.get("labels", {}).get("alertname", ""))
-            self._acked_section(acked)
+            if acked:
+                acked.sort(key=lambda a: a.get("labels", {}).get("alertname", ""))
+                self._acked_section(acked)
 
-        if muted:
-            muted.sort(key=lambda a: a.get("labels", {}).get("alertname", ""))
-            self._silenced_section(muted)
+            if muted:
+                muted.sort(key=lambda a: a.get("labels", {}).get("alertname", ""))
+                self._silenced_section(muted)
+
+        # Cap canvas height so the panel never exceeds MAX_H
+        self._body.update_idletasks()
+        content_h = self._body.winfo_reqheight()
+        fixed_h   = self.HEAD_H + (28 if maintenance else 0)
+        canvas_h  = min(content_h, self.MAX_H - fixed_h)
+        self._canvas.configure(height=max(canvas_h, 1))
+        if content_h <= canvas_h:
+            scrollbar.pack_forget()
 
     def _header(self, profiles: list, alerts: list,
                 acked: list, muted: list, reachable: bool) -> None:
@@ -1083,11 +1124,11 @@ class AlertPanel:
         x_btn.bind("<Leave>",    lambda _: x_btn.config(fg=self.FG_DIM))
 
     def _msg(self, text: str, colour: str) -> None:
-        tk.Label(self._win, text=text, bg=self.BG, fg=colour,
+        tk.Label(self._body, text=text, bg=self.BG, fg=colour,
                  font=("Segoe UI", 10), pady=18).pack()
 
     def _all_clear_box(self) -> None:
-        box = tk.Frame(self._win, bg="#162416", pady=18)
+        box = tk.Frame(self._body, bg="#162416", pady=18)
         box.pack(fill="x", padx=8, pady=8)
         tk.Label(box, text="✓", bg="#162416", fg=self.GREEN,
                  font=("Segoe UI", 36)).pack()
@@ -1095,7 +1136,7 @@ class AlertPanel:
                  font=("Segoe UI", 11, "bold")).pack()
 
     def _alerts_section(self, alerts: list) -> None:
-        hdr_row = tk.Frame(self._win, bg=self.BG, cursor="hand2")
+        hdr_row = tk.Frame(self._body, bg=self.BG, cursor="hand2")
         hdr_row.pack(fill="x")
 
         crits = sum(1 for a in alerts
@@ -1127,7 +1168,7 @@ class AlertPanel:
         )
         link.pack(side="right")
 
-        container = tk.Frame(self._win, bg=self.BG)
+        container = tk.Frame(self._body, bg=self.BG)
         if self._alerts_expanded:
             container.pack(fill="x")
             for alert in alerts:
@@ -1152,9 +1193,9 @@ class AlertPanel:
 
     def _acked_section(self, acked: list) -> None:
         """Acknowledged alerts — visible by default, amber, someone is working on them."""
-        tk.Frame(self._win, bg=self.SEP, height=1).pack(fill="x")
+        tk.Frame(self._body, bg=self.SEP, height=1).pack(fill="x")
 
-        hdr_row = tk.Frame(self._win, bg=self.BG, cursor="hand2")
+        hdr_row = tk.Frame(self._body, bg=self.BG, cursor="hand2")
         hdr_row.pack(fill="x")
 
         arrow = "▼" if self._acked_expanded else "▶"
@@ -1167,7 +1208,7 @@ class AlertPanel:
         )
         hdr.pack(side="left", fill="x", expand=True)
 
-        container = tk.Frame(self._win, bg=self.BG)
+        container = tk.Frame(self._body, bg=self.BG)
         if self._acked_expanded:
             container.pack(fill="x")
             for alert in acked:
@@ -1184,9 +1225,9 @@ class AlertPanel:
 
     def _silenced_section(self, muted: list) -> None:
         """Muted alerts — collapsed by default, not important."""
-        tk.Frame(self._win, bg=self.SEP, height=1).pack(fill="x")
+        tk.Frame(self._body, bg=self.SEP, height=1).pack(fill="x")
 
-        hdr_row = tk.Frame(self._win, bg=self.BG, cursor="hand2")
+        hdr_row = tk.Frame(self._body, bg=self.BG, cursor="hand2")
         hdr_row.pack(fill="x")
 
         arrow = "▼" if self._silenced_expanded else "▶"
@@ -1207,7 +1248,7 @@ class AlertPanel:
         )
         link.pack(side="right")
 
-        container = tk.Frame(self._win, bg=self.BG)
+        container = tk.Frame(self._body, bg=self.BG)
         if self._silenced_expanded:
             container.pack(fill="x")
             for alert in muted:
@@ -1232,7 +1273,7 @@ class AlertPanel:
 
     def _row(self, alert: dict, silenced: bool = False,
              parent: tk.Widget | None = None) -> None:
-        parent    = parent or self._win
+        parent    = parent or self._body
         labels    = alert.get("labels", {})
         severity  = labels.get("severity", "warning")
         name      = labels.get("alertname", "Unknown alert")

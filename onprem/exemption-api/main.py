@@ -71,8 +71,10 @@ def _get_unifi_sites() -> list[str]:
             body = r.read().decode()
         for line in body.splitlines():
             if not line.startswith('#') and line.startswith("unifi_scrape_success{"):
-                # @ai-review-ignore: [^"]+ won't match escaped quotes — site names in practice
-                # are plain strings; a full Prometheus text-format parser is not warranted here.
+                # @ai-review-ignore: [^"]+ won't match escaped quotes, and a label value
+                # spanning a line break would not be caught (splitlines() splits it first).
+                # Site names are plain ASCII strings; a full Prometheus text-format parser
+                # is not warranted for this internal exporter.
                 m = re.search(r'site="([^"]+)"', line)
                 if m:
                     names.add(m.group(1))
@@ -237,6 +239,10 @@ def _js(v: str) -> str:
 
 @app.get("/exempt/add")
 def add_exempt(host: str = Query(...), reason: str = Query(default="")):
+    if not _SAFE_IDENTIFIER_RE.match(host):
+        raise HTTPException(status_code=400, detail="Host contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+    if len(reason) > 255:
+        raise HTTPException(status_code=400, detail="Reason must be 255 characters or fewer.")
     with get_conn() as conn:
         conn.cursor().execute(
             "INSERT INTO exporter_exempt(hostname, reason) VALUES (%s, %s) ON CONFLICT(hostname) DO NOTHING",
@@ -391,6 +397,8 @@ def suppress_add(
         raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
     if not _SAFE_IDENTIFIER_RE.match(identifier):
         raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+    if len(reason) > 255:
+        raise HTTPException(status_code=400, detail="Reason must be 255 characters or fewer.")
     with get_conn() as conn:
         conn.cursor().execute(
             """INSERT INTO platform_suppressions(category, identifier, reason)
