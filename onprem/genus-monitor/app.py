@@ -905,6 +905,9 @@ def collect_gateway_metrics():
                     "WHERE (failed = 1 OR failed_transfer = 1) "
                     "AND DATE(created_at) = CURDATE() AND deleted_at IS NULL"))
 
+            # @ai-review-ignore: query_single_value returns 0 (not None) when MIN() over an
+            # empty set yields SQL NULL — see the `row[0] if row and row[0] is not None else 0`
+            # guard in query_single_value. No additional null-guard needed here.
             gateway_oldest_pending_minutes.labels(fuel=fuel).set(
                 query_single_value(cursor,
                     "SELECT TIMESTAMPDIFF(MINUTE, MIN(created_at), NOW()) FROM files "

@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 # Prometheus does not expand environment variables in its config file directly.
-# This script writes the credentials file and substitutes EXEMPTION_API_HOST into
-# a runtime copy of prometheus.yml before handing off to the real binary.
+# This script substitutes EXEMPTION_API_HOST into a runtime copy of prometheus.yml
+# before handing off to the real binary.
 [ -n "${EXEMPTION_API_HOST}" ] || { echo 'EXEMPTION_API_HOST is not set'; exit 1; }
 
 install -d /run/prometheus
