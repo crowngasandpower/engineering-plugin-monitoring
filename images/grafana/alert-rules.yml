@@ -1882,7 +1882,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Prometheus cannot scrape Grafana's alert ruler — ALERTS metric is stale. Check Grafana health and that the prometheus-scrape service account token (GRAFANA_SA_TOKEN) is valid."
+          summary: "Prometheus cannot scrape Grafana's alert ruler — ALERTS metric is stale. Check Grafana health and that the prometheus-scrape service account token (GRAFANA_ADMIN_PASSWORD on the Prometheus container) is valid."
         data:
           - refId: A
             relativeTimeRange:

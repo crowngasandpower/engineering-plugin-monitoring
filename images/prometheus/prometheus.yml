@@ -1,6 +1,8 @@
 # ${EXEMPTION_API_HOST} is substituted by entrypoint.sh at container startup from the
 # EXEMPTION_API_HOST environment variable (host:port of the exemption-api container).
-# GRAFANA_SA_TOKEN is written to /run/prometheus/grafana-credentials by the same script.
+# GRAFANA_ADMIN_PASSWORD is written to /run/prometheus/grafana-credentials by the same script.
+# On the Prometheus container this should be a Viewer-role service account token, not the
+# actual admin password — set it independently of the Grafana container's env.
 # All scrape targets that previously used a hardcoded 192.168.x.x:9529 address have been
 # migrated to ${EXEMPTION_API_HOST}. No hardcoded IPs remain as active scrape targets.
 
