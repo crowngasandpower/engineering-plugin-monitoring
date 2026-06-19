@@ -2843,7 +2843,7 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 600
+              from: 604800
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
