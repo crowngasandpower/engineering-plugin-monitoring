@@ -3,11 +3,11 @@ set -e
 # Prometheus does not expand environment variables in its config file directly.
 # This script writes the credentials file and substitutes EXEMPTION_API_HOST into
 # a runtime copy of prometheus.yml before handing off to the real binary.
-[ -n "${GRAFANA_ADMIN_PASSWORD}" ] || { echo 'GRAFANA_ADMIN_PASSWORD is not set'; exit 1; }
+[ -n "${GRAFANA_SA_TOKEN}" ] || { echo 'GRAFANA_SA_TOKEN is not set'; exit 1; }
 [ -n "${EXEMPTION_API_HOST}" ] || { echo 'EXEMPTION_API_HOST is not set'; exit 1; }
 
 install -d -m 700 /run/prometheus
-(umask 077 && printf '%s' "${GRAFANA_ADMIN_PASSWORD}" > /run/prometheus/grafana-credentials)
+(umask 077 && printf '%s' "${GRAFANA_SA_TOKEN}" > /run/prometheus/grafana-credentials)
 chmod 600 /run/prometheus/grafana-credentials
 # Verify the credentials file is non-empty before Prometheus starts — a missing or
 # empty file causes the grafana-alerts scrape to fail silently with no obvious error.

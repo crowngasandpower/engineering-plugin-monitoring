@@ -1,6 +1,6 @@
 # ${EXEMPTION_API_HOST} is substituted by entrypoint.sh at container startup from the
 # EXEMPTION_API_HOST environment variable (host:port of the exemption-api container).
-# GRAFANA_ADMIN_PASSWORD is written to /run/prometheus/grafana-credentials by the same script.
+# GRAFANA_SA_TOKEN is written to /run/prometheus/grafana-credentials by the same script.
 # All scrape targets that previously used a hardcoded 192.168.x.x:9529 address have been
 # migrated to ${EXEMPTION_API_HOST}. No hardcoded IPs remain as active scrape targets.
 
@@ -34,8 +34,7 @@ scrape_configs:
     scrape_interval: 30s
     static_configs:
       - targets: ['grafana.mcp.local:3000']
-    basic_auth:
-      username: admin
+    authorization:
       credentials_file: /run/prometheus/grafana-credentials
     metric_relabel_configs:
       # Drop anything that is not the ALERTS metric. honor_labels: true means any
