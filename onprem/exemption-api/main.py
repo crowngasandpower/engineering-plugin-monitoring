@@ -302,6 +302,11 @@ def node_memory_exempt_metrics():
             cached_at, body = _node_memory_exempt_cache
             if now - cached_at < _NODE_MEMORY_EXEMPT_TTL:
                 return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: stale is assigned HERE, inside the lock, as a local snapshot of
+        # _node_memory_exempt_cache. Reading it outside the lock (in the except block below) is
+        # safe — stale is a function-local variable and cannot be modified by another thread.
+        # The shared global may change after the lock is released; stale still refers to the
+        # old immutable tuple.
         stale = _node_memory_exempt_cache
 
     # Cache miss — query DB outside the lock so a slow call does not block other threads.
@@ -366,6 +371,9 @@ def vm_powered_off_exempt_metrics():
             cached_at, body = _vm_powered_off_exempt_cache
             if now - cached_at < _VM_POWERED_OFF_EXEMPT_TTL:
                 return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: stale is assigned HERE, inside the lock, as a local snapshot of
+        # _vm_powered_off_exempt_cache. Reading it outside the lock is safe — stale is a
+        # function-local variable; another thread cannot modify it after assignment.
         stale = _vm_powered_off_exempt_cache
 
     # Cache miss — query DB outside the lock so a slow call does not block other threads.

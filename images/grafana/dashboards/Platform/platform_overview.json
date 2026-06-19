@@ -123,7 +123,7 @@
   "timezone": "browser",
   "title": "Platform Overview",
   "uid": "vms",
-  "version": 50,
+  "version": 51,
   "weekStart": "",
   "panels": [
     {
@@ -2278,7 +2278,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 24
       },
       "id": 204,
       "panels": [],
