@@ -34,6 +34,10 @@ scrape_configs:
     scrape_interval: 30s
     static_configs:
       - targets: ['grafana.mcp.local:3000']
+    # @ai-review-ignore: username: admin is Grafana's fixed admin account name, not a
+    # hardcoded credential. The password is NOT in this file — it is written to
+    # /run/prometheus/grafana-credentials at container startup by entrypoint.sh from
+    # the GRAFANA_ADMIN_PASSWORD environment variable (credentials_file below).
     basic_auth:
       username: admin
       credentials_file: /run/prometheus/grafana-credentials
