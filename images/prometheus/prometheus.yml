@@ -498,6 +498,7 @@ scrape_configs:
   # DB hosts suppressed from memory utilisation alerts — managed via http://poc-containers/exemptions/suppress
   - job_name: 'node_memory_exempt'
     scrape_interval: 60s
+    honor_labels: true
     metrics_path: /node-memory-exempt/metrics
     static_configs:
       - targets: ['${EXEMPTION_API_HOST}']

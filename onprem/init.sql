@@ -50,3 +50,5 @@ BEGIN
 END $$;
 GRANT CONNECT ON DATABASE monitoring TO grafana_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;
+-- Cover tables created after this script runs (e.g. by _create_tables() at app startup).
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO grafana_ro;

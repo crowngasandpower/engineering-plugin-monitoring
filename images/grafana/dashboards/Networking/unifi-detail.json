@@ -3,7 +3,7 @@
   "title": "UniFi Site Detail",
   "tags": ["infrastructure", "network", "unifi"],
   "schemaVersion": 39,
-  "version": 18,
+  "version": 19,
   "refresh": "1m",
   "time": { "from": "now-3h", "to": "now" },
   "timezone": "browser",
@@ -225,7 +225,14 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": 90 }] },
-          "unit": "percent", "noValue": "N/A"
+          "unit": "percent", "noValue": "N/A",
+          "links": [
+            {
+              "title": "Firewall CPU over time",
+              "url": "/d/crown-unifi-detail/unifi-site-detail?viewPanel=45&${__url_time_range}&var-site=${site}",
+              "targetBlank": false
+            }
+          ]
         }, "overrides": []
       }
     },
@@ -247,10 +254,40 @@
       }
     },
     {
+      "id": 45,
+      "type": "timeseries",
+      "title": "Firewall CPU Over Time",
+      "description": "CPU utilisation over time for gateway/firewall devices (ugw, udm, uxg). Reached via the Max Device CPU panel link.",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "expr": "unifi_device_cpu_percent{site=~\"$site\", type=~\"ugw|udm|uxg\"} unless on(device) unifi_device_exempt",
+          "legendFormat": "{{site}} / {{device}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 70 }, { "color": "red", "value": 90 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 10,
       "type": "timeseries",
       "title": "WAN Throughput",
-      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "unifi_wan_rx_bytes_rate{site=~\"$site\"} * 8", "legendFormat": "{{site}} ↓ in", "refId": "A" },
@@ -266,7 +303,7 @@
       "id": 11,
       "type": "timeseries",
       "title": "WAN Latency & Packet Loss",
-      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "unifi_wan_latency_ms{site=~\"$site\"}", "legendFormat": "{{site}} latency", "refId": "A" },
@@ -275,23 +312,21 @@
       "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom" } },
       "fieldConfig": {
         "defaults": {
+          "color": { "mode": "palette-classic" },
           "custom": { "lineWidth": 2, "fillOpacity": 5 }
         },
         "overrides": [
           {
             "matcher": { "id": "byFrameRefID", "options": "A" },
             "properties": [
-              { "id": "unit", "value": "ms" },
-              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 50 }, { "color": "red", "value": 150 }] } },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              { "id": "unit", "value": "ms" }
             ]
           },
           {
             "matcher": { "id": "byFrameRefID", "options": "B" },
             "properties": [
               { "id": "unit", "value": "percent" },
-              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 5 }] } },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              { "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } }
             ]
           }
         ]
@@ -301,7 +336,7 @@
       "id": 20,
       "type": "timeseries",
       "title": "Switch Port Traffic (by Device)",
-      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "sum by (site, device) (rate(unifi_port_rx_bytes_total{site=~\"$site\"}[5m]) * 8)", "legendFormat": "{{site}} / {{device}} ↓", "refId": "A" },
@@ -317,7 +352,7 @@
       "id": 30,
       "type": "timeseries",
       "title": "AP Channel Utilization",
-      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "unifi_radio_channel_utilization{site=~\"$site\"}", "legendFormat": "{{site}} / {{device}} {{radio}}", "refId": "A" }
@@ -337,7 +372,7 @@
       "id": 31,
       "type": "timeseries",
       "title": "Wireless Client Count",
-      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "unifi_site_clients{site=~\"$site\", subsystem=\"wlan\"}", "legendFormat": "{{site}} WiFi", "refId": "A" },
@@ -353,7 +388,7 @@
       "id": 40,
       "type": "table",
       "title": "Device Status",
-      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 8 },
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "(unifi_device_up{site=~\"$site\"} unless on(device) unifi_device_exempt) or ((1 - unifi_device_up{site=~\"$site\"}) * on(device) group_left() unifi_device_exempt + 1)", "instant": true, "format": "table", "refId": "A" },
@@ -421,7 +456,7 @@
       "id": 42,
       "type": "text",
       "title": "",
-      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 2 },
+      "gridPos": { "x": 0, "y": 48, "w": 24, "h": 2 },
       "options": {
         "mode": "markdown",
         "content": "[Manage device exemptions →](http://poc-containers/exemptions/suppress) — devices listed there are shown as **Offline (Suppressed)** in this table when offline, and excluded from the UniFi offline alert and the platform offline count."
@@ -432,7 +467,7 @@
       "type": "table",
       "title": "Console Status",
       "description": "Reachability of each UniFi console (controller). Offline (Suppressed) consoles are exempted from the console-offline alert.",
-      "gridPos": { "x": 0, "y": 42, "w": 24, "h": 6 },
+      "gridPos": { "x": 0, "y": 50, "w": 24, "h": 6 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "(unifi_scrape_success{site=~\"$site\"} unless on(site) unifi_console_exempt) or ((1 - unifi_scrape_success{site=~\"$site\"}) * on(site) group_left() unifi_console_exempt + 1)", "instant": true, "format": "table", "refId": "A" }
@@ -461,7 +496,7 @@
       "id": 44,
       "type": "text",
       "title": "",
-      "gridPos": { "x": 0, "y": 48, "w": 24, "h": 2 },
+      "gridPos": { "x": 0, "y": 56, "w": 24, "h": 2 },
       "options": {
         "mode": "markdown",
         "content": "[Manage console exemptions →](http://poc-containers/exemptions/suppress) — consoles listed there are shown as **Offline (Suppressed)** in the table above when offline, and excluded from the UniFi console offline alert."
@@ -472,7 +507,7 @@
       "type": "timeseries",
       "title": "Device CPU & Memory",
       "description": "CPU and memory utilisation per device. Only devices that expose these metrics will appear.",
-      "gridPos": { "x": 0, "y": 50, "w": 24, "h": 8 },
+      "gridPos": { "x": 0, "y": 58, "w": 24, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "unifi_device_cpu_percent{site=~\"$site\"} unless on(device) unifi_device_exempt", "legendFormat": "{{site}} / {{device}} CPU", "refId": "A" },
@@ -494,7 +529,7 @@
       "type": "table",
       "title": "Switch Ports",
       "description": "All switch ports across selected sites. Filter by site/device using the variable above.",
-      "gridPos": { "x": 0, "y": 58, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 66, "w": 24, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "unifi_port_up{site=~\"$site\",device=~\"$device\",port_name=~\"$port|.+\"}", "instant": true, "format": "table", "refId": "A" },
@@ -548,7 +583,7 @@
       "id": 59,
       "type": "row",
       "title": "Port Traffic — select Site → Device → click port names below to add to graph",
-      "gridPos": { "x": 0, "y": 68, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 76, "w": 24, "h": 1 },
       "collapsed": false,
       "panels": []
     },
@@ -557,7 +592,7 @@
       "type": "timeseries",
       "title": "In",
       "description": "Click a port name in the Switch Ports table to select it. To show multiple ports, hold Ctrl and click in the Port dropdown.",
-      "gridPos": { "x": 0, "y": 69, "w": 12, "h": 10 },
+      "gridPos": { "x": 0, "y": 77, "w": 12, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "rate(unifi_port_rx_bytes_total{site=~\"$site\", device=~\"$device\", port_name=~\"$port\"}[5m]) * 8", "legendFormat": "{{port_name}}", "refId": "A" }
@@ -572,7 +607,7 @@
       "id": 61,
       "type": "timeseries",
       "title": "Out",
-      "gridPos": { "x": 12, "y": 69, "w": 12, "h": 10 },
+      "gridPos": { "x": 12, "y": 77, "w": 12, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         { "expr": "rate(unifi_port_tx_bytes_total{site=~\"$site\", device=~\"$device\", port_name=~\"$port\"}[5m]) * 8", "legendFormat": "{{port_name}}", "refId": "A" }
