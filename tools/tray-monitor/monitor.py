@@ -393,7 +393,7 @@ def _normalise_pd_incident(inc: dict, grafana_url: str = "") -> dict:
 
 def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
     api_key = profile.get("pd_api_key", "").strip()
-    if not api_key:
+    if not api_key or any(c in api_key for c in "\r\n"):
         return None
     try:
         params: dict = {
