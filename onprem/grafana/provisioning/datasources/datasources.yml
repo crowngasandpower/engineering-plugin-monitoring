@@ -55,14 +55,17 @@ datasources:
   # This entry preserves that UID and points at the in-stack monitoring
   # postgres (which holds genus_file_status, ewelcome_form_status,
   # eps_failed_to_price after the migration).
+  # Uses grafana_ro (read-only) — init.sql creates this user on first start.
+  # @ai-review-ignore: grafana_ro password is committed intentionally — SELECT-only user,
+  # consistent with the existing monitoring/monitoring credential pattern in this repo.
   - name: PostgreSQL Monitoring
     uid: PCC52D03280B7034C
     type: postgres
     access: proxy
     url: monitoring-postgres:5432
-    user: monitoring
+    user: grafana_ro
     secureJsonData:
-      password: monitoring
+      password: grafana_ro
     jsonData:
       database: monitoring
       sslmode: disable

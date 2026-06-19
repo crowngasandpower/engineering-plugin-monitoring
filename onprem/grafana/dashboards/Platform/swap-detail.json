@@ -1,0 +1,217 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    {
+      "icon": "arrow-left",
+      "title": "← Platform Overview",
+      "type": "link",
+      "url": "/d/vms",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Active Swap-In — Now",
+      "description": "Hosts currently reading pages back from swap (> 1 page/s). This is the real indicator of memory pressure — not swap utilisation, which can be high from old cold pages.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Swap-In (pages/s)" }]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "unit": "short",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "orange", "value": null },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "noValue": "No hosts currently reading from swap"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Host" },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View VM",
+                    "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              { "id": "custom.width", "value": 240 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Swap-In (pages/s)" },
+            "properties": [
+              { "id": "custom.displayMode", "value": "color-background-solid" }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "(\n  rate(node_vmstat_pswpin{job=\"node\"}[5m]) > 1\n) or (\n  rate(windows_memory_swap_page_reads_total{job=\"windows\"}[5m]) > 1\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": { "include": { "names": ["host", "Value"] } }
+        },
+        {
+          "id": "organize",
+          "options": { "renameByName": { "host": "Host", "Value": "Swap-In (pages/s)" } }
+        },
+        {
+          "id": "sortBy",
+          "options": { "fields": [{ "desc": true, "displayName": "Swap-In (pages/s)" }] }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Swap-In Rate — History",
+      "description": "Swap-in rate per host over time. Lines only appear while a host is actively reading from swap. Orange dashed line = background noise threshold (5 pages/s). Red dashed line = alert threshold (10 pages/s).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": false,
+            "showPoints": "never",
+            "thresholdsStyle": { "mode": "dashed" }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Background noise threshold" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 8] } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.showPoints", "value": "never" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Alert threshold" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 8] } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.showPoints", "value": "never" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": ["lastNotNull", "max"]
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "rate(node_vmstat_pswpin{job=\"node\"}[5m]) > 0",
+          "legendFormat": "{{host}}",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "rate(windows_memory_swap_page_reads_total{job=\"windows\"}[5m]) > 0",
+          "legendFormat": "{{host}}",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "vector(5)",
+          "legendFormat": "Background noise threshold",
+          "range": true,
+          "refId": "threshold_orange"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "vector(10)",
+          "legendFormat": "Alert threshold",
+          "range": true,
+          "refId": "threshold_red"
+        }
+      ]
+    }
+  ],
+  "preload": false,
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": ["infrastructure", "swap"],
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Active Swapping",
+  "uid": "swap-detail",
+  "version": 1,
+  "weekStart": ""
+}
