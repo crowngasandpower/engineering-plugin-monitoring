@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS eps_failed_to_price (
 --   CREATE USER grafana_ro WITH PASSWORD 'grafana_ro';
 --   GRANT CONNECT ON DATABASE monitoring TO grafana_ro;
 --   GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;
+--   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO grafana_ro;
 -- "
 -- @ai-review-ignore: grafana_ro password is committed intentionally. This is a SELECT-only
 -- user on an internal monitoring DB. The existing monitoring/monitoring admin credential
