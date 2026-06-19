@@ -219,6 +219,65 @@ class TestNodeMemoryExemptCache:
 
 
 # ---------------------------------------------------------------------------
+# vm_powered_off_exempt_metrics — cache semantics (mirrors node_memory tests)
+# ---------------------------------------------------------------------------
+
+class TestVmPoweredOffExemptCache:
+    """Cache semantics for /vm-powered-off-exempt/metrics."""
+
+    def test_serves_warm_cache_without_hitting_db(self):
+        cached_body = '# TYPE vcenter_vm_powered_off_exempt gauge\nvcenter_vm_powered_off_exempt{vm_name="prod-db-01"} 1\n'
+        main._vm_powered_off_exempt_cache = (time.monotonic(), cached_body)
+
+        with patch("main.get_conn") as mock_conn:
+            resp = main.vm_powered_off_exempt_metrics()
+            mock_conn.assert_not_called()
+
+        assert resp.body == cached_body.encode()
+
+    def test_returns_stale_body_when_db_raises_on_cache_expiry(self):
+        stale_body = 'vcenter_vm_powered_off_exempt{vm_name="prod-db-01"} 1\n'
+        main._vm_powered_off_exempt_cache = (
+            time.monotonic() - main._VM_POWERED_OFF_EXEMPT_TTL - 1,
+            stale_body,
+        )
+
+        with patch("main.get_conn", side_effect=Exception("DB down")):
+            resp = main.vm_powered_off_exempt_metrics()
+
+        assert resp.body == stale_body.encode()
+
+    def test_returns_empty_gauge_header_when_no_cache_and_db_fails(self):
+        assert main._vm_powered_off_exempt_cache is None
+
+        with patch("main.get_conn", side_effect=Exception("DB down")):
+            resp = main.vm_powered_off_exempt_metrics()
+
+        body = resp.body.decode()
+        assert "# HELP vcenter_vm_powered_off_exempt" in body
+        assert "# TYPE vcenter_vm_powered_off_exempt gauge" in body
+        assert "} 1" not in body
+
+    def test_builds_gauge_lines_from_db_rows(self):
+        rows = [("prod-db-01",), ("prod-db-02",)]
+        with patch("main.get_conn", _mock_conn(rows=rows)):
+            resp = main.vm_powered_off_exempt_metrics()
+
+        body = resp.body.decode()
+        assert 'vcenter_vm_powered_off_exempt{vm_name="prod-db-01"} 1' in body
+        assert 'vcenter_vm_powered_off_exempt{vm_name="prod-db-02"} 1' in body
+
+    def test_escapes_double_quote_in_vm_name(self):
+        rows = [('vm"injected"name',)]
+        with patch("main.get_conn", _mock_conn(rows=rows)):
+            resp = main.vm_powered_off_exempt_metrics()
+
+        body = resp.body.decode()
+        assert 'vm_name="vm"injected"' not in body
+        assert '\\"injected\\"' in body
+
+
+# ---------------------------------------------------------------------------
 # _get_unifi_sites — parsing, comment skipping, deduplication
 # ---------------------------------------------------------------------------
 

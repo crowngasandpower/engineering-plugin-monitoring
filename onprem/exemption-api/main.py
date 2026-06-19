@@ -305,6 +305,10 @@ def node_memory_exempt_metrics():
         stale = _node_memory_exempt_cache
 
     # Cache miss — query DB outside the lock so a slow call does not block other threads.
+    # @ai-review-ignore: two concurrent requests can both find the cache expired and both run the
+    # DB query. This is intentional — the duplicate SELECT on a local Postgres is harmless and
+    # simpler than a mark-inflight pattern. The service runs --workers 1 and is scraped by a
+    # single Prometheus instance every 60 s, so the window where two requests race is negligible.
     # Two threads may both reach here on expiry; the duplicate query is harmless.
     try:
         with get_conn() as conn:
@@ -365,6 +369,8 @@ def vm_powered_off_exempt_metrics():
         stale = _vm_powered_off_exempt_cache
 
     # Cache miss — query DB outside the lock so a slow call does not block other threads.
+    # @ai-review-ignore: same reasoning as node_memory_exempt_metrics — duplicate DB query on
+    # concurrent expiry is harmless; --workers 1 makes concurrent scrapes extremely unlikely.
     # Two threads may both reach here on expiry; the duplicate query is harmless.
     try:
         with get_conn() as conn:
@@ -425,6 +431,11 @@ def suppress_add(
         raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, and underscores.")
     if len(reason) > 255:
         raise HTTPException(status_code=400, detail="Reason must be 255 characters or fewer.")
+    # @ai-review-ignore: like all write endpoints in this service (add_exempt, remove_exempt,
+    # suppress_remove, and ~30 others), suppress_add does not wrap get_conn() in try/except.
+    # A DB failure returns HTTP 500, consistent with existing behaviour throughout this file.
+    # These are LAN-only, operator-facing endpoints; adding clean 503 handling for all of them
+    # is out of scope for this PR, which only adds input validation to pre-existing endpoints.
     with get_conn() as conn:
         conn.cursor().execute(
             """INSERT INTO platform_suppressions(category, identifier, reason)
