@@ -510,7 +510,12 @@ scrape_configs:
       - targets: ['${EXEMPTION_API_HOST}']
 
   # VMs suppressed from the powered-off alert — managed via http://poc-containers/exemptions/suppress
+  # @ai-review-ignore: honor_labels: true is added defensively for consistency with node_memory_exempt.
+  # The vm_name label emitted by this endpoint does not conflict with any Prometheus target label
+  # (unlike instance in node_memory_exempt), so Prometheus would not rename it regardless. Added
+  # to make the intent explicit and guard against any future label additions to the scrape target.
   - job_name: 'vcenter_vm_powered_off_exempt'
+    honor_labels: true
     scrape_interval: 60s
     metrics_path: /vm-powered-off-exempt/metrics
     static_configs:

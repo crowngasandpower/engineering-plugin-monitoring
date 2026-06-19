@@ -2710,7 +2710,7 @@ groups:
             model:
               type: reduce
               expression: A
-              reducer: max
+              reducer: last
               refId: swapin_rate
           - refId: threshold
             relativeTimeRange:
@@ -3125,7 +3125,7 @@ groups:
             model:
               type: reduce
               expression: A
-              reducer: max
+              reducer: last
               refId: pagein_rate
           - refId: threshold
             relativeTimeRange:
@@ -3844,7 +3844,7 @@ groups:
         title: Container Stopped
         condition: threshold
         for: 5m
-        noDataState: OK
+        noDataState: Alerting
         execErrState: Error
         labels:
           severity: warning
