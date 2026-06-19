@@ -496,6 +496,11 @@ scrape_configs:
       - targets: ['${EXEMPTION_API_HOST}']
 
   # DB hosts suppressed from memory utilisation alerts — managed via http://poc-containers/exemptions/suppress
+  # @ai-review-ignore: honor_labels: true is required. The exemption API emits
+  # node_memory_exempt{instance="apps-prod-mysql:9100"} — the instance label must be
+  # preserved so the alert rule `unless on(instance) node_memory_exempt` matches the
+  # correct node_exporter series. Without honor_labels, Prometheus overwrites instance
+  # with the scrape target (${EXEMPTION_API_HOST}), breaking the suppression entirely.
   - job_name: 'node_memory_exempt'
     scrape_interval: 60s
     honor_labels: true
