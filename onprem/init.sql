@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS eps_failed_to_price (
 -- The Grafana datasource should never have write access to this DB —
 -- it only runs SELECT queries for dashboard template variables.
 -- For existing deployments: docker exec monitoring-postgres psql -U monitoring -c "
+-- @ai-review-ignore: example command intentionally shows the grafana_ro password (same value as committed below).
 --   CREATE USER grafana_ro WITH PASSWORD 'grafana_ro';
 --   GRANT CONNECT ON DATABASE monitoring TO grafana_ro;
 --   GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;

@@ -62,9 +62,9 @@ datasources:
     access: proxy
     url: monitoring-postgres:5432
     user: grafana_ro
-    # @ai-review-ignore: grafana_ro password committed intentionally - SELECT-only user
-    # on an internal monitoring DB. Same pattern as monitoring/monitoring in docker-compose.yml.
     secureJsonData:
+      # @ai-review-ignore: grafana_ro password committed intentionally - SELECT-only user
+      # on an internal monitoring DB. Same pattern as monitoring/monitoring in docker-compose.yml.
       password: grafana_ro
     jsonData:
       database: monitoring
