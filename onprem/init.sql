@@ -32,12 +32,20 @@ CREATE TABLE IF NOT EXISTS eps_failed_to_price (
 -- Read-only user for the Grafana PostgreSQL Monitoring datasource.
 -- The Grafana datasource should never have write access to this DB —
 -- it only runs SELECT queries for dashboard template variables.
--- For existing deployments: docker exec monitoring-postgres psql -U monitoring -c "
---   CREATE USER grafana_ro WITH PASSWORD 'grafana_ro';
---   GRANT CONNECT ON DATABASE monitoring TO grafana_ro;
---   GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;
---   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO grafana_ro;
--- "
+--
+-- IMPORTANT: if grafana_ro does not exist, the PostgreSQL Monitoring datasource
+-- fails silently. Dashboard template variables (suppressed_powered_off,
+-- suppressed_backup, etc.) fall back to '^$', which matches nothing, so all
+-- exemption-API suppressions stop working on the dashboard even though the
+-- platform_suppressions table is intact. Verify with:
+--   Grafana → Connections → Data sources → PostgreSQL Monitoring → Save & test
+--
+-- For existing deployments where this script has already run without grafana_ro:
+--   docker exec monitoring-postgres psql -U monitoring -d monitoring -c \
+--     "CREATE USER grafana_ro WITH PASSWORD 'grafana_ro'; \
+--      GRANT CONNECT ON DATABASE monitoring TO grafana_ro; \
+--      GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro; \
+--      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO grafana_ro;"
 -- @ai-review-ignore: grafana_ro password is committed intentionally. This is a SELECT-only
 -- user on an internal monitoring DB. The existing monitoring/monitoring admin credential
 -- follows the same pattern (committed in docker-compose.yml). Port 9508 is only accessible
