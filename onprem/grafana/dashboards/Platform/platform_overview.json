@@ -3007,6 +3007,151 @@
         "x": 0,
         "y": 35
       },
+      "id": 600,
+      "panels": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Gas industry files sent to Genus by GPS today.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 0, "y": 36 },
+          "id": 601,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_sent_today{app=\"gps\"}", "instant": true, "refId": "A" }],
+          "title": "Gas: Sent to Genus", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Gas industry files Genus has processed today.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 4, "y": 36 },
+          "id": 602,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_processed_today{app=\"gps\"}", "instant": true, "refId": "A" }],
+          "title": "Gas: Processed by Genus", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Gas files sent to Genus but not yet processed (last 7 days).",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "None" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }, "unit": "short" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 8, "y": 36 },
+          "id": 603,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_unprocessed{app=\"gps\"}", "instant": true, "refId": "A" }],
+          "title": "Gas: Unprocessed Backlog", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Age of the oldest gas file waiting for Genus to process. Orange >30 min, red >1 hour.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "OK" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1800 }, { "color": "red", "value": 3600 }] }, "unit": "s" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 12, "y": 36 },
+          "id": 604,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_oldest_unprocessed_minutes{app=\"gps\"} * 60", "instant": true, "refId": "A" }],
+          "title": "Gas: Oldest Unprocessed", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Age of the most recent gas outgoing hub file produced by Genus. Orange >4 h, red >8 h.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "noValue": "N/A", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 14400 }, { "color": "red", "value": 28800 }] }, "unit": "s" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 16, "y": 36 },
+          "id": 605,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_hub_file_latest_age_hours{fuel=\"gas\"} * 3600", "instant": true, "refId": "A" }],
+          "title": "Gas: Hub File Age", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Gas Genus SQL Server replication lag to the replica.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "0s" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 30 }, { "color": "red", "value": 120 }] }, "unit": "s" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 20, "y": 36 },
+          "id": 606,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_replica_lag_seconds{fuel=\"gas\"}", "instant": true, "refId": "A" }],
+          "title": "Gas: Replica Lag", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Power industry files sent to Genus by EPS today.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 0, "y": 39 },
+          "id": 607,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_sent_today{app=\"eps\"}", "instant": true, "refId": "A" }],
+          "title": "Power: Sent to Genus", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Power industry files Genus has processed today.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 4, "y": 39 },
+          "id": 608,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_processed_today{app=\"eps\"}", "instant": true, "refId": "A" }],
+          "title": "Power: Processed by Genus", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Power files sent to Genus but not yet processed (last 7 days).",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "None" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }, "unit": "short" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 8, "y": 39 },
+          "id": 609,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_unprocessed{app=\"eps\"}", "instant": true, "refId": "A" }],
+          "title": "Power: Unprocessed Backlog", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Age of the oldest power file waiting for Genus to process. Orange >30 min, red >1 hour.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "OK" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1800 }, { "color": "red", "value": 3600 }] }, "unit": "s" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 12, "y": 39 },
+          "id": 610,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_oldest_unprocessed_minutes{app=\"eps\"} * 60", "instant": true, "refId": "A" }],
+          "title": "Power: Oldest Unprocessed", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Age of the most recent power outgoing hub file produced by Genus. Orange >4 h, red >8 h.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "noValue": "N/A", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 14400 }, { "color": "red", "value": 28800 }] }, "unit": "s" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 16, "y": 39 },
+          "id": 611,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_hub_file_latest_age_hours{fuel=\"elec\"} * 3600", "instant": true, "refId": "A" }],
+          "title": "Power: Hub File Age", "type": "stat"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "description": "Power Genus SQL Server replication lag. Note: elec replica not currently used by applications - informational only.",
+          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "0s" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 30 }, { "color": "red", "value": 120 }] }, "unit": "s" }, "overrides": [] },
+          "gridPos": { "h": 3, "w": 4, "x": 20, "y": 39 },
+          "id": 612,
+          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
+          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_replica_lag_seconds{fuel=\"elec\"}", "instant": true, "refId": "A" }],
+          "title": "Power: Replica Lag (info)", "type": "stat"
+        }
+      ],
+      "title": "Industry Data Flows",
+      "type": "row"
+    },    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
       "id": 160,
       "panels": [
         {

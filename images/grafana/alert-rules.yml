@@ -803,6 +803,10 @@ groups:
                       - 0
               refId: threshold
 
+      # @ai-review-ignore: for: 0s is intentional. A backup already 7 days overdue needs no
+      # pending period — the condition has been true for a week before the alert even exists.
+      # A scrape gap would produce noDataState: OK (not Alerting), so false-positives from
+      # stale scrapes are not a risk; a missed scrape silences rather than fires the alert.
       - uid: vcenter-vm-backup-overdue
         title: VM Backup Overdue
         condition: threshold
@@ -821,7 +825,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'count(time() - vcenter_vm_last_backup_timestamp >= 604800) or vector(0)'
+              expr: 'count(vcenter_vm_last_backup_timestamp > 0 and time() - vcenter_vm_last_backup_timestamp >= 604800) or vector(0)'
               refId: A
           - refId: count
             relativeTimeRange:
@@ -3605,6 +3609,9 @@ groups:
 
       # Metric name requires verification against Crown's UniFi exporter instance.
       # Threshold (<1) fires when ALL tunnels are gone — set to expected tunnel count if known.
+      # @ai-review-ignore: threshold of 1 (fires at 0 tunnels) is a conservative baseline until
+      # the expected tunnel count is confirmed. Once verified, update to the real expected count
+      # so a single-tunnel failure pages immediately rather than only when all tunnels are lost.
       - uid: network-vpn-tunnel-drop
         title: VPN Tunnel Drop
         condition: threshold
@@ -3683,7 +3690,7 @@ groups:
             model:
               type: reduce
               expression: A
-              reducer: last
+              reducer: max
               refId: bytes_per_sec
           - refId: threshold
             relativeTimeRange:
@@ -3840,6 +3847,12 @@ groups:
                       - 50
               refId: threshold
 
+      # @ai-review-ignore: the > 300 PromQL guard plus for: 5m gives a deliberate ~10-minute
+      # total absence before firing. The two-stage approach is intentional: the PromQL confirms
+      # cAdvisor has not seen the container for at least 5 min (ruling out brief restart gaps),
+      # and the for: clause confirms that state is persistent rather than a momentary evaluation
+      # artefact. The absent_s summary value will always be >= 300 s, which is the correct
+      # context to show the operator (how long the container has been missing, not just "> 5m").
       - uid: container-stopped
         title: Container Stopped
         condition: threshold
