@@ -16,37 +16,6 @@ scrape_configs:
     static_configs:
       - targets: ['grafana.mcp.local:3000']
 
-  # Scrapes Grafana's built-in Prometheus ruler to expose the ALERTS metric
-  # with full rule labels (severity, alertname, etc.) so dashboards can split
-  # by severity via PromQL.
-  # @ai-review-ignore: honor_labels: true is required here. Without it, Prometheus would
-  # overwrite the instance label on every federated ALERTS series with the scrape target
-  # (grafana.mcp.local:3000), destroying per-host alert context. With it, instance retains
-  # the value Grafana's ruler derived from the evaluated metric (e.g. apps-prod-1:9100).
-  # The metric_relabel_configs keep rule below guards against future non-ALERTS series.
-  - job_name: 'grafana-alerts'
-    honor_labels: true
-    metrics_path: /api/prometheus/grafana/federate
-    params:
-      match[]:
-        - 'ALERTS'
-    scrape_interval: 30s
-    static_configs:
-      - targets: ['grafana.mcp.local:3000']
-    basic_auth:
-      # @ai-review-ignore: admin is the fixed Grafana admin username, not a secret.
-      # No password here - credentials_file is written at container start by entrypoint.sh.
-      username: admin
-      credentials_file: /run/prometheus/grafana-credentials
-    metric_relabel_configs:
-      # Drop anything that is not the ALERTS metric. honor_labels: true means any
-      # unexpected series from a future Grafana recording rule would land unmodified;
-      # this keeps only what the federation match[] explicitly requests.
-      - source_labels: [__name__]
-        regex: ALERTS
-        action: keep
-
-
   - job_name: 'pushgateway'
     honor_labels: true
     static_configs:

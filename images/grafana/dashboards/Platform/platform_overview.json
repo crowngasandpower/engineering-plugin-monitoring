@@ -123,7 +123,7 @@
   "timezone": "browser",
   "title": "Platform Overview",
   "uid": "vms",
-  "version": 51,
+  "version": 72,
   "weekStart": "",
   "panels": [
     {
@@ -138,86 +138,6 @@
       "panels": [],
       "title": "Platform Health",
       "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "red",
-                  "index": 0,
-                  "text": "Down"
-                },
-                "1": {
-                  "color": "green",
-                  "index": 1,
-                  "text": "OK"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "noValue": "?"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 0,
-        "y": 13
-      },
-      "id": 501,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "expr": "min(genus_up)",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Genus DB",
-      "transformations": [],
-      "type": "stat"
     },
     {
       "datasource": {
@@ -1663,6 +1583,86 @@
           "color": {
             "mode": "thresholds"
           },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Down"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 0,
+        "y": 13
+      },
+      "id": 501,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "min(genus_up)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Genus DB",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1831,6 +1831,158 @@
           },
           "mappings": [
             {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 10,
+        "y": 13
+      },
+      "id": 504,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "count(up{job=\"mysql\"} == 0) OR on() vector(0)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Down",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 14,
+        "y": 13
+      },
+      "id": 505,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(mysql_global_status_innodb_deadlocks[5m])) OR on() vector(0)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Deadlocks (5m)",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
               "type": "value",
               "options": {
                 "0": {
@@ -1909,12 +2061,1342 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "0s"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 13
+      },
+      "id": 503,
+      "links": [
+        {
+          "title": "View Genus Detail",
+          "url": "/d/genus-details",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "genus_replica_lag_seconds{fuel=\"elec\"}",
+          "legendFormat": "Power",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Genus Power Lag",
+      "type": "stat"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 16
+      },
+      "id": 600,
+      "panels": [],
+      "title": "Industry Data Flows",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 0,
+        "y": 17
+      },
+      "id": 601,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_files_retrieved_today{fuel=\"gas\"}",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_files_retrieved_today{fuel=\"elec\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Files In",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 2,
+        "y": 17
+      },
+      "id": 602,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_files_transferred_today{fuel=\"gas\"}",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_files_transferred_today{fuel=\"elec\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "To Genus",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 4,
+        "y": 17
+      },
+      "id": 603,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_files_pending{fuel=\"gas\"}",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_files_pending{fuel=\"elec\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Pending",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 6,
+        "y": 17
+      },
+      "id": 604,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_files_failed_today{fuel=\"gas\"}",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_files_failed_today{fuel=\"elec\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Failed",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1800
+              },
+              {
+                "color": "red",
+                "value": 3600
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 8,
+        "y": 17
+      },
+      "id": 605,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_oldest_pending_minutes{fuel=\"gas\"} * 60",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_oldest_pending_minutes{fuel=\"elec\"} * 60",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Wait Age",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 600
+              },
+              {
+                "color": "red",
+                "value": 1800
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 10,
+        "y": 17
+      },
+      "id": 606,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_last_poll_minutes_ago{fuel=\"gas\",queue=\"GPS\"} * 60",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "gateway_last_poll_minutes_ago{fuel=\"elec\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Last Poll",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 12,
+        "y": 17
+      },
+      "id": 607,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_imports_sent_today{app=\"gps\"}",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_imports_sent_today{app=\"eps\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Sent",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 14,
+        "y": 17
+      },
+      "id": 608,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_imports_processed_today{app=\"gps\"}",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_imports_processed_today{app=\"eps\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Processed",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 16,
+        "y": 17
+      },
+      "id": 609,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_imports_unprocessed{app=\"gps\"}",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_imports_unprocessed{app=\"eps\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Backlog",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1800
+              },
+              {
+                "color": "red",
+                "value": 3600
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 18,
+        "y": 17
+      },
+      "id": 610,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_imports_oldest_unprocessed_minutes{app=\"gps\"} * 60",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_imports_oldest_unprocessed_minutes{app=\"eps\"} * 60",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Queue Age",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 14400
+              },
+              {
+                "color": "red",
+                "value": 28800
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 20,
+        "y": 17
+      },
+      "id": 611,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_hub_file_latest_age_hours{fuel=\"gas\"} * 3600",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_hub_file_latest_age_hours{fuel=\"elec\"} * 3600",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Hub Age",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "0s"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 22,
+        "y": 17
+      },
+      "id": 612,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_replica_lag_seconds{fuel=\"gas\"}",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "genus_replica_lag_seconds{fuel=\"elec\"}",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Replica Lag",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
       },
       "id": 203,
       "panels": [],
@@ -1964,7 +3446,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 17
+        "y": 22
       },
       "id": 152,
       "links": [
@@ -2041,7 +3523,7 @@
         "h": 3,
         "w": 8,
         "x": 4,
-        "y": 17
+        "y": 22
       },
       "id": 153,
       "links": [
@@ -2124,7 +3606,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 17
+        "y": 22
       },
       "id": 139,
       "links": [
@@ -2221,7 +3703,7 @@
         "h": 3,
         "w": 8,
         "x": 16,
-        "y": 17
+        "y": 22
       },
       "id": 156,
       "links": [
@@ -2278,146 +3760,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
-      },
-      "id": 204,
-      "panels": [],
-      "title": "Monitoring Coverage",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "None"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "noValue": "0"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byFrameRefID",
-              "options": "B"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "blue"
-                }
-              },
-              {
-                "id": "mappings",
-                "value": []
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "blue",
-                      "value": null
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 16,
-        "x": 0,
         "y": 25
-      },
-      "id": 141,
-      "links": [
-        {
-          "title": "View Exporter Coverage",
-          "url": "/d/infra-detail",
-          "targetBlank": false
-        }
-      ],
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "count(scrape_samples_scraped{job=~\"node|windows\", host!~\"$exempt_hosts\"} == 0) or vector(0)",
-          "legendFormat": "Not Installed",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "count(up{job=~\"node|windows\"})",
-          "legendFormat": "VMs Monitored",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Exporter Not Installed",
-      "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 20
       },
       "id": 205,
       "panels": [],
@@ -2467,7 +3810,7 @@
         "h": 3,
         "w": 3,
         "x": 0,
-        "y": 21
+        "y": 26
       },
       "id": 507,
       "links": [
@@ -2550,7 +3893,7 @@
         "h": 3,
         "w": 3,
         "x": 3,
-        "y": 21
+        "y": 26
       },
       "id": 508,
       "links": [
@@ -2626,7 +3969,7 @@
         "h": 3,
         "w": 3,
         "x": 6,
-        "y": 21
+        "y": 26
       },
       "id": 302,
       "links": [
@@ -2709,7 +4052,7 @@
         "h": 3,
         "w": 3,
         "x": 9,
-        "y": 21
+        "y": 26
       },
       "id": 303,
       "links": [
@@ -2792,7 +4135,7 @@
         "h": 3,
         "w": 3,
         "x": 12,
-        "y": 21
+        "y": 26
       },
       "id": 304,
       "links": [
@@ -2831,347 +4174,6 @@
       ],
       "title": "Dell Switch Ports Down",
       "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 30
-      },
-      "id": 340,
-      "panels": [],
-      "title": "Acknowledged Offline",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "description": "UniFi consoles currently offline but exempted from alerting.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "None"
-                }
-              }
-            }
-          ],
-          "noValue": "0",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 31
-      },
-      "id": 341,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "count(max by (host, model) (unifi_host_up) == 0 and on(host) unifi_console_exempt) or vector(0)",
-          "instant": true,
-          "legendFormat": "Acknowledged",
-          "refId": "A"
-        }
-      ],
-      "title": "Consoles Acknowledged",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "description": "UniFi consoles currently offline and exempted from alerting. Manage exemptions at http://poc-containers/exemptions/suppress",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "left",
-            "cellOptions": {
-              "type": "auto"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 20,
-        "x": 4,
-        "y": 31
-      },
-      "id": 342,
-      "options": {
-        "sortBy": [
-          {
-            "displayName": "Console"
-          }
-        ]
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "max by (host, model) (unifi_host_up) == 0 and on(host) unifi_console_exempt",
-          "format": "table",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {
-            "mode": "columns"
-          }
-        },
-        {
-          "id": "merge",
-          "options": {}
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "Value": true,
-              "job": true,
-              "instance": true,
-              "site": true
-            },
-            "renameByName": {
-              "host": "Console",
-              "model": "Model"
-            },
-            "indexByName": {
-              "host": 0,
-              "model": 1
-            }
-          }
-        }
-      ],
-      "title": "Acknowledged Offline Items",
-      "type": "table"
-    },
-    {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 35
-      },
-      "id": 600,
-      "panels": [
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Gas industry files sent to Genus by GPS today.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 0, "y": 36 },
-          "id": 601,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_sent_today{app=\"gps\"}", "instant": true, "refId": "A" }],
-          "title": "Gas: Sent to Genus", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Gas industry files Genus has processed today.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 4, "y": 36 },
-          "id": 602,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_processed_today{app=\"gps\"}", "instant": true, "refId": "A" }],
-          "title": "Gas: Processed by Genus", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Gas files sent to Genus but not yet processed (last 7 days).",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "None" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }, "unit": "short" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 8, "y": 36 },
-          "id": 603,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_unprocessed{app=\"gps\"}", "instant": true, "refId": "A" }],
-          "title": "Gas: Unprocessed Backlog", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Age of the oldest gas file waiting for Genus to process. Orange >30 min, red >1 hour.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "OK" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1800 }, { "color": "red", "value": 3600 }] }, "unit": "s" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 12, "y": 36 },
-          "id": 604,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_oldest_unprocessed_minutes{app=\"gps\"} * 60", "instant": true, "refId": "A" }],
-          "title": "Gas: Oldest Unprocessed", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Age of the most recent gas outgoing hub file produced by Genus. Orange >4 h, red >8 h.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "noValue": "N/A", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 14400 }, { "color": "red", "value": 28800 }] }, "unit": "s" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 16, "y": 36 },
-          "id": 605,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_hub_file_latest_age_hours{fuel=\"gas\"} * 3600", "instant": true, "refId": "A" }],
-          "title": "Gas: Hub File Age", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Gas Genus SQL Server replication lag to the replica.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "0s" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 30 }, { "color": "red", "value": 120 }] }, "unit": "s" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 20, "y": 36 },
-          "id": 606,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_replica_lag_seconds{fuel=\"gas\"}", "instant": true, "refId": "A" }],
-          "title": "Gas: Replica Lag", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Power industry files sent to Genus by EPS today.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 0, "y": 39 },
-          "id": 607,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_sent_today{app=\"eps\"}", "instant": true, "refId": "A" }],
-          "title": "Power: Sent to Genus", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Power industry files Genus has processed today.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }, "unit": "short" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 4, "y": 39 },
-          "id": 608,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_processed_today{app=\"eps\"}", "instant": true, "refId": "A" }],
-          "title": "Power: Processed by Genus", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Power files sent to Genus but not yet processed (last 7 days).",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "None" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }, "unit": "short" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 8, "y": 39 },
-          "id": 609,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_unprocessed{app=\"eps\"}", "instant": true, "refId": "A" }],
-          "title": "Power: Unprocessed Backlog", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Age of the oldest power file waiting for Genus to process. Orange >30 min, red >1 hour.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "OK" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1800 }, { "color": "red", "value": 3600 }] }, "unit": "s" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 12, "y": 39 },
-          "id": 610,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_imports_oldest_unprocessed_minutes{app=\"eps\"} * 60", "instant": true, "refId": "A" }],
-          "title": "Power: Oldest Unprocessed", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Age of the most recent power outgoing hub file produced by Genus. Orange >4 h, red >8 h.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "noValue": "N/A", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 14400 }, { "color": "red", "value": 28800 }] }, "unit": "s" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 16, "y": 39 },
-          "id": 611,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_hub_file_latest_age_hours{fuel=\"elec\"} * 3600", "instant": true, "refId": "A" }],
-          "title": "Power: Hub File Age", "type": "stat"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-          "description": "Power Genus SQL Server replication lag. Note: elec replica not currently used by applications - informational only.",
-          "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "decimals": 0, "mappings": [{ "options": { "0": { "color": "green", "index": 0, "text": "0s" } }, "type": "value" }], "noValue": "0", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 30 }, { "color": "red", "value": 120 }] }, "unit": "s" }, "overrides": [] },
-          "gridPos": { "h": 3, "w": 4, "x": 20, "y": 39 },
-          "id": 612,
-          "links": [{ "targetBlank": false, "title": "View Genus Detail", "url": "/d/genus-details" }],
-          "options": { "colorMode": "background_solid", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
-          "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "expr": "genus_replica_lag_seconds{fuel=\"elec\"}", "instant": true, "refId": "A" }],
-          "title": "Power: Replica Lag (info)", "type": "stat"
-        }
-      ],
-      "title": "Industry Data Flows",
-      "type": "row"
-    },    {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 36
-      },
-      "id": 160,
-      "panels": [
-        {
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 32
-          },
-          "id": 159,
-          "options": {
-            "content": "## Suppressing alerts from this dashboard\n\nCertain stat panels on this dashboard (**Powered Off**, **Active Alerts**, **Backups Overdue**) can be configured to ignore specific VMs or alerts that are known/intentional.\n\n**Manage suppressions:** open [http://poc-containers/exemptions/suppress](http://poc-containers/exemptions/suppress) -- the page lists all current suppressions and has a form to add or remove them.\n\n| Panel | Category | Identifier |\n|---|---|---|\n| Powered Off | `powered_off` | VM name (e.g. `my-vm-01`) |\n| Backups Overdue | `backup_overdue` | VM name (e.g. `my-vm-01`) |\n| Active Alerts | `active_alert` | Alert name (e.g. `HostHighCPU`) |\n\nChanges take effect within 30 seconds (next dashboard refresh).\n\n---\n\n## UniFi Device Exemptions\n\nDevices can be excluded from the **network-unifi-offline** alert and hidden from the Device Status table in the UniFi Site Detail dashboard when offline. Use the dropdown in the **UniFi Device Exemptions** section at [http://poc-containers/exemptions/suppress](http://poc-containers/exemptions/suppress).\n\nChanges take effect within 60 seconds.",
-            "mode": "markdown"
-          },
-          "title": "",
-          "type": "text"
-        }
-      ],
-      "title": "Alert Suppression",
-      "type": "row"
     },
     {
       "datasource": {
@@ -3326,7 +4328,7 @@
         "h": 3,
         "w": 9,
         "x": 15,
-        "y": 21
+        "y": 26
       },
       "id": 310,
       "links": [
@@ -3389,6 +4391,19 @@
       "type": "stat"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "id": 204,
+      "panels": [],
+      "title": "Monitoring Coverage",
+      "type": "row"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "PBFA97CFB590B2093"
@@ -3404,7 +4419,7 @@
                 "0": {
                   "color": "green",
                   "index": 0,
-                  "text": "OK"
+                  "text": "None"
                 }
               },
               "type": "value"
@@ -3425,177 +4440,51 @@
           },
           "noValue": "0"
         },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 10,
-        "y": 13
-      },
-      "id": 504,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "expr": "count(up{job=\"mysql\"} == 0) OR on() vector(0)",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "MySQL Down",
-      "transformations": [],
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "OK"
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
                 }
               },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
               {
-                "color": "green",
-                "value": null
+                "id": "mappings",
+                "value": []
               },
               {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "noValue": "0"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 14,
-        "y": 13
-      },
-      "id": 505,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "sum(increase(mysql_global_status_innodb_deadlocks[5m])) OR on() vector(0)",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "MySQL Deadlocks (5m)",
-      "transformations": [],
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "0s"
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "blue",
+                      "value": null
+                    }
+                  ]
                 }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 30
-              },
-              {
-                "color": "red",
-                "value": 120
               }
             ]
-          },
-          "noValue": "0",
-          "unit": "s"
-        },
-        "overrides": []
+          }
+        ]
       },
       "gridPos": {
-        "h": 3,
-        "w": 3,
-        "x": 21,
-        "y": 13
+        "h": 5,
+        "w": 16,
+        "x": 0,
+        "y": 30
       },
-      "id": 503,
+      "id": 141,
       "links": [
         {
-          "title": "View Genus Detail",
-          "url": "/d/genus-details",
+          "title": "View Exporter Coverage",
+          "url": "/d/infra-detail",
           "targetBlank": false
         }
       ],
@@ -3603,6 +4492,104 @@
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(scrape_samples_scraped{job=~\"node|windows\", host!~\"$exempt_hosts\"} == 0) or vector(0)",
+          "legendFormat": "Not Installed",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(up{job=~\"node|windows\"})",
+          "legendFormat": "VMs Monitored",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Exporter Not Installed",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "id": 340,
+      "panels": [],
+      "title": "Acknowledged Offline",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "UniFi consoles currently offline but exempted from alerting.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              }
+            }
+          ],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 36
+      },
+      "id": 341,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -3620,14 +4607,123 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "genus_replica_lag_seconds{fuel=\"elec\"}",
-          "legendFormat": "Power",
-          "range": true,
+          "expr": "count(max by (host, model) (unifi_host_up) == 0 and on(host) unifi_console_exempt) or vector(0)",
+          "instant": true,
+          "legendFormat": "Acknowledged",
           "refId": "A"
         }
       ],
-      "title": "Genus Power Lag",
+      "title": "Consoles Acknowledged",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "UniFi consoles currently offline and exempted from alerting. Manage exemptions at http://poc-containers/exemptions/suppress",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 20,
+        "x": 4,
+        "y": 36
+      },
+      "id": 342,
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Console"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max by (host, model) (unifi_host_up) == 0 and on(host) unifi_console_exempt",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "Value": true,
+              "job": true,
+              "instance": true,
+              "site": true
+            },
+            "renameByName": {
+              "host": "Console",
+              "model": "Model"
+            },
+            "indexByName": {
+              "host": 0,
+              "model": 1
+            }
+          }
+        }
+      ],
+      "title": "Acknowledged Offline Items",
+      "type": "table"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "id": 160,
+      "panels": [
+        {
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 37
+          },
+          "id": 159,
+          "options": {
+            "content": "## Suppressing alerts from this dashboard\n\nCertain stat panels on this dashboard (**Powered Off**, **Active Alerts**, **Backups Overdue**) can be configured to ignore specific VMs or alerts that are known/intentional.\n\n**Manage suppressions:** open [http://poc-containers/exemptions/suppress](http://poc-containers/exemptions/suppress) -- the page lists all current suppressions and has a form to add or remove them.\n\n| Panel | Category | Identifier |\n|---|---|---|\n| Powered Off | `powered_off` | VM name (e.g. `my-vm-01`) |\n| Backups Overdue | `backup_overdue` | VM name (e.g. `my-vm-01`) |\n| Active Alerts | `active_alert` | Alert name (e.g. `HostHighCPU`) |\n\nChanges take effect within 30 seconds (next dashboard refresh).\n\n---\n\n## UniFi Device Exemptions\n\nDevices can be excluded from the **network-unifi-offline** alert and hidden from the Device Status table in the UniFi Site Detail dashboard when offline. Use the dropdown in the **UniFi Device Exemptions** section at [http://poc-containers/exemptions/suppress](http://poc-containers/exemptions/suppress).\n\nChanges take effect within 60 seconds.",
+            "mode": "markdown"
+          },
+          "title": "",
+          "type": "text"
+        }
+      ],
+      "title": "Alert Suppression",
+      "type": "row"
     }
   ]
 }

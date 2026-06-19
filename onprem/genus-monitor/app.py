@@ -7,7 +7,9 @@ databases (EPS/GPS) for pending file imports that haven't been processed by Genu
 Required environment variables:
   GENUS_GAS_HOST, GENUS_GAS_DB, GENUS_GAS_USER, GENUS_GAS_PASSWORD
   GENUS_ELEC_HOST, GENUS_ELEC_DB, GENUS_ELEC_USER, GENUS_ELEC_PASSWORD (optional)
-  MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD (for EPS/GPS genus_imports monitoring)
+  MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD (for EPS/GPS genus_imports and gateway monitoring)
+  GATEWAY_GAS_DB — MySQL database name for gas gateway (e.g. gateway); omit to disable
+  GATEWAY_ELEC_DB — MySQL database name for power gateway (e.g. gateway_elec); omit to disable
   PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD (for storing cross-reference data)
 
 Optional:
@@ -121,6 +123,13 @@ for _idx in range(1, 10):
         'name': os.environ.get(f'UBIBOT_{_idx}_NAME', _channel),
     })
 
+# --- Gateway DB config (industry file pipeline) ---
+GATEWAY_CONFIG = {}
+if os.environ.get('GATEWAY_GAS_DB'):
+    GATEWAY_CONFIG['gas'] = os.environ['GATEWAY_GAS_DB']
+if os.environ.get('GATEWAY_ELEC_DB'):
+    GATEWAY_CONFIG['elec'] = os.environ['GATEWAY_ELEC_DB']
+
 # --- PowerStore SAN config ---
 POWERSTORE_CONFIG = None
 if os.environ.get('POWERSTORE_HOST'):
@@ -153,6 +162,20 @@ genus_imports_unprocessed = Gauge('genus_imports_unprocessed',
     'Files sent (last 7 days) not yet found in Genus tblHubFileFlows', ['app'])
 genus_imports_oldest_unprocessed_minutes = Gauge('genus_imports_oldest_unprocessed_minutes',
     'Age in minutes of the oldest unprocessed file', ['app'])
+
+# Gateway industry file pipeline
+gateway_files_retrieved_today = Gauge('gateway_files_retrieved_today',
+    'Industry files retrieved by gateway today', ['fuel'])
+gateway_files_transferred_today = Gauge('gateway_files_transferred_today',
+    'Industry files successfully transferred to Genus today', ['fuel'])
+gateway_files_pending = Gauge('gateway_files_pending',
+    'Industry files retrieved but not yet transferred to Genus', ['fuel'])
+gateway_files_failed_today = Gauge('gateway_files_failed_today',
+    'Industry files that failed to transfer today', ['fuel'])
+gateway_oldest_pending_minutes = Gauge('gateway_oldest_pending_minutes',
+    'Age in minutes of the oldest pending industry file', ['fuel'])
+gateway_last_poll_minutes_ago = Gauge('gateway_last_poll_minutes_ago',
+    'Minutes since the last completed polling cycle', ['fuel', 'queue'])
 
 # Welcome packs (ewelcome / ewelcome-power)
 ewelcome_forms_created_today = Gauge('ewelcome_forms_created_today',
@@ -851,6 +874,58 @@ def collect_econtracts_metrics():
         logger.error(f"esignature collection failed: {e}")
 
 
+def collect_gateway_metrics():
+    """Monitor the gateway industry file pipeline (gas and power)."""
+    if not MYSQL_CONFIG or not GATEWAY_CONFIG:
+        return
+
+    for fuel, database in GATEWAY_CONFIG.items():
+        try:
+            conn = get_mysql_connection(database)
+            cursor = conn.cursor()
+
+            gateway_files_retrieved_today.labels(fuel=fuel).set(
+                query_single_value(cursor,
+                    "SELECT COUNT(*) FROM files "
+                    "WHERE DATE(created_at) = CURDATE() AND deleted_at IS NULL"))
+
+            gateway_files_transferred_today.labels(fuel=fuel).set(
+                query_single_value(cursor,
+                    "SELECT COUNT(*) FROM files "
+                    "WHERE processed = 1 AND DATE(processed_at) = CURDATE() AND deleted_at IS NULL"))
+
+            gateway_files_pending.labels(fuel=fuel).set(
+                query_single_value(cursor,
+                    "SELECT COUNT(*) FROM files "
+                    "WHERE processed = 0 AND failed = 0 AND failed_transfer = 0 AND deleted_at IS NULL"))
+
+            gateway_files_failed_today.labels(fuel=fuel).set(
+                query_single_value(cursor,
+                    "SELECT COUNT(*) FROM files "
+                    "WHERE (failed = 1 OR failed_transfer = 1) "
+                    "AND DATE(created_at) = CURDATE() AND deleted_at IS NULL"))
+
+            gateway_oldest_pending_minutes.labels(fuel=fuel).set(
+                query_single_value(cursor,
+                    "SELECT TIMESTAMPDIFF(MINUTE, MIN(created_at), NOW()) FROM files "
+                    "WHERE processed = 0 AND failed = 0 AND failed_transfer = 0 AND deleted_at IS NULL"))
+
+            cursor.execute(
+                "SELECT queue, TIMESTAMPDIFF(MINUTE, MAX(end), NOW()) "
+                "FROM polling_cycles "
+                "WHERE failed = 0 AND end IS NOT NULL AND deleted_at IS NULL "
+                "GROUP BY queue")
+            for queue, minutes_ago in cursor.fetchall():
+                gateway_last_poll_minutes_ago.labels(fuel=fuel, queue=queue).set(minutes_ago or 0)
+
+            cursor.close()
+            conn.close()
+            logger.info(f"Gateway {fuel} metrics collected")
+
+        except Exception as e:
+            logger.error(f"Gateway {fuel} ({database}) collection failed: {e}")
+
+
 def collect_powerstore_metrics():
     """Monitor SAN temperature state from PowerStore active alerts."""
     if not POWERSTORE_CONFIG:
@@ -964,6 +1039,7 @@ def collect_metrics():
     """Run all metric collection."""
     collect_genus_metrics()
     collect_cross_reference()
+    collect_gateway_metrics()
     collect_ewelcome_metrics()
     collect_eps_pricing_metrics()
     collect_gps_pricing_metrics()

@@ -1877,49 +1877,6 @@ groups:
                     params:
                       - 0
               refId: threshold
-      - uid: grafana-alerts-scrape-down
-        title: Grafana Alerts Scrape Down
-        condition: threshold
-        for: 5m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: warning
-        annotations:
-          summary: "Prometheus cannot scrape Grafana's alert ruler — ALERTS metric is stale. Check Grafana health and that GRAFANA_ADMIN_PASSWORD matches the running container."
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: PBFA97CFB590B2093
-            model:
-              expr: 'up{job="grafana-alerts"}'
-              refId: A
-          - refId: val
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: val
-          - refId: threshold
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: val
-              conditions:
-                - evaluator:
-                    type: lt
-                    params:
-                      - 1
-              refId: threshold
 
   - orgId: 1
     name: EPS Pricing
@@ -2683,6 +2640,8 @@ groups:
       # Memory > 90% alerts (expected behaviour for buffer-pool caching), but active
       # swap-in means the OS is paging under genuine pressure — that is always worth
       # alerting on, even for DB servers. See exemption-api /exemptions/suppress docs.
+      # Threshold of 10 pages/s matches the Platform Overview dashboard baseline
+      # (rate > 10 is the point at which the dashboard counts a host as swapping).
       - uid: linux-swap-in-warning
         title: Linux Active Swapping
         condition: threshold
@@ -2701,7 +2660,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              # No > 0 filter here — the threshold condition below handles that.
+              # No threshold filter here — the threshold condition below handles that.
               # Keeping the series alive at 0 prevents a brief exporter gap from
               # silently clearing an in-flight alert via noDataState: OK.
               expr: 'rate(node_vmstat_pswpin{job="node"}[5m])'
@@ -2728,7 +2687,7 @@ groups:
                 - evaluator:
                     type: gt
                     params:
-                      - 0
+                      - 10
               refId: threshold
 
       - uid: linux-iowait-warning
@@ -3098,6 +3057,11 @@ groups:
               refId: threshold
 
       # Intentionally does NOT carry the node_memory_exempt exclusion — see linux-swap-in-warning above.
+      # Threshold of 10 pages/s matches the Platform Overview dashboard baseline.
+      # The AND on(instance) clause filters out hosts with >10% available memory — Windows
+      # pages proactively for reasons unrelated to genuine pressure (prefetcher, standby list
+      # reclaim, memory compression). Without this guard, healthy hosts with plenty of free
+      # memory trigger false positives.
       - uid: windows-swap-in-warning
         title: Windows Active Swapping
         condition: threshold
@@ -3107,7 +3071,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.instance }} is actively reading from page file at {{ $values.pagein_rate.Value | printf \"%.1f\" }} reads/s — possible memory pressure"
+          summary: "{{ $labels.instance }} is actively reading from page file at {{ $values.pagein_rate.Value | printf \"%.1f\" }} reads/s with low memory available — memory pressure"
           panelUrl: "/d/infra-detail?orgId=1&viewPanel=30"
         data:
           - refId: A
@@ -3116,10 +3080,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              # No > 0 filter here — the threshold condition below handles that.
-              # Keeping the series alive at 0 prevents a brief exporter gap from
-              # silently clearing an in-flight alert via noDataState: OK.
-              expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m])'
+              expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m]) and on(instance) (windows_memory_available_bytes{job="windows"} / windows_cs_physical_memory_bytes{job="windows"} * 100 < 10)'
               refId: A
           - refId: pagein_rate
             relativeTimeRange:
@@ -3143,7 +3104,7 @@ groups:
                 - evaluator:
                     type: gt
                     params:
-                      - 0
+                      - 10
               refId: threshold
 
   - orgId: 1
