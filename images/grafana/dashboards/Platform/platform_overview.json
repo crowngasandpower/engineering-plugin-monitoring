@@ -4166,7 +4166,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum(os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 0) or vector(0)",
+          "expr": "count((os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 0) and on(switch, interface, port) (os10:interface_up_recent_7d{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 1)) or vector(0)",
           "legendFormat": "Ports Down",
           "range": true,
           "refId": "A"

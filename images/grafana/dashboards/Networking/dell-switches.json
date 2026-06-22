@@ -122,7 +122,7 @@
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
-          "expr": "sum(os10_interface_up{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"} == 0)",
+          "expr": "count((os10_interface_up{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"} == 0) and on(switch, interface, port) (os10:interface_up_recent_7d{interface=~\"$interface|ethernet.*|port-channel.*|vti.*\",switch=~\"$switch\"} == 1)) or vector(0)",
           "instant": true,
           "refId": "A"
         }
@@ -277,11 +277,165 @@
       }
     },
     {
+      "id": 31,
+      "type": "table",
+      "title": "Down Ports",
+      "description": "Ports that are operationally DOWN and are real/used links \u2014 they have carried traffic since the switch last booted, or were up within the last 24h. Empty/unpatched ports (permanently down) are excluded, and a port stays listed no matter how long it has been down. Link Speed is best-effort: a value means the switch is reporting a speed for the port (transceiver/optic likely present); blank means none reported.",
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "(os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 0) and on(switch, interface, port) (os10:interface_up_recent_7d{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 1)",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "",
+          "refId": "A"
+        },
+        {
+          "expr": "os10_interface_speed_bps and on(switch, interface, port) ((os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 0) and on(switch, interface, port) (os10:interface_up_recent_7d{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 1))",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "",
+          "refId": "B"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true
+            },
+            "renameByName": {
+              "Value #A": "Status",
+              "Value #B": "Link Speed",
+              "switch": "Switch",
+              "interface": "Interface",
+              "port": "port"
+            },
+            "indexByName": {
+              "switch": 0,
+              "interface": 1,
+              "Value #A": 2,
+              "Value #B": 3,
+              "port": 4
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": [
+              {
+                "desc": false,
+                "displayName": "Switch"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "DOWN"
+                      },
+                      "1": {
+                        "text": "Up"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Link Speed"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "noValue",
+                "value": "\u2014"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "port"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": 30,
       "type": "table",
       "title": "Interface Status",
       "description": "Ethernet ports, port-channels, and VTI links across all switches. Click an interface name to add it to the port traffic graph below.",
-      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 10 },
+      "gridPos": { "x": 0, "y": 26, "w": 24, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
@@ -402,7 +556,7 @@
       "id": 40,
       "type": "row",
       "title": "Port Traffic — click interface names in the table above to add to graph",
-      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 1 },
+      "gridPos": { "x": 0, "y": 36, "w": 24, "h": 1 },
       "collapsed": false,
       "panels": []
     },
@@ -411,7 +565,7 @@
       "type": "timeseries",
       "title": "In",
       "description": "Click an interface name in the Interface Status table to select it. Use the Interface dropdown to add more.",
-      "gridPos": { "x": 0, "y": 29, "w": 12, "h": 10 },
+      "gridPos": { "x": 0, "y": 37, "w": 12, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
@@ -436,7 +590,7 @@
       "id": 42,
       "type": "timeseries",
       "title": "Out",
-      "gridPos": { "x": 12, "y": 29, "w": 12, "h": 10 },
+      "gridPos": { "x": 12, "y": 37, "w": 12, "h": 10 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
