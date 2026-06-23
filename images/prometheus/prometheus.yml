@@ -1,8 +1,3 @@
-# ${EXEMPTION_API_HOST} is substituted by entrypoint.sh at container startup from the
-# EXEMPTION_API_HOST environment variable (host:port of the exemption-api container).
-# All scrape targets that previously used a hardcoded 192.168.x.x:9529 address have been
-# migrated to ${EXEMPTION_API_HOST}. No hardcoded IPs remain as active scrape targets.
-
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -67,7 +62,7 @@ scrape_configs:
   - job_name: 'node'
     scrape_interval: 15s
     http_sd_configs:
-      - url: http://${EXEMPTION_API_HOST}/vcenter/linux-targets
+      - url: http://192.168.164.184:9529/vcenter/linux-targets
         refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
@@ -90,7 +85,7 @@ scrape_configs:
     scrape_interval: 30s
     scrape_timeout: 25s
     http_sd_configs:
-      - url: http://${EXEMPTION_API_HOST}/vcenter/windows-targets
+      - url: http://192.168.164.184:9529/vcenter/windows-targets
         refresh_interval: 60s
     relabel_configs:
       - source_labels: [__address__]
@@ -436,7 +431,7 @@ scrape_configs:
     scrape_interval: 5m
     scrape_timeout: 30s
     http_sd_configs:
-      - url: http://${EXEMPTION_API_HOST}/cert/targets
+      - url: http://192.168.164.184:9529/cert/targets
         refresh_interval: 1m
     relabel_configs:
       - source_labels: [__address__]
@@ -456,34 +451,14 @@ scrape_configs:
     scrape_timeout: 4m
     metrics_path: /cert/metrics
     static_configs:
-      - targets: ['${EXEMPTION_API_HOST}']
+      - targets: ['192.168.164.184:9529']
 
   # UniFi device exemptions — managed via http://poc-containers/exemptions/suppress
   - job_name: 'unifi_exempt'
     scrape_interval: 60s
     metrics_path: /unifi/metrics
     static_configs:
-      - targets: ['${EXEMPTION_API_HOST}']
-
-  # DB hosts suppressed from memory utilisation alerts — managed via http://poc-containers/exemptions/suppress
-  # @ai-review-ignore: honor_labels: true is required. The exemption API emits
-  # node_memory_exempt{instance="apps-prod-mysql:9100"} — the instance label must be
-  # preserved so the alert rule `unless on(instance) node_memory_exempt` matches the
-  # correct node_exporter series. Without honor_labels, Prometheus overwrites instance
-  # with the scrape target (${EXEMPTION_API_HOST}), breaking the suppression entirely.
-  - job_name: 'node_memory_exempt'
-    scrape_interval: 60s
-    honor_labels: true
-    metrics_path: /node-memory-exempt/metrics
-    static_configs:
-      - targets: ['${EXEMPTION_API_HOST}']
-
-  # VMs suppressed from the powered-off alert — managed via http://poc-containers/exemptions/suppress
-  - job_name: 'vcenter_vm_powered_off_exempt'
-    scrape_interval: 60s
-    metrics_path: /vm-powered-off-exempt/metrics
-    static_configs:
-      - targets: ['${EXEMPTION_API_HOST}']
+      - targets: ['192.168.164.184:9529']
 
   # Ping target registry — exposes configured targets as a gauge so the
   # dashboard can show them as DOWN before a site script has pushed any data.
@@ -491,7 +466,7 @@ scrape_configs:
     scrape_interval: 30s
     metrics_path: /ping/metrics
     static_configs:
-      - targets: ['${EXEMPTION_API_HOST}']
+      - targets: ['192.168.164.184:9529']
 
   # Ad-hoc connectivity checks — managed via http://poc-containers/exemptions/connectivity
   - job_name: 'connectivity_check'
@@ -501,7 +476,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 10s
     http_sd_configs:
-      - url: http://${EXEMPTION_API_HOST}/connectivity/targets
+      - url: http://192.168.164.184:9529/connectivity/targets
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]
@@ -519,7 +494,7 @@ scrape_configs:
     scrape_interval: 60s
     scrape_timeout: 10s
     http_sd_configs:
-      - url: http://${EXEMPTION_API_HOST}/ping/targets
+      - url: http://192.168.164.184:9529/ping/targets
         refresh_interval: 30s
     relabel_configs:
       - source_labels: [__address__]
