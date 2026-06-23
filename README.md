@@ -168,6 +168,24 @@ After the AWS images are redeployed and the on-prem stack is restarted:
 - `/loki`    → loki service, unauthenticated (so on-prem log shippers can push).
 - `/tv`      → redirect to the public Infrastructure dashboard.
 
+### Querying logs & metrics directly
+
+All endpoints are under `https://tools.cgp3.co.uk` (the old on-prem
+`poc-containers:9500/9502/9503` ports were **decommissioned 2026-06-01** — only the
+collectors on `:9550-9552` still run there). The `/logs` and `/metrics` slash commands
+wrap these.
+
+- **Grafana (dashboards):** `https://tools.cgp3.co.uk/grafana/` — engineering-tools SSO,
+  no separate login. Your platform role maps to a Grafana role.
+- **Loki (logs, LogQL):** `GET https://tools.cgp3.co.uk/loki/api/v1/query_range` —
+  currently unauthenticated. Labels: `app`, `log_type`, `host`.
+- **Prometheus (metrics, PromQL):** there is **no dedicated `/prometheus` route** — Prometheus
+  is consumed internally by Grafana. To run raw PromQL, go through Grafana's datasource proxy:
+  `GET https://tools.cgp3.co.uk/grafana/api/datasources/proxy/uid/PBFA97CFB590B2093/api/v1/query`
+  with `Authorization: Bearer <cgp_live_ key>` (mint one via the `mint_api_key` MCP tool).
+  (Adding a first-class authenticated `/prometheus` proxy route to `plugin.json` — mirroring
+  `/loki` — would give a cleaner URL if direct PromQL access becomes common.)
+
 ---
 
 ## Alerting (PagerDuty) — AWS only
