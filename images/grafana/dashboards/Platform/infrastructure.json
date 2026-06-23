@@ -581,6 +581,9 @@
           "filters": [],
           "format": "table",
           "global_query_id": "",
+          "json_options": {
+            "root_is_not_array": true
+          },
           "parser": "backend",
           "refId": "A",
           "root_selector": "status",
