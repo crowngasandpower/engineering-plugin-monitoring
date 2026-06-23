@@ -9,7 +9,7 @@ from pathlib import Path
 
 _PROFILE_KEYS = (
     "name", "grafana_url", "auth_type", "username", "password", "api_token",
-    "source_type", "pd_api_key", "pd_user_email",
+    "source_type", "pd_api_key", "pd_user_email", "pd_service_id",
 )
 
 PROFILE_DEFAULTS: dict = {
@@ -22,6 +22,7 @@ PROFILE_DEFAULTS: dict = {
     "source_type":   "grafana",
     "pd_api_key":    "",
     "pd_user_email": "",
+    "pd_service_id": "",
 }
 
 DEFAULTS: dict = {

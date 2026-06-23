@@ -95,6 +95,23 @@
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "PCC52D03280B7034C"
+        },
+        "definition": "SELECT COALESCE(string_agg(replace(identifier, '.', '\\.'), '|'), '^$') FROM platform_suppressions WHERE category = 'high_memory_host'",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "suppressed_high_memory",
+        "options": [],
+        "query": "SELECT COALESCE(string_agg(replace(identifier, '.', '\\.'), '|'), '^$') FROM platform_suppressions WHERE category = 'high_memory_host'",
+        "refresh": 2,
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
       }
     ]
   },
@@ -106,7 +123,7 @@
   "timezone": "browser",
   "title": "Platform Overview",
   "uid": "vms",
-  "version": 14,
+  "version": 73,
   "weekStart": "",
   "panels": [
     {
@@ -138,7 +155,7 @@
                 "0": {
                   "color": "green",
                   "index": 0,
-                  "text": "None"
+                  "text": "OK"
                 }
               },
               "type": "value"
@@ -163,18 +180,11 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
+        "w": 3,
         "x": 0,
         "y": 1
       },
-      "id": 132,
-      "links": [
-        {
-          "title": "View Alerts",
-          "url": "/alerting/list",
-          "targetBlank": false
-        }
-      ],
+      "id": 502,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -195,14 +205,13 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "editorMode": "code",
-          "expr": "count(ALERTS{alertstate=\"firing\", alertname!~\"$suppressed_alerts\"} or ALERTS{alertstate=\"firing\", alertname=~\"$suppressed_alerts\", oncall=\"Platform\"}) or vector(0)",
-          "legendFormat": "Active Alerts",
-          "range": true,
+          "expr": "count(supervisor_worker_up{job=\"supervisor\"} == 0) OR on() vector(0)",
+          "instant": true,
           "refId": "A"
         }
       ],
-      "title": "Active Alerts",
+      "title": "Fatal Workers",
+      "transformations": [],
       "type": "stat"
     },
     {
@@ -246,8 +255,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 4,
+        "w": 5,
+        "x": 3,
         "y": 1
       },
       "id": 133,
@@ -300,6 +309,89 @@
           },
           "mappings": [
             {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "All OK"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "id": 344,
+      "links": [
+        {
+          "title": "View App Health",
+          "url": "/d/genus-monitoring",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(probe_success{job=\"blackbox\"} == 0) OR on() vector(0)",
+          "legendFormat": "Apps Down",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Apps Down",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
               "options": {
                 "0": {
                   "color": "green",
@@ -330,8 +422,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 8,
+        "w": 3,
+        "x": 12,
         "y": 1
       },
       "id": 129,
@@ -415,8 +507,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 12,
+        "w": 3,
+        "x": 15,
         "y": 1
       },
       "id": 155,
@@ -498,8 +590,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 16,
+        "w": 3,
+        "x": 18,
         "y": 1
       },
       "id": 154,
@@ -581,8 +673,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 20,
+        "w": 3,
+        "x": 21,
         "y": 1
       },
       "id": 210,
@@ -677,7 +769,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 6,
+        "w": 5,
         "x": 0,
         "y": 5
       },
@@ -710,7 +802,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count((1 - avg by(host)(rate(node_cpu_seconds_total{mode=\"idle\", job=\"node\"}[10m]))) * 100 > 80) or vector(0)",
+          "expr": "count(\n  (1 - avg by(host)(rate(node_cpu_seconds_total{mode=\"idle\",job=\"node\"}[10m]))) * 100 > 80\n  or\n  (1 - avg by(host)(rate(windows_cpu_time_total{mode=\"idle\",job=\"windows\"}[10m]))) * 100 > 80\n) or vector(0)",
           "legendFormat": "CPU > 80%",
           "range": true,
           "refId": "A"
@@ -760,8 +852,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 6,
-        "x": 6,
+        "w": 5,
+        "x": 5,
         "y": 5
       },
       "id": 135,
@@ -793,7 +885,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(node_load15{job=\"node\"} > on(host) group_left() count by(host)(node_cpu_seconds_total{mode=\"idle\", job=\"node\"})) or vector(0)",
+          "expr": "count(\n  node_load15{job=\"node\"} > on(host) group_left() count by(host)(node_cpu_seconds_total{mode=\"idle\",job=\"node\"})\n  or\n  windows_system_processor_queue_length{job=\"windows\"} > on(host) group_left() count by(host)(windows_cpu_time_total{mode=\"idle\",job=\"windows\"})\n) or vector(0)",
           "legendFormat": "Hosts Overloaded",
           "range": true,
           "refId": "A"
@@ -843,8 +935,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 6,
-        "x": 12,
+        "w": 3,
+        "x": 10,
         "y": 5
       },
       "id": 136,
@@ -876,13 +968,13 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(avg by(host)(rate(node_cpu_seconds_total{mode=\"iowait\", job=\"node\"}[15m])) / avg by(host)(rate(node_cpu_seconds_total{job=\"node\"}[15m])) * 100 > 20) or vector(0)",
-          "legendFormat": "High I/O Wait",
+          "expr": "count(\n  avg by(host)(rate(node_cpu_seconds_total{mode=\"iowait\",job=\"node\"}[15m])) / avg by(host)(rate(node_cpu_seconds_total{job=\"node\"}[15m])) * 100 > 20\n  or\n  max by(host)(windows_logical_disk_current_disk_queue_length{job=\"windows\",volume!~\"HarddiskVolume.*|_Total\"}) > 2\n) or vector(0)",
+          "legendFormat": "High I/O",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "High I/O Wait (>20%)",
+      "title": "High I/O (wait >20% / queue >2)",
       "type": "stat"
     },
     {
@@ -926,8 +1018,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 6,
-        "x": 18,
+        "w": 3,
+        "x": 13,
         "y": 5
       },
       "id": 158,
@@ -959,13 +1051,187 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(avg_over_time(((1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"})) * 100)[10m:1m]) > 90) or vector(0)",
+          "expr": "count(\n  avg_over_time(((1 - (node_memory_MemAvailable_bytes{job=\"node\",instance!~\"$suppressed_high_memory\"} / node_memory_MemTotal_bytes{job=\"node\",instance!~\"$suppressed_high_memory\"})) * 100)[10m:1m]) > 90\n  or\n  avg_over_time(((1 - (windows_memory_available_bytes{job=\"windows\",instance!~\"$suppressed_high_memory\"} / windows_os_visible_memory_bytes{job=\"windows\",instance!~\"$suppressed_high_memory\"})) * 100)[10m:1m]) > 90\n) or vector(0)",
           "legendFormat": "Memory > 90%",
           "range": true,
           "refId": "A"
         }
       ],
       "title": "Memory > 90% (10m)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 5
+      },
+      "id": 343,
+      "links": [
+        {
+          "title": "View swap detail",
+          "url": "/d/swap-detail",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(rate(node_vmstat_pswpin{job=\"node\"}[5m]) > 10) or vector(0)",
+          "legendFormat": "Linux hosts swapping",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Linux Swapping",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 5
+      },
+      "id": 506,
+      "links": [
+        {
+          "title": "View swap detail",
+          "url": "/d/swap-detail",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(rate(windows_memory_swap_page_reads_total{job=\"windows\"}[5m]) > 10) or vector(0)",
+          "legendFormat": "Windows hosts swapping",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Windows Swapping",
       "type": "stat"
     },
     {
@@ -1303,6 +1569,1835 @@
         "x": 0,
         "y": 12
       },
+      "id": 345,
+      "title": "Data Services",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Down"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 0,
+        "y": 13
+      },
+      "id": 501,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "min(genus_up)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Genus DB",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 3,
+        "y": 13
+      },
+      "id": 346,
+      "links": [
+        {
+          "title": "View MySQL Detail",
+          "url": "/d/infrastructure",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max(mysql_global_status_threads_connected / mysql_global_variables_max_connections * 100)",
+          "legendFormat": "Connections %",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Connections",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 7,
+        "y": 13
+      },
+      "id": 347,
+      "links": [
+        {
+          "title": "View MySQL Detail",
+          "url": "/d/infrastructure",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(mysql_global_status_slow_queries[5m])) * 60 or vector(0)",
+          "legendFormat": "Slow Queries/min",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Slow Queries",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 10,
+        "y": 13
+      },
+      "id": 504,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "count(up{job=\"mysql\"} == 0) OR on() vector(0)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Down",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 14,
+        "y": 13
+      },
+      "id": 505,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(increase(mysql_global_status_innodb_deadlocks[5m])) OR on() vector(0)",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "MySQL Deadlocks (5m)",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "0s"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "s",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 17,
+        "y": 13
+      },
+      "id": 348,
+      "links": [
+        {
+          "title": "View Genus Detail",
+          "url": "/d/genus-details",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "genus_replica_lag_seconds{fuel=\"gas\"}",
+          "legendFormat": "Gas",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Genus Gas Lag",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "0s"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 13
+      },
+      "id": 503,
+      "links": [
+        {
+          "title": "View Genus Detail",
+          "url": "/d/genus-details",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "genus_replica_lag_seconds{fuel=\"elec\"}",
+          "legendFormat": "Power",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Genus Power Lag",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 600,
+      "panels": [],
+      "title": "Industry Data Flows",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 0,
+        "y": 17
+      },
+      "id": 601,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_files_retrieved_today{fuel=\"gas\"})",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_files_retrieved_today{fuel=\"elec\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Files In",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 2,
+        "y": 17
+      },
+      "id": 602,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_files_transferred_today{fuel=\"gas\"})",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_files_transferred_today{fuel=\"elec\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "To Genus",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 4,
+        "y": 17
+      },
+      "id": 603,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_files_pending{fuel=\"gas\"})",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_files_pending{fuel=\"elec\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Pending",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 6,
+        "y": 17
+      },
+      "id": 604,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_files_failed_today{fuel=\"gas\"})",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_files_failed_today{fuel=\"elec\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Failed",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1800
+              },
+              {
+                "color": "red",
+                "value": 3600
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 8,
+        "y": 17
+      },
+      "id": 605,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_oldest_pending_minutes{fuel=\"gas\"}) * 60",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_oldest_pending_minutes{fuel=\"elec\"}) * 60",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Wait Age",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 600
+              },
+              {
+                "color": "red",
+                "value": 1800
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 10,
+        "y": 17
+      },
+      "id": 606,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_last_poll_minutes_ago{fuel=\"gas\",queue=\"GPS\"}) * 60",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(gateway_last_poll_minutes_ago{fuel=\"elec\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Last Poll",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 12,
+        "y": 17
+      },
+      "id": 607,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_imports_sent_today{app=\"gps\"})",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_imports_sent_today{app=\"eps\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Sent",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 14,
+        "y": 17
+      },
+      "id": 608,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_imports_processed_today{app=\"gps\"})",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_imports_processed_today{app=\"eps\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Processed",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 16,
+        "y": 17
+      },
+      "id": 609,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_imports_unprocessed{app=\"gps\"})",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_imports_unprocessed{app=\"eps\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Backlog",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1800
+              },
+              {
+                "color": "red",
+                "value": 3600
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 18,
+        "y": 17
+      },
+      "id": 610,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_imports_oldest_unprocessed_minutes{app=\"gps\"}) * 60",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_imports_oldest_unprocessed_minutes{app=\"eps\"}) * 60",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Queue Age",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 14400
+              },
+              {
+                "color": "red",
+                "value": 28800
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 20,
+        "y": 17
+      },
+      "id": 611,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_hub_file_latest_age_hours{fuel=\"gas\"}) * 3600",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_hub_file_latest_age_hours{fuel=\"elec\"}) * 3600",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Hub Age",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background"
+            },
+            "filterable": false,
+            "minWidth": 40
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "0s"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 2,
+        "x": 22,
+        "y": 17
+      },
+      "id": 612,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_replica_lag_seconds{fuel=\"gas\"})",
+          "instant": true,
+          "legendFormat": "Gas",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "max(genus_replica_lag_seconds{fuel=\"elec\"})",
+          "instant": true,
+          "legendFormat": "Elec",
+          "refId": "B"
+        }
+      ],
+      "title": "Replica Lag",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "last"
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "nameField": "Field",
+            "valueField": "Last"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
       "id": 203,
       "panels": [],
       "title": "Storage",
@@ -1351,7 +3446,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 13
+        "y": 22
       },
       "id": 152,
       "links": [
@@ -1428,7 +3523,7 @@
         "h": 3,
         "w": 8,
         "x": 4,
-        "y": 13
+        "y": 22
       },
       "id": 153,
       "links": [
@@ -1511,7 +3606,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 13
+        "y": 22
       },
       "id": 139,
       "links": [
@@ -1577,13 +3672,38 @@
           "unit": "none",
           "noValue": "0"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": ">90%"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
+        "w": 8,
         "x": 16,
-        "y": 13
+        "y": 22
       },
       "id": 156,
       "links": [
@@ -1597,7 +3717,7 @@
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "horizontal",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -1605,7 +3725,7 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value"
+        "textMode": "value_and_name"
       },
       "targets": [
         {
@@ -1616,11 +3736,201 @@
           "editorMode": "code",
           "expr": "count(\n  max by(host)(\n    (1 - (node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} / node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"})) * 100 > 80\n  )\n  or\n  max by(host)(\n    (1 - (windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} / windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"})) * 100 > 80\n  )\n)\nor vector(0)",
           "instant": true,
-          "legendFormat": "Hosts >80%",
+          "legendFormat": ">80%",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(\n  max by(host)(\n    (1 - (node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} / node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"})) * 100 > 90\n  )\n  or\n  max by(host)(\n    (1 - (windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} / windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"})) * 100 > 90\n  )\n)\nor vector(0)",
+          "legendFormat": ">90%",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "VM Disk Capacity",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "id": 205,
+      "panels": [],
+      "title": "Networking",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 0,
+        "y": 26
+      },
+      "id": 507,
+      "links": [
+        {
+          "title": "View UniFi Network",
+          "url": "/d/crown-unifi-network",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(max by (host, model) (unifi_host_up) == 0 unless on(host) unifi_console_exempt) or vector(0)",
+          "legendFormat": "Consoles Offline",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "VM Disk Capacity (>80%)",
+      "title": "UniFi Consoles Offline",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 3,
+        "y": 26
+      },
+      "id": 508,
+      "links": [
+        {
+          "title": "View UniFi Site Detail",
+          "url": "/d/crown-unifi-detail",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(unifi_device_up == 0 unless on(device) unifi_device_exempt) or vector(0)",
+          "legendFormat": "Devices Offline",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "UniFi Devices Offline",
       "type": "stat"
     },
     {
@@ -1641,27 +3951,31 @@
                 "value": null
               },
               {
-                "color": "red",
+                "color": "orange",
                 "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
               }
             ]
           },
-          "unit": "none",
+          "unit": "percent",
           "noValue": "0"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 20,
-        "y": 13
+        "w": 3,
+        "x": 6,
+        "y": 26
       },
-      "id": 311,
+      "id": 302,
       "links": [
         {
-          "title": "View VM Disk Detail",
-          "url": "/d/vm-disk-capacity",
+          "title": "View UniFi Site Detail",
+          "url": "/d/crown-unifi-detail",
           "targetBlank": false
         }
       ],
@@ -1669,7 +3983,7 @@
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "horizontal",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -1677,7 +3991,7 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value"
+        "textMode": "auto"
       },
       "targets": [
         {
@@ -1686,13 +4000,394 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(\n  max by(host)(\n    (1 - (node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} / node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"})) * 100 > 90\n  )\n  or\n  max by(host)(\n    (1 - (windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} / windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"})) * 100 > 90\n  )\n)\nor vector(0)",
-          "instant": true,
-          "legendFormat": "Hosts >90%",
+          "expr": "max(increase(unifi_wan_probe_drops_total[$__rate_interval])) or vector(0)",
+          "legendFormat": "Max WAN Probe Drops",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "VM Disk Capacity (>90%)",
+      "title": "Max WAN Packet Loss",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 9,
+        "y": 26
+      },
+      "id": 303,
+      "links": [
+        {
+          "title": "View Dell OS10 Switches",
+          "url": "/d/crown-dell-switches",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(os10_scrape_success == 0) or vector(0)",
+          "legendFormat": "Switches Unreachable",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Dell Switches Unreachable",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 12,
+        "y": 26
+      },
+      "id": 304,
+      "links": [
+        {
+          "title": "View Dell OS10 Switches",
+          "url": "/d/crown-dell-switches",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 0) or vector(0)",
+          "legendFormat": "Ports Down",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Dell Switch Ports Down",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "All OK"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Down"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "All OK"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Packet Loss"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.1
+                    },
+                    {
+                      "color": "red",
+                      "value": 20
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": []
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Peak Latency"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 50
+                    },
+                    {
+                      "color": "red",
+                      "value": 150
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": []
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 9,
+        "x": 15,
+        "y": 26
+      },
+      "id": 310,
+      "links": [
+        {
+          "title": "View Site Connectivity",
+          "url": "/d/crown-network-connectivity",
+          "targetBlank": false
+        }
+      ],
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "count(site_ping_success == 0) or vector(0)",
+          "legendFormat": "Failed",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max(site_ping_loss_percent) or vector(0)",
+          "legendFormat": "Packet Loss",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max(site_ping_rtt_ms) or vector(0)",
+          "legendFormat": "Peak Latency",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "Site Pings",
       "type": "stat"
     },
     {
@@ -1701,7 +4396,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 29
       },
       "id": 204,
       "panels": [],
@@ -1783,7 +4478,7 @@
         "h": 5,
         "w": 16,
         "x": 0,
-        "y": 21
+        "y": 30
       },
       "id": 141,
       "links": [
@@ -1840,454 +4535,77 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 35
       },
-      "id": 205,
-      "panels": [],
-      "title": "Networking",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "None"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "noValue": "0"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 0,
-        "y": 17
-      },
-      "id": 300,
-      "links": [
-        {
-          "title": "View UniFi Network",
-          "url": "/d/crown-unifi-network",
-          "targetBlank": false
-        }
-      ],
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "count(max by (host, model) (unifi_host_up) == 0 unless on(host) unifi_console_exempt) or vector(0)",
-          "legendFormat": "Consoles Offline",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "UniFi Consoles Offline",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "None"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              }
-            ]
-          },
-          "noValue": "0"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 4,
-        "y": 17
-      },
-      "id": 301,
-      "links": [
-        {
-          "title": "View UniFi Site Detail",
-          "url": "/d/crown-unifi-detail",
-          "targetBlank": false
-        }
-      ],
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "count(unifi_device_up == 0 unless on(device) unifi_device_exempt) or vector(0)",
-          "legendFormat": "Devices Offline",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "UniFi Devices Offline",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          },
-          "unit": "percent",
-          "noValue": "0"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 8,
-        "y": 17
-      },
-      "id": 302,
-      "links": [
-        {
-          "title": "View UniFi Site Detail",
-          "url": "/d/crown-unifi-detail",
-          "targetBlank": false
-        }
-      ],
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "max(increase(unifi_wan_probe_drops_total[$__rate_interval])) or vector(0)",
-          "legendFormat": "Max WAN Probe Drops",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Max WAN Packet Loss",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "None"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "noValue": "0"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 12,
-        "y": 17
-      },
-      "id": 303,
-      "links": [
-        {
-          "title": "View Dell OS10 Switches",
-          "url": "/d/crown-dell-switches",
-          "targetBlank": false
-        }
-      ],
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "count(os10_scrape_success == 0) or vector(0)",
-          "legendFormat": "Switches Unreachable",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Dell Switches Unreachable",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "None"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              }
-            ]
-          },
-          "noValue": "0"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 16,
-        "y": 17
-      },
-      "id": 304,
-      "links": [
-        {
-          "title": "View Dell OS10 Switches",
-          "url": "/d/crown-dell-switches",
-          "targetBlank": false
-        }
-      ],
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "sum(os10_interface_up{interface=~\"ethernet.*|port-channel.*|vti.*\"} == 0) or vector(0)",
-          "legendFormat": "Ports Down",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Dell Switch Ports Down",
-      "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
       "id": 340,
       "panels": [],
       "title": "Acknowledged Offline",
       "type": "row"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "UniFi consoles currently offline but exempted from alerting.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "blue" },
-          "mappings": [{ "type": "value", "options": { "0": { "color": "green", "index": 0, "text": "None" } } }],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "None"
+                }
+              }
+            }
+          ],
           "noValue": "0",
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 27 },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 36
+      },
       "id": 341,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
           "editorMode": "code",
           "expr": "count(max by (host, model) (unifi_host_up) == 0 and on(host) unifi_console_exempt) or vector(0)",
           "instant": true,
@@ -2299,18 +4617,42 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "UniFi consoles currently offline and exempted from alerting. Manage exemptions at http://poc-containers/exemptions/suppress",
       "fieldConfig": {
-        "defaults": { "custom": { "align": "left", "cellOptions": { "type": "auto" } } },
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 20, "x": 4, "y": 27 },
+      "gridPos": {
+        "h": 4,
+        "w": 20,
+        "x": 4,
+        "y": 36
+      },
       "id": 342,
-      "options": { "sortBy": [{ "displayName": "Console" }] },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Console"
+          }
+        ]
+      },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
           "editorMode": "code",
           "expr": "max by (host, model) (unifi_host_up) == 0 and on(host) unifi_console_exempt",
           "format": "table",
@@ -2319,14 +4661,35 @@
         }
       ],
       "transformations": [
-        { "id": "labelsToFields", "options": { "mode": "columns" } },
-        { "id": "merge", "options": {} },
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "Value": true, "job": true, "instance": true, "site": true },
-            "renameByName": { "host": "Console", "model": "Model" },
-            "indexByName": { "host": 0, "model": 1 }
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "Value": true,
+              "job": true,
+              "instance": true,
+              "site": true
+            },
+            "renameByName": {
+              "host": "Console",
+              "model": "Model"
+            },
+            "indexByName": {
+              "host": 0,
+              "model": 1
+            }
           }
         }
       ],
@@ -2339,7 +4702,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 41
       },
       "id": 160,
       "panels": [
@@ -2348,7 +4711,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 32
+            "y": 37
           },
           "id": 159,
           "options": {
@@ -2361,94 +4724,6 @@
       ],
       "title": "Alert Suppression",
       "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "All OK"
-                },
-                "1": {
-                  "color": "red",
-                  "index": 1,
-                  "text": "Down"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "noValue": "All OK"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 20,
-        "y": 17
-      },
-      "id": 310,
-      "links": [
-        {
-          "title": "View Site Connectivity",
-          "url": "/d/crown-network-connectivity",
-          "targetBlank": false
-        }
-      ],
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "count(site_ping_success == 0) or vector(0)",
-          "legendFormat": "Sites Down",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Site Pings",
-      "type": "stat"
     }
   ]
 }

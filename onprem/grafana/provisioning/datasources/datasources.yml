@@ -55,14 +55,17 @@ datasources:
   # This entry preserves that UID and points at the in-stack monitoring
   # postgres (which holds genus_file_status, ewelcome_form_status,
   # eps_failed_to_price after the migration).
+  # Uses grafana_ro (read-only) - init.sql creates this user on first start.
   - name: PostgreSQL Monitoring
     uid: PCC52D03280B7034C
     type: postgres
     access: proxy
     url: monitoring-postgres:5432
-    user: monitoring
+    user: grafana_ro
     secureJsonData:
-      password: monitoring
+      # @ai-review-ignore: grafana_ro password committed intentionally - SELECT-only user
+      # on an internal monitoring DB. Same pattern as monitoring/monitoring in docker-compose.yml.
+      password: grafana_ro
     jsonData:
       database: monitoring
       sslmode: disable

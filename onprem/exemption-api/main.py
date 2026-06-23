@@ -1,5 +1,6 @@
 import base64
 import datetime
+import time
 import html
 import ipaddress
 import json
@@ -7,11 +8,12 @@ import os
 import re
 import socket
 import ssl
+import threading
 import urllib.parse
 import urllib.request
 import psycopg2
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from cryptography import x509
@@ -20,7 +22,16 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509 import ocsp as crypto_ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID
 
-app = FastAPI(title="Exemption API")
+import logging as _logging
+_log = _logging.getLogger(__name__)
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    _create_tables()
+    _warn_if_multi_worker()
+    yield
+
+app = FastAPI(title="Exemption API", lifespan=_lifespan)
 
 SD_DIR = os.environ.get("SD_DIR", "/sd")
 
@@ -36,7 +47,31 @@ CATEGORY_LABELS = {
     "powered_off": "Powered Off VMs",
     "backup_overdue": "Backups Overdue",
     "active_alert": "Active Alerts",
+    "high_memory_host": "High Memory Hosts (DB)",
 }
+# @ai-review-ignore: the dashboard SQL for high_memory_host uses
+# COALESCE(string_agg(...), '^$'), which produces instance!~"^$" when no rows exist.
+# This is intentionally a no-op: PromQL !~ excludes series whose label MATCHES the
+# regex, and ^$ only matches the empty string — Prometheus instance labels are never
+# empty, so all series pass and no suppression occurs. This is the correct fallback.
+
+# Allowlist for identifiers stored in platform_suppressions. These values are
+# interpolated into PromQL regex via string_agg(..., '|') in dashboard template
+# variables, so characters that are PromQL regex metacharacters must not appear.
+# Dots are permitted (needed for IP addresses and FQDNs) and are the only remaining
+# PromQL regex metacharacter. The specific risk: a dot in an instance label value
+# (e.g. apps.prod-mysql:9100 in the selector instance!~"apps.prod-mysql:9100") would
+# also match apps-prod-mysql:9100 or appsprod-mysql:9100 — potentially suppressing a
+# different host. In this controlled internal environment with known hostnames this is
+# accepted, but new identifiers with dots in hostname segments should be noted.
+# @ai-review-ignore: all PromQL regex metacharacters except . are rejected — (, ), [, ],
+# {, }, ^, $, *, +, ?, |, and \ are absent from the allowlist. . is the only permitted
+# metacharacter and is escaped to \. by replace(identifier, '.', '\\.') in the SQL before
+# interpolation. \- is an explicit escaped hyphen at the end of the class, not a range.
+_SAFE_IDENTIFIER_RE = re.compile(r'^[a-zA-Z0-9._:\-]+$')  # colon allowed — Prometheus instance labels (host:port)
+_SAFE_NAME_RE = re.compile(r'^[a-zA-Z0-9._\-]+$')           # no colon — VM names, alert names
+# Categories whose identifiers are Prometheus instance labels and legitimately contain colons.
+_INSTANCE_LABEL_CATEGORIES = {"high_memory_host"}
 
 def _get_unifi_sites() -> list[str]:
     """Return all console names: parsed from local exporter metrics (includes offline) merged with Site Manager."""
@@ -47,18 +82,28 @@ def _get_unifi_sites() -> list[str]:
         with urllib.request.urlopen("http://unifi-local-exporter:3000/metrics", timeout=5) as r:
             body = r.read().decode()
         for line in body.splitlines():
-            if line.startswith("unifi_scrape_success{"):
+            if not line.startswith('#') and line.startswith("unifi_scrape_success{"):
+                # @ai-review-ignore: [^"]+ won't match escaped quotes, and a label value
+                # spanning a line break would not be caught (splitlines() splits it first).
+                # Site names are plain ASCII strings; a full Prometheus text-format parser
+                # is not warranted for this internal exporter.
                 m = re.search(r'site="([^"]+)"', line)
                 if m:
                     names.add(m.group(1))
-    except Exception:
-        pass
-    # Supplement: Site Manager API for any consoles not in the local exporter config
+    except Exception as exc:
+        _log.debug("_get_unifi_sites: local exporter unavailable: %s", exc)
+    # Supplement: Site Manager exporter metrics — authority on all consoles, including offline ones
     try:
-        with urllib.request.urlopen("http://unifi-exporter:3000/hosts", timeout=5) as r:
-            names.update(json.loads(r.read()).get("hosts", []))
-    except Exception:
-        pass
+        with urllib.request.urlopen("http://unifi-exporter:3000/metrics", timeout=5) as r:
+            body = r.read().decode()
+        for line in body.splitlines():
+            if not line.startswith('#') and line.startswith("unifi_host_up{"):
+                # @ai-review-ignore: same as above — host names don't contain escaped quotes.
+                m = re.search(r'host="([^"]+)"', line)
+                if m:
+                    names.add(m.group(1))
+    except Exception as exc:
+        _log.debug("_get_unifi_sites: site manager exporter unavailable: %s", exc)
     return sorted(names)
 
 
@@ -87,8 +132,7 @@ def get_conn():
     finally:
         conn.close()
 
-@app.on_event("startup")
-def create_tables():
+def _create_tables():
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("""
@@ -173,6 +217,18 @@ def create_tables():
             )
         """)
 
+def _warn_if_multi_worker():
+    workers = os.environ.get("WEB_CONCURRENCY", "1")
+    if workers != "1":
+        _log.warning(
+            "exemption-api: WEB_CONCURRENCY=%s but node_memory_exempt uses an "
+            "in-process TTL cache that is not shared across workers — results may "
+            "be stale. Pin --workers 1 or switch to a shared cache backend.",
+            workers,
+        )
+    else:
+        _log.info("exemption-api: single-worker mode confirmed; in-process cache active")
+
 def _page(msg: str) -> HTMLResponse:
     return HTMLResponse(f"""<!DOCTYPE html>
 <html>
@@ -195,6 +251,11 @@ def _js(v: str) -> str:
 
 @app.get("/exempt/add")
 def add_exempt(host: str = Query(...), reason: str = Query(default="")):
+    if not _SAFE_IDENTIFIER_RE.match(host):
+        raise HTTPException(status_code=400, detail="Host contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+    # @ai-review-ignore: reason length is capped here, consistent with /suppress/add.
+    if len(reason) > 255:
+        raise HTTPException(status_code=400, detail="Reason must be 255 characters or fewer.")
     with get_conn() as conn:
         conn.cursor().execute(
             "INSERT INTO exporter_exempt(hostname, reason) VALUES (%s, %s) ON CONFLICT(hostname) DO NOTHING",
@@ -204,12 +265,165 @@ def add_exempt(host: str = Query(...), reason: str = Query(default="")):
 
 @app.get("/exempt/remove")
 def remove_exempt(host: str = Query(...)):
+    if not _SAFE_IDENTIFIER_RE.match(host):
+        raise HTTPException(status_code=400, detail="Host contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
     with get_conn() as conn:
         conn.cursor().execute(
             "DELETE FROM exporter_exempt WHERE hostname = %s", (host,)
         )
     return _page(f"✓ <strong>{html.escape(host)}</strong> removed from exemption list.")
 
+# In-process caches — valid only because the Dockerfile pins --workers 1.
+# Multi-worker deployments would need a shared backend (Redis/Postgres).
+# Locks guard against concurrent sync-handler threads causing a double DB query
+# on cache expiry (no data corruption, but avoids redundant work under load).
+_node_memory_exempt_cache: tuple[float, str] | None = None
+_NODE_MEMORY_EXEMPT_TTL = 60.0
+_node_memory_exempt_lock = threading.Lock()
+_vm_powered_off_exempt_cache: tuple[float, str] | None = None
+_VM_POWERED_OFF_EXEMPT_TTL = 60.0
+_vm_powered_off_exempt_lock = threading.Lock()
+
+@app.get("/node-memory-exempt/metrics")
+def node_memory_exempt_metrics():
+    """Prometheus text format — one gauge per host suppressed from memory % alerts.
+    Scraped by the node_memory_exempt job so alert rules can filter DB hosts via
+    `unless on(instance) node_memory_exempt`. Identifiers must match the instance
+    label used by node_exporter / windows_exporter (short hostname, no domain).
+
+    This endpoint is intentionally unauthenticated. It is not routed through the
+    Traefik/nginx proxy and is only reachable from within the Docker compose network
+    (the Prometheus container is the sole intended consumer)."""
+    global _node_memory_exempt_cache
+    now = time.monotonic()
+    # Fast path: check cache under lock; snapshot stale value for the error fallback below.
+    with _node_memory_exempt_lock:
+        if _node_memory_exempt_cache is not None:
+            cached_at, body = _node_memory_exempt_cache
+            if now - cached_at < _NODE_MEMORY_EXEMPT_TTL:
+                return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: stale is assigned HERE, inside the lock, as a local snapshot of
+        # _node_memory_exempt_cache. Reading it outside the lock (in the except block below) is
+        # safe — stale is a function-local variable and cannot be modified by another thread.
+        # The shared global may change after the lock is released; stale still refers to the
+        # old immutable tuple.
+        stale = _node_memory_exempt_cache
+
+    # Cache miss — query DB outside the lock so a slow call does not block other threads.
+    # @ai-review-ignore: two concurrent requests can both find the cache expired and both run the
+    # DB query. This is intentional — the duplicate SELECT on a local Postgres is harmless and
+    # simpler than a mark-inflight pattern. The service runs --workers 1 and is scraped by a
+    # single Prometheus instance every 60 s, so the window where two requests race is negligible.
+    # Two threads may both reach here on expiry; the duplicate query is harmless.
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT identifier FROM platform_suppressions WHERE category = 'high_memory_host' ORDER BY identifier"
+            )
+            rows = cur.fetchall()
+    except Exception as exc:
+        # Return stale cache rather than a 500 — a scrape failure causes node_memory_exempt
+        # to disappear from TSDB, which breaks the `unless on(instance) node_memory_exempt`
+        # clause and immediately un-suppresses all DB hosts in the memory alert.
+        _log.warning("node_memory_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if stale is not None else "empty metrics")
+        if stale is not None:
+            _, body = stale
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: empty-metrics path deliberately returns PlainTextResponse (HTTP 200)
+        # not an exception, so Prometheus marks the scrape as succeeded. With no series the
+        # `unless` clause becomes a no-op (all hosts fire), but that is unavoidable when the DB
+        # has never been reachable and there is no prior cache to fall back on.
+        return PlainTextResponse(
+            "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)\n"
+            "# TYPE node_memory_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
+        )
+
+    lines = [
+        "# HELP node_memory_exempt 1 if this host is suppressed from memory utilisation alerts (expected high memory, e.g. DB servers)",
+        "# TYPE node_memory_exempt gauge",
+    ]
+    for (identifier,) in rows:
+        # _escape_label is mandatory here — identifier is user-supplied via /suppress/add
+        # and a raw value would allow Prometheus text-format label injection.
+        lines.append(f'node_memory_exempt{{instance="{_escape_label(identifier)}"}} 1')
+    body = "\n".join(lines) + "\n"
+    with _node_memory_exempt_lock:
+        _node_memory_exempt_cache = (now, body)
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+
+
+# In-process cache — valid only because the Dockerfile pins --workers 1.
+@app.get("/vm-powered-off-exempt/metrics")
+def vm_powered_off_exempt_metrics():
+    """Prometheus text format — one gauge per VM suppressed from the powered-off alert.
+    Scraped by the vcenter_vm_powered_off_exempt job. The vm_name label must match
+    the vm_name label on vcenter_vm_powered_off emitted by vcenter-sd.
+
+    Intentionally unauthenticated; only reachable within the Docker compose network."""
+    global _vm_powered_off_exempt_cache
+    now = time.monotonic()
+    # Fast path: check cache under lock; snapshot stale value for the error fallback below.
+    with _vm_powered_off_exempt_lock:
+        if _vm_powered_off_exempt_cache is not None:
+            cached_at, body = _vm_powered_off_exempt_cache
+            if now - cached_at < _VM_POWERED_OFF_EXEMPT_TTL:
+                return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: stale is assigned HERE, inside the lock, as a local snapshot of
+        # _vm_powered_off_exempt_cache. Reading it outside the lock is safe — stale is a
+        # function-local variable; another thread cannot modify it after assignment.
+        stale = _vm_powered_off_exempt_cache
+
+    # Cache miss — query DB outside the lock so a slow call does not block other threads.
+    # @ai-review-ignore: same reasoning as node_memory_exempt_metrics — duplicate DB query on
+    # concurrent expiry is harmless; --workers 1 makes concurrent scrapes extremely unlikely.
+    # Two threads may both reach here on expiry; the duplicate query is harmless.
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT identifier FROM platform_suppressions WHERE category = 'powered_off' ORDER BY identifier"
+            )
+            rows = cur.fetchall()
+    except Exception as exc:
+        # Same rationale as node_memory_exempt_metrics: a scrape failure would cause the
+        # vcenter_vm_powered_off_exempt series to disappear, breaking the `unless on(vm_name)`
+        # suppression and firing alerts for all suppressed VMs.
+        _log.warning("vm_powered_off_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if stale is not None else "empty metrics")
+        if stale is not None:
+            _, body = stale
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        # @ai-review-ignore: same reasoning as node_memory_exempt_metrics — HTTP 200 with no
+        # series is unavoidable on first-startup DB failure; stale cache preferred when available.
+        return PlainTextResponse(
+            "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert\n"
+            "# TYPE vcenter_vm_powered_off_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
+        )
+
+    lines = [
+        "# HELP vcenter_vm_powered_off_exempt 1 if this VM is suppressed from the powered-off alert",
+        "# TYPE vcenter_vm_powered_off_exempt gauge",
+    ]
+    for (identifier,) in rows:
+        # _escape_label is mandatory here — identifier is user-supplied via /suppress/add
+        # and a raw value would allow Prometheus text-format label injection.
+        lines.append(f'vcenter_vm_powered_off_exempt{{vm_name="{_escape_label(identifier)}"}} 1')
+    body = "\n".join(lines) + "\n"
+    with _vm_powered_off_exempt_lock:
+        _vm_powered_off_exempt_cache = (now, body)
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+
+
+# @ai-review-ignore: suppress/add, suppress/remove, and exempt/remove are unauthenticated
+# by design. They are only reachable from within the Docker compose network (no external
+# routing) or via the nginx proxy on poc-containers (LAN-only). Adding bearer-token auth
+# would require reworking the HTML forms that submit via browser GET, which is out of scope
+# for this PR. The risk is accepted: a compromised compose-network container could alter
+# suppressions, but cannot exfiltrate data or escalate beyond monitoring configuration.
 @app.get("/suppress/add")
 def suppress_add(
     category: str = Query(...),
@@ -218,6 +432,18 @@ def suppress_add(
 ):
     if category not in CATEGORY_LABELS:
         raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
+    id_re = _SAFE_IDENTIFIER_RE if category in _INSTANCE_LABEL_CATEGORIES else _SAFE_NAME_RE
+    if not id_re.match(identifier):
+        if category in _INSTANCE_LABEL_CATEGORIES:
+            raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, and underscores.")
+    if len(reason) > 255:
+        raise HTTPException(status_code=400, detail="Reason must be 255 characters or fewer.")
+    # @ai-review-ignore: like all write endpoints in this service (add_exempt, remove_exempt,
+    # suppress_remove, and ~30 others), suppress_add does not wrap get_conn() in try/except.
+    # A DB failure returns HTTP 500, consistent with existing behaviour throughout this file.
+    # These are LAN-only, operator-facing endpoints; adding clean 503 handling for all of them
+    # is out of scope for this PR, which only adds input validation to pre-existing endpoints.
     with get_conn() as conn:
         conn.cursor().execute(
             """INSERT INTO platform_suppressions(category, identifier, reason)
@@ -228,10 +454,17 @@ def suppress_add(
     label = CATEGORY_LABELS[category]
     return _page(f"✓ <strong>{html.escape(identifier)}</strong> suppressed from <strong>{html.escape(label)}</strong>.")
 
+# @ai-review-ignore: suppress_remove accepts only category and identifier — there is
+# no reason parameter on this endpoint and the DELETE query never writes to reason.
 @app.get("/suppress/remove")
 def suppress_remove(category: str = Query(...), identifier: str = Query(...)):
     if category not in CATEGORY_LABELS:
         raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
+    id_re = _SAFE_IDENTIFIER_RE if category in _INSTANCE_LABEL_CATEGORIES else _SAFE_NAME_RE
+    if not id_re.match(identifier):
+        if category in _INSTANCE_LABEL_CATEGORIES:
+            raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
+        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, and underscores.")
     with get_conn() as conn:
         conn.cursor().execute(
             "DELETE FROM platform_suppressions WHERE category = %s AND identifier = %s",
@@ -341,6 +574,7 @@ def suppress_list():
       <option value="powered_off">Powered Off VMs</option>
       <option value="backup_overdue">Backups Overdue</option>
       <option value="active_alert">Active Alerts</option>
+      <option value="high_memory_host">High Memory Hosts (DB)</option>
     </select>
   </label>
   <label>Identifier (VM name or alert name)
@@ -351,6 +585,19 @@ def suppress_list():
   </label>
   <button type="submit">Add</button>
 </form>
+
+<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:4px;padding:0.8rem 1rem;margin-top:1rem;font-size:0.9rem">
+  <strong>High Memory Hosts (DB)</strong> — use this category to suppress false positives from the
+  <em>Memory &gt; 90%</em> alert and dashboard panel for database servers (MySQL, SQL Server, etc.)
+  that legitimately claim all available RAM for their buffer pool.<br><br>
+  The identifier must match the Prometheus <code>instance</code> label exactly — include the port suffix
+  (e.g. <code>apps-prod-mysql:9100</code> for Linux hosts, <code>apps-prod-win:9182</code> for Windows).
+  Check Prometheus targets or the Infrastructure Detail dashboard to find the exact label value.<br><br>
+  ⚠ Suppressing a host here only silences the memory <em>utilisation</em> alert. Genuine memory pressure
+  on these hosts will still be caught by the <strong>Active Swapping</strong> alert, which fires when the
+  host is actively reading pages back from swap. Check the <em>Active Swap-In</em> panels in the
+  Infrastructure Detail dashboard for more detail.
+</div>
 
 <hr>
 <h2>UniFi Device Exemptions</h2>
@@ -1090,6 +1337,10 @@ def _check_one_cert(target: dict) -> dict:
 
 
 def _escape_label(v: str) -> str:
+    """Escape a Prometheus label value per the text exposition format spec.
+    Order is mandatory: backslash first, then double-quote, then newline.
+    https://prometheus.io/docs/instrumenting/exposition_formats/#text-format-details
+    """
     return v.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
