@@ -44,3 +44,17 @@ datasources:
       sslmode: disable
     isDefault: false
     editable: false
+
+  # Infinity — queries JSON/CSV/HTTP APIs directly from a panel. Used by the
+  # "Claude Status" panel on the Infrastructure dashboard to read the public
+  # Claude status.json endpoint. access: proxy means Grafana's backend makes
+  # the outbound call (server-side), so it needs egress to status.claude.com.
+  - name: Claude Status (Infinity)
+    uid: claude-status-infinity
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    isDefault: false
+    editable: false
+    jsonData:
+      allowedHosts:
+        - https://status.claude.com

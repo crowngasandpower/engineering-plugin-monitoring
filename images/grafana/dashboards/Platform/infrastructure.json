@@ -495,41 +495,45 @@
     },
     {
       "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "claude-status-infinity"
       },
       "fieldConfig": {
         "defaults": {
           "mappings": [
             {
               "options": {
-                "0": {
-                  "color": "red",
-                  "text": "DOWN"
-                }
-              },
-              "type": "value"
-            },
-            {
-              "options": {
-                "1": {
+                "none": {
                   "color": "green",
-                  "text": "UP"
+                  "index": 0,
+                  "text": "Operational"
+                },
+                "minor": {
+                  "color": "yellow",
+                  "index": 1,
+                  "text": "Minor Outage"
+                },
+                "major": {
+                  "color": "red",
+                  "index": 2,
+                  "text": "Major Outage"
+                },
+                "critical": {
+                  "color": "red",
+                  "index": 3,
+                  "text": "Critical Outage"
                 }
               },
               "type": "value"
             }
           ],
+          "noValue": "No data",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": 0
-              },
-              {
                 "color": "green",
-                "value": 1
+                "value": 0
               }
             ]
           }
@@ -538,14 +542,14 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 2,
+        "w": 4,
         "x": 20,
         "y": 0
       },
       "id": 104,
       "options": {
         "colorMode": "background_solid",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "percentChangeColorMode": "standard",
@@ -557,106 +561,39 @@
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "auto",
+        "textMode": "value",
         "wideLayout": true
       },
       "pluginVersion": "12.4.2",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "aws_vpn_up",
-          "legendFormat": "VPN",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "VPN to On-Prem",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [
+          "columns": [
             {
-              "options": {
-                "0": {
-                  "color": "red",
-                  "text": "DOWN"
-                }
-              },
-              "type": "value"
-            },
-            {
-              "options": {
-                "1": {
-                  "color": "green",
-                  "text": "UP"
-                }
-              },
-              "type": "value"
+              "selector": "indicator",
+              "text": "indicator",
+              "type": "string"
             }
           ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": 0
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 2,
-        "x": 22,
-        "y": 0
-      },
-      "id": 105,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.4.2",
-      "targets": [
-        {
           "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "claude-status-infinity"
           },
-          "expr": "aws_mysql_up",
-          "legendFormat": "MySQL",
-          "refId": "A"
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "status",
+          "source": "url",
+          "type": "json",
+          "url": "https://status.claude.com/api/v2/status.json",
+          "url_options": {
+            "data": "",
+            "method": "GET"
+          }
         }
       ],
-      "title": "MySQL to On-Prem",
+      "title": "Claude Status",
       "type": "stat"
     },
     {
