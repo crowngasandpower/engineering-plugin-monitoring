@@ -1,0 +1,15 @@
+groups:
+  - name: dell-switches-recording
+    # Evaluated by Prometheus every 5m (NOT on the interactive Grafana path).
+    # The 7d max_over_time below is expensive, so it must never run as a dashboard
+    # query — doing so previously timed out the Grafana datasource. Precomputing it
+    # here once per 5m gives dashboards (and alerts) a cheap instant series to read.
+    interval: 5m
+    rules:
+      # 1 if the interface was up at any point in the last 7 days, 0 otherwise.
+      # Lets consumers tell a real/used port that is currently down (recently up)
+      # apart from an empty/unpatched port (never up) without scanning 7d at query
+      # time. Scope matches the "Switch Interface Down" alert (everything except the
+      # Management interface), so it can back both the dashboards and that alert.
+      - record: os10:interface_up_recent_7d
+        expr: max_over_time(os10_interface_up{interface!~"Management.*"}[7d])
