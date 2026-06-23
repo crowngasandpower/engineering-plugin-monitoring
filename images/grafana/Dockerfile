@@ -1,5 +1,10 @@
 FROM grafana/grafana:13.0.2
 
+# Infinity datasource — lets Grafana panels query JSON/HTTP APIs directly
+# (the "Claude Status" panel reads https://status.claude.com/api/v2/status.json).
+# Honoured by the stock /run.sh entrypoint at container start.
+ENV GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+
 # Python is needed by the alert rule provisioner (provision-alerts.py).
 # We use API-based provisioning instead of Grafana's built-in file provisioner
 # so that alert rules are editable in the UI (Grafana 13 locks file-provisioned
