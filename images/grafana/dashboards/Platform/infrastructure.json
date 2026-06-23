@@ -557,7 +557,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "",
+          "fields": "/^indicator$/",
           "values": false
         },
         "showPercentChange": false,
