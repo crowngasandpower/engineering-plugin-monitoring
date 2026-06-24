@@ -13,8 +13,10 @@ Click an alert row        → open that rule directly in Grafana
 """
 
 import logging
+import math
 import os
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -72,7 +74,6 @@ def _open_log_folder() -> None:
     """Open the log directory in Explorer, highlighting the log file."""
     try:
         if _LOG_FILE.exists():
-            import subprocess
             subprocess.Popen(["explorer", "/select,", str(_LOG_FILE)])
         else:
             os.startfile(str(_LOG_DIR))   # folder may exist before the file
@@ -209,6 +210,7 @@ def _fetch(profile: dict | None = None) -> tuple[list, list] | None:
     name = s.get("name", "?")
     base = s.get("grafana_url", "").rstrip("/")
     alerts_url = f"{base}/api/alertmanager/grafana/api/v2/alerts"
+    r = None  # defensive: defined for the non-200 log path even if a later call raises
     try:
         kwargs: dict = {
             "params":  {"active": "true", "inhibited": "false"},
@@ -458,12 +460,18 @@ def _normalise_pd_incident(inc: dict, grafana_url: str = "") -> dict:
     }
 
 
+_pd_key_warned: set = set()   # profiles already warned about a malformed PD key (warn once, not every poll)
+
+
 def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
     name    = profile.get("name", "?")
     api_key = profile.get("pd_api_key", "").strip()
-    if not api_key or any(c in api_key for c in "\r\n"):
-        log.warning("PagerDuty '%s': API key missing or malformed (contains "
-                    "newline) — skipping", name)
+    if not api_key:
+        return None  # Grafana-only profile: a missing PD key is normal — nothing to fetch, no warning
+    if any(c in api_key for c in "\r\n"):
+        if name not in _pd_key_warned:   # warn once, not on every 30s poll
+            log.warning("PagerDuty '%s': API key malformed (contains newline) — skipping", name)
+            _pd_key_warned.add(name)
         return None
     try:
         params: dict = {
@@ -2081,7 +2089,7 @@ def main() -> None:
     def _toast_pause_remaining():
         """Whole minutes left on a timed toast pause, else 0."""
         left = (settings.get().get("toast_pause_until", 0) or 0) - time.time()
-        return int(-(-left // 60)) if left > 0 else 0
+        return math.ceil(left / 60) if left > 0 else 0
 
     def _pause_toasts_for(minutes):
         def _act(_i, _t):
