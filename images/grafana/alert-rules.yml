@@ -2082,7 +2082,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Laravel error rate exceeded 200 in 5 minutes (deadlocks excluded)"
+          summary: "Laravel error rate exceeded 75 in 5 minutes (deadlocks excluded)"
           panelUrl: "/d/infrastructure?orgId=1&viewPanel=2"
         data:
           - refId: A
@@ -2091,7 +2091,7 @@ groups:
               to: 0
             datasourceUid: P8E80F9AEF21F6940
             model:
-              expr: 'sum(count_over_time({log_type="laravel"} |~ "(?i)error|exception|fatal" != "Serialization failure: 1213 Deadlock" [5m]))'
+              expr: 'sum(count_over_time({log_type="laravel"} |~ "(ERROR|CRITICAL|ALERT|EMERGENCY):" != "Serialization failure: 1213 Deadlock" [5m]))'
               refId: A
           - refId: error_count
             relativeTimeRange:
@@ -2115,7 +2115,7 @@ groups:
                 - evaluator:
                     type: gt
                     params:
-                      - 200
+                      - 75
               refId: threshold
 
   - orgId: 1
