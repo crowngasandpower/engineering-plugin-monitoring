@@ -46,9 +46,11 @@ datasources:
     editable: false
 
   # Infinity — queries JSON/CSV/HTTP APIs directly from a panel. Used by the
-  # "Claude Status" panel on the Infrastructure dashboard to read the public
-  # Claude status.json endpoint. access: proxy means Grafana's backend makes
-  # the outbound call (server-side), so it needs egress to status.claude.com.
+  # "Claude Status" panel on the Infrastructure dashboard. It reads our small
+  # claude-status-verb endpoint (API Gateway -> Lambda), which proxies
+  # https://status.claude.com/api/v2/status.json and, when Claude is
+  # operational, swaps in a random Claude Code spinner verb. access: proxy
+  # means Grafana's backend makes the outbound call (server-side).
   - name: Claude Status (Infinity)
     uid: claude-status-infinity
     type: yesoreyeram-infinity-datasource
@@ -57,4 +59,4 @@ datasources:
     editable: false
     jsonData:
       allowedHosts:
-        - https://status.claude.com
+        - https://0ndrg8kla9.execute-api.eu-west-2.amazonaws.com
