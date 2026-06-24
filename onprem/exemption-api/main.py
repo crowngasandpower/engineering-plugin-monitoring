@@ -68,8 +68,11 @@ CATEGORY_LABELS = {
 # {, }, ^, $, *, +, ?, |, and \ are absent from the allowlist. . is the only permitted
 # metacharacter and is escaped to \. by replace(identifier, '.', '\\.') in the SQL before
 # interpolation. \- is an explicit escaped hyphen at the end of the class, not a range.
+# Space is permitted in _SAFE_NAME_RE only (VM/alert names legitimately contain spaces) —
+# space is a regex literal, not a metacharacter, and label values are escaped via
+# _escape_label on output, so it is safe in both the dashboard template var and the metric.
 _SAFE_IDENTIFIER_RE = re.compile(r'^[a-zA-Z0-9._:\-]+$')  # colon allowed — Prometheus instance labels (host:port)
-_SAFE_NAME_RE = re.compile(r'^[a-zA-Z0-9._\-]+$')           # no colon — VM names, alert names
+_SAFE_NAME_RE = re.compile(r'^[a-zA-Z0-9 ._\-]+$')          # space allowed (VM/alert names); no colon
 # Categories whose identifiers are Prometheus instance labels and legitimately contain colons.
 _INSTANCE_LABEL_CATEGORIES = {"high_memory_host"}
 
@@ -283,6 +286,9 @@ _node_memory_exempt_lock = threading.Lock()
 _vm_powered_off_exempt_cache: tuple[float, str] | None = None
 _VM_POWERED_OFF_EXEMPT_TTL = 60.0
 _vm_powered_off_exempt_lock = threading.Lock()
+_vm_backup_overdue_exempt_cache: tuple[float, str] | None = None
+_VM_BACKUP_OVERDUE_EXEMPT_TTL = 60.0
+_vm_backup_overdue_exempt_lock = threading.Lock()
 
 @app.get("/node-memory-exempt/metrics")
 def node_memory_exempt_metrics():
@@ -418,6 +424,54 @@ def vm_powered_off_exempt_metrics():
     return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 
+# In-process cache - valid only because the Dockerfile pins --workers 1.
+@app.get("/vm-backup-overdue-exempt/metrics")
+def vm_backup_overdue_exempt_metrics():
+    """Prometheus text format - one gauge per VM suppressed from the backup-overdue alert.
+    Scraped by the vcenter_vm_backup_overdue_exempt job. The vm_name label must match
+    the vm_name label on vcenter_vm_last_backup_timestamp emitted by vcenter-sd.
+
+    Intentionally unauthenticated; only reachable within the Docker compose network."""
+    global _vm_backup_overdue_exempt_cache
+    now = time.monotonic()
+    with _vm_backup_overdue_exempt_lock:
+        if _vm_backup_overdue_exempt_cache is not None:
+            cached_at, body = _vm_backup_overdue_exempt_cache
+            if now - cached_at < _VM_BACKUP_OVERDUE_EXEMPT_TTL:
+                return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        stale = _vm_backup_overdue_exempt_cache
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT identifier FROM platform_suppressions WHERE category = 'backup_overdue' ORDER BY identifier"
+            )
+            rows = cur.fetchall()
+    except Exception as exc:
+        _log.warning("vm_backup_overdue_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if stale is not None else "empty metrics")
+        if stale is not None:
+            _, body = stale
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        return PlainTextResponse(
+            "# HELP vcenter_vm_backup_overdue_exempt 1 if this VM is suppressed from the backup-overdue alert\n"
+            "# TYPE vcenter_vm_backup_overdue_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
+        )
+    lines = [
+        "# HELP vcenter_vm_backup_overdue_exempt 1 if this VM is suppressed from the backup-overdue alert",
+        "# TYPE vcenter_vm_backup_overdue_exempt gauge",
+    ]
+    for (identifier,) in rows:
+        # _escape_label is mandatory: identifier is user-supplied via /suppress/add.
+        lines.append(f'vcenter_vm_backup_overdue_exempt{{vm_name="{_escape_label(identifier)}"}} 1')
+    body = "\n".join(lines) + "\n"
+    with _vm_backup_overdue_exempt_lock:
+        # re-capture now at write time so a slow DB query doesn't shorten the TTL
+        _vm_backup_overdue_exempt_cache = (time.monotonic(), body)
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+
+
 # @ai-review-ignore: suppress/add, suppress/remove, and exempt/remove are unauthenticated
 # by design. They are only reachable from within the Docker compose network (no external
 # routing) or via the nginx proxy on poc-containers (LAN-only). Adding bearer-token auth
@@ -432,11 +486,14 @@ def suppress_add(
 ):
     if category not in CATEGORY_LABELS:
         raise HTTPException(status_code=400, detail=f"Unknown category: {category}")
+    # Strip surrounding whitespace so a stray leading/trailing space can't silently
+    # break the vm_name join (the exempt metric would carry a space the real series lacks).
+    identifier = identifier.strip()
     id_re = _SAFE_IDENTIFIER_RE if category in _INSTANCE_LABEL_CATEGORIES else _SAFE_NAME_RE
     if not id_re.match(identifier):
         if category in _INSTANCE_LABEL_CATEGORIES:
             raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
-        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, and underscores.")
+        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, spaces, dots, hyphens, and underscores.")
     if len(reason) > 255:
         raise HTTPException(status_code=400, detail="Reason must be 255 characters or fewer.")
     # @ai-review-ignore: like all write endpoints in this service (add_exempt, remove_exempt,
@@ -464,7 +521,7 @@ def suppress_remove(category: str = Query(...), identifier: str = Query(...)):
     if not id_re.match(identifier):
         if category in _INSTANCE_LABEL_CATEGORIES:
             raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, underscores, and colons.")
-        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, dots, hyphens, and underscores.")
+        raise HTTPException(status_code=400, detail="Identifier contains invalid characters. Use only letters, digits, spaces, dots, hyphens, and underscores.")
     with get_conn() as conn:
         conn.cursor().execute(
             "DELETE FROM platform_suppressions WHERE category = %s AND identifier = %s",

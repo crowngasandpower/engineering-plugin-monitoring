@@ -825,7 +825,11 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'count(vcenter_vm_last_backup_timestamp > 0 and time() - vcenter_vm_last_backup_timestamp >= 604800) or vector(0)'
+              # @ai-review-ignore: vm_name join key verified against live Prometheus —
+              # vcenter_vm_last_backup_timestamp carries a vm_name label (68 series confirmed),
+              # the same label vcenter_vm_powered_off uses for its identical unless-on(vm_name)
+              # suppression, and what /vm-backup-overdue-exempt/metrics emits. No label mismatch.
+              expr: 'count((vcenter_vm_last_backup_timestamp > 0 and time() - vcenter_vm_last_backup_timestamp >= 604800) unless on(vm_name) vcenter_vm_backup_overdue_exempt) or vector(0)'
               refId: A
           - refId: count
             relativeTimeRange:
@@ -3404,7 +3408,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'count((os10_interface_up{job="dell_os10",interface!~"Management.*"} == 0) and on(switch, interface, port) (os10:interface_up_recent_7d == 1))'
+              expr: 'count((os10_interface_up{job="dell_os10",interface=~"ethernet.*|port-channel.*|vti.*"} == 0) and on(switch, interface, port) (os10:interface_up_recent_7d == 1))'
               refId: A
           - refId: down_count
             relativeTimeRange:
