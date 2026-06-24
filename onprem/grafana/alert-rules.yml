@@ -343,7 +343,8 @@ groups:
         title: PowerStore Metro Replication Not Engaged
         condition: threshold
         for: 5m
-        noDataState: OK
+        keep_firing_for: 15m
+        noDataState: KeepLast
         execErrState: Error
         labels:
           severity: critical
@@ -354,7 +355,7 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 300
+              from: 1800
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
@@ -368,7 +369,7 @@ groups:
             model:
               type: reduce
               expression: A
-              reducer: last
+              reducer: max
               refId: state
           - refId: threshold
             relativeTimeRange:
@@ -390,7 +391,8 @@ groups:
         title: PowerStore Metro Witness Not OK
         condition: threshold
         for: 2m
-        noDataState: OK
+        keep_firing_for: 15m
+        noDataState: KeepLast
         execErrState: Error
         labels:
           severity: critical
@@ -401,7 +403,7 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 300
+              from: 1800
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
@@ -415,7 +417,7 @@ groups:
             model:
               type: reduce
               expression: A
-              reducer: last
+              reducer: max
               refId: state
           - refId: threshold
             relativeTimeRange:
@@ -3396,7 +3398,7 @@ groups:
           severity: warning
         annotations:
           summary: "{{ $values.down_count.Value | printf \"%.0f\" }} switch interface(s) are down — check the Switch dashboard for details"
-          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=31"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=3"
         data:
           - refId: A
             relativeTimeRange:
@@ -3404,7 +3406,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'count((os10_interface_up{job="dell_os10",interface!~"Management.*"} == 0) and on(switch, interface, port) (os10:interface_up_recent_7d == 1))'
+              expr: 'count((os10_interface_up{job="dell_os10",interface!~"Management.*"} == 0) and (max_over_time(os10_interface_up{job="dell_os10",interface!~"Management.*"}[24h]) == 1))'
               refId: A
           - refId: down_count
             relativeTimeRange:
