@@ -12,7 +12,10 @@ Right-click               → menu (Settings, Open Grafana, Quit)
 Click an alert row        → open that rule directly in Grafana
 """
 
+import logging
+import os
 import re
+import sys
 import threading
 import time
 import webbrowser
@@ -20,6 +23,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import tkinter.simpledialog as simpledialog
 from datetime import datetime, timedelta, timezone
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 import requests
 from PIL import Image, ImageDraw
@@ -29,6 +34,50 @@ from pystray import MenuItem as item
 import settings
 
 settings.load()
+
+# ---------------------------------------------------------------------------
+# Logging — written to %APPDATA%\CrownMonitoring\tray-monitor.log so that
+# connection failures (timeouts, auth errors, DNS, SSL) are recorded with the
+# real reason instead of silently turning the tray icon grey.
+# ---------------------------------------------------------------------------
+
+_LOG_DIR  = Path(os.environ.get("APPDATA", ".")) / "CrownMonitoring"
+_LOG_FILE = _LOG_DIR / "tray-monitor.log"
+
+log = logging.getLogger("crown-tray")
+
+
+def _setup_logging() -> None:
+    _LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)s  %(levelname)-7s  %(message)s",
+                            datefmt="%Y-%m-%d %H:%M:%S")
+    fh = RotatingFileHandler(_LOG_FILE, maxBytes=1_000_000, backupCount=3,
+                             encoding="utf-8")
+    fh.setFormatter(fmt)
+    log.addHandler(fh)
+    # Console handler only when a real stderr exists. In the windowed (.exe)
+    # build sys.stderr is None, so adding it would just be dead weight.
+    if sys.stderr is not None:
+        sh = logging.StreamHandler()
+        sh.setFormatter(fmt)
+        log.addHandler(sh)
+    log.info("Crown Monitoring tray starting — log file: %s", _LOG_FILE)
+
+
+_setup_logging()
+
+
+def _open_log_folder() -> None:
+    """Open the log directory in Explorer, highlighting the log file."""
+    try:
+        if _LOG_FILE.exists():
+            import subprocess
+            subprocess.Popen(["explorer", "/select,", str(_LOG_FILE)])
+        else:
+            os.startfile(str(_LOG_DIR))   # folder may exist before the file
+    except Exception:
+        log.exception("Failed to open log folder %s", _LOG_DIR)
 
 # ---------------------------------------------------------------------------
 # Shared state  (poll thread writes, UI thread reads)
@@ -138,6 +187,14 @@ def _notify(title: str, body: str) -> None:
     )
 
 
+def _toasts_suppressed() -> bool:
+    """True if toasts should not fire — globally disabled or within a timed pause."""
+    s = settings.get()
+    if not s.get("toast_notifications", True):
+        return True
+    return time.time() < (s.get("toast_pause_until", 0) or 0)
+
+
 # ---------------------------------------------------------------------------
 # Grafana API  (reads auth from settings at call time)
 # ---------------------------------------------------------------------------
@@ -149,6 +206,9 @@ def _fetch(profile: dict | None = None) -> tuple[list, list] | None:
     the silence comment from the silences endpoint ([ACK] prefix = ack).
     """
     s = profile or settings.get()
+    name = s.get("name", "?")
+    base = s.get("grafana_url", "").rstrip("/")
+    alerts_url = f"{base}/api/alertmanager/grafana/api/v2/alerts"
     try:
         kwargs: dict = {
             "params":  {"active": "true", "inhibited": "false"},
@@ -159,10 +219,7 @@ def _fetch(profile: dict | None = None) -> tuple[list, list] | None:
         else:
             kwargs["auth"] = (s.get("username", ""), s.get("password", ""))
 
-        r = requests.get(
-            f"{s['grafana_url'].rstrip('/')}/api/alertmanager/grafana/api/v2/alerts",
-            **kwargs,
-        )
+        r = requests.get(alerts_url, **kwargs)
         if r.status_code == 200:
             all_alerts = r.json()
             active   = [a for a in all_alerts
@@ -178,6 +235,10 @@ def _fetch(profile: dict | None = None) -> tuple[list, list] | None:
             )
             silence_map: dict = {}   # id → full silence dict
             maintenance_silence = None
+            if sr.status_code != 200:
+                log.warning("Grafana '%s': silences endpoint returned HTTP %s "
+                            "(alerts still shown, mute/ack tags may be missing)",
+                            name, sr.status_code)
             if sr.status_code == 200:
                 now_utc = datetime.now(timezone.utc)
                 for silence in sr.json():
@@ -192,8 +253,14 @@ def _fetch(profile: dict | None = None) -> tuple[list, list] | None:
                 a["_mute_type"] = "ack" if comment.startswith("[ACK]") else "mute"
 
             return active, silenced, maintenance_silence
-    except Exception:
-        pass
+        # Non-200 from the alerts endpoint — this is the common "instance
+        # stops connecting" case (e.g. 401 expired token, 502 from a proxy).
+        log.warning("Grafana '%s' unreachable: HTTP %s from %s — body: %.200s",
+                    name, r.status_code, alerts_url, r.text)
+    except Exception as exc:
+        # Network-level failure: timeout, DNS, connection refused, SSL, etc.
+        log.error("Grafana '%s' unreachable at %s — %s: %s",
+                  name, base, type(exc).__name__, exc)
     return None
 
 
@@ -392,8 +459,11 @@ def _normalise_pd_incident(inc: dict, grafana_url: str = "") -> dict:
 
 
 def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
+    name    = profile.get("name", "?")
     api_key = profile.get("pd_api_key", "").strip()
     if not api_key or any(c in api_key for c in "\r\n"):
+        log.warning("PagerDuty '%s': API key missing or malformed (contains "
+                    "newline) — skipping", name)
         return None
     try:
         params: dict = {
@@ -414,6 +484,8 @@ def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
             timeout=10,
         )
         if r.status_code != 200:
+            log.warning("PagerDuty '%s' unreachable: HTTP %s — body: %.200s",
+                        name, r.status_code, r.text)
             return None
         grafana_url = profile.get("grafana_url", "")
         active, silenced = [], []
@@ -425,7 +497,9 @@ def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
             else:
                 active.append(alert)
         return active, silenced, None
-    except Exception:
+    except Exception as exc:
+        log.error("PagerDuty '%s' fetch failed — %s: %s",
+                  name, type(exc).__name__, exc)
         return None
 
 
@@ -735,6 +809,15 @@ class SettingsDialog:
                               fg=self.FG_DIM, font=("Segoe UI", 8))
         status_lbl.pack(**pad, pady=(2, 0), anchor="w")
 
+        # ---- Open log folder link ----
+        log_link = tk.Label(win, text="📂  Open log folder",
+                            bg=self.BG, fg=self.ACCENT, cursor="hand2",
+                            font=("Segoe UI", 8, "underline"), anchor="w")
+        log_link.pack(**pad, pady=(6, 0), anchor="w")
+        log_link.bind("<Button-1>", lambda _e: _open_log_folder())
+        log_link.bind("<Enter>",    lambda _e: log_link.config(fg=self.FG))
+        log_link.bind("<Leave>",    lambda _e: log_link.config(fg=self.ACCENT))
+
         # ---- Buttons ----
         tk.Frame(win, bg=self.SEP, height=1).pack(fill="x", pady=(8, 0))
         btn_row = tk.Frame(win, bg=self.BG)
@@ -867,6 +950,7 @@ class AlertPanel:
         self._acked_expanded     = True
         self._silenced_expanded  = False
         self._pd_expanded:  set  = set()
+        self._grafana_expanded: set = set()   # alertnames expanded in Firing section
         self._suppress_focus_out = False
         self._menu_open          = False
         self._active_tab         = 0      # which profile's alerts are shown
@@ -1171,8 +1255,7 @@ class AlertPanel:
         container = tk.Frame(self._body, bg=self.BG)
         if self._alerts_expanded:
             container.pack(fill="x")
-            for alert in alerts:
-                self._row(alert, parent=container)
+            self._render_grouped_alerts(alerts, container)
 
         def _toggle(_e=None):
             self._alerts_expanded = not self._alerts_expanded
@@ -1190,6 +1273,139 @@ class AlertPanel:
         link.bind("<Button-1>", _open_alerts)
         link.bind("<Enter>",    lambda _: link.config(fg=self.FG))
         link.bind("<Leave>",    lambda _: link.config(fg=self.FG_DIM))
+
+    def _render_grouped_alerts(self, alerts: list, container: tk.Widget) -> None:
+        """Render firing alerts grouped by alertname.
+
+        Multiple instances of the same trigger (e.g. HostDiskSpace on 8 hosts)
+        collapse into one expandable header row — same space-saving behaviour as
+        the PagerDuty rollup. Singletons render as a normal row. Each instance
+        keeps its own silence button when the group is expanded.
+        """
+        groups: dict = {}
+        order: list  = []   # preserves the incoming (severity-then-name) sort
+        for a in alerts:
+            key = a.get("labels", {}).get("alertname", "Unknown alert")
+            if key not in groups:
+                groups[key] = []
+                order.append(key)
+            groups[key].append(a)
+
+        for key in order:
+            members = groups[key]
+            if len(members) == 1:
+                self._row(members[0], parent=container)
+            else:
+                self._grafana_group(key, members, container)
+
+    def _grafana_group(self, name: str, members: list,
+                       parent: tk.Widget) -> None:
+        """Collapsible header for a Grafana alertname with multiple instances."""
+        expanded = name in self._grafana_expanded
+        has_crit = any(m.get("labels", {}).get("severity") == "critical"
+                       for m in members)
+        has_high = any(m.get("labels", {}).get("severity") == "high"
+                       for m in members)
+        if has_crit:
+            row_bg, hov_bg, dot_col = self.CRIT_BG, self.CRIT_HOV, self.PURPLE
+        elif has_high:
+            row_bg, hov_bg, dot_col = self.CRIT_BG, self.CRIT_HOV, self.RED
+        else:
+            row_bg, hov_bg, dot_col = self.WARN_BG, self.WARN_HOV, self.AMBER
+
+        tk.Frame(parent, bg=self.SEP, height=1).pack(fill="x")
+        head = tk.Frame(parent, bg=row_bg, cursor="hand2")
+        head.pack(fill="x")
+
+        dot = tk.Label(head, text="●", bg=row_bg, fg=dot_col,
+                       font=("Segoe UI", 16), padx=10)
+        dot.pack(side="left", anchor="n", pady=10)
+
+        # Group-level silence button (mutes / acks the whole alertname at once)
+        btn = tk.Label(head, text="🔕", bg=row_bg, fg=self.FG_DIM,
+                       font=("Segoe UI", 11), padx=6, cursor="hand2")
+        btn.pack(side="right", anchor="n", pady=8)
+
+        mid = tk.Frame(head, bg=row_bg)
+        mid.pack(side="left", fill="both", expand=True, pady=8, padx=(0, 4))
+
+        chevron  = "▼" if expanded else "▶"
+        name_lbl = tk.Label(mid, text=f"{chevron}  {name}", bg=row_bg, fg=self.FG,
+                            font=("Segoe UI", 9, "bold"), anchor="w",
+                            justify="left")
+        name_lbl.pack(fill="x")
+        sub = tk.Label(mid, text=f"{len(members)} instances", bg=row_bg,
+                       fg=self.FG_DIM, font=("Segoe UI", 8), anchor="w",
+                       justify="left")
+        sub.pack(fill="x")
+
+        all_w = [head, dot, mid, name_lbl, sub]
+
+        def _toggle(_e=None):
+            if expanded:
+                self._grafana_expanded.discard(name)
+            else:
+                self._grafana_expanded.add(name)
+            self._refresh_panel()
+
+        def on_enter(_e, bg=hov_bg):
+            for w in all_w:
+                try: w.configure(bg=bg)
+                except Exception: pass
+            btn.configure(fg=self.FG)
+
+        def on_leave(_e, bg=row_bg):
+            for w in all_w:
+                try: w.configure(bg=bg)
+                except Exception: pass
+            btn.configure(fg=self.FG_DIM)
+
+        for w in all_w:
+            w.bind("<Button-1>", _toggle)
+            w.bind("<Enter>",    on_enter)
+            w.bind("<Leave>",    on_leave)
+
+        # Silence the whole group: a matcher on alertname only (no instance)
+        group_alert = {"labels": {"alertname": name}}
+        btn.bind("<Button-1>",
+                 lambda e, a=group_alert: self._open_grafana_silence_menu(e, a))
+        btn.bind("<Enter>", lambda _: btn.configure(fg=self.FG))
+        btn.bind("<Leave>", lambda _: btn.configure(fg=self.FG_DIM))
+
+        if expanded:
+            sub_container = tk.Frame(parent, bg=self.BG)
+            sub_container.pack(fill="x", padx=(10, 0))
+            for m in members:
+                self._row(m, parent=sub_container)
+
+    def _open_grafana_silence_menu(self, event, alert: dict) -> None:
+        """Acknowledge / Mute submenu for a Grafana alert (or whole group)."""
+        self._suppress_focus_out = True
+        self._menu_open          = True
+        menu_kw = dict(bg="#2a2a3e", fg=self.FG,
+                       activebackground="#7c6af7",
+                       activeforeground="#ffffff", bd=0, tearoff=0)
+        menu = tk.Menu(self._win, **menu_kw)
+
+        ack_menu = tk.Menu(menu, **menu_kw)
+        for h, lbl in [(1, "1 hour"), (2, "2 hours"), (4, "4 hours")]:
+            ack_menu.add_command(
+                label=f"for {lbl}",
+                command=lambda hours=h, al=alert: self._do_silence(al, hours, "ack"),
+            )
+
+        mute_menu = tk.Menu(menu, **menu_kw)
+        for h, lbl in [(4, "4 hours"), (8, "8 hours"), (24, "24 hours")]:
+            mute_menu.add_command(
+                label=f"for {lbl}",
+                command=lambda hours=h, al=alert: self._do_silence(al, hours, "mute"),
+            )
+
+        menu.add_cascade(label="🔧  Acknowledge (working on it)", menu=ack_menu)
+        menu.add_cascade(label="🔇  Mute (not important)", menu=mute_menu)
+        menu.bind("<Unmap>", lambda _e: setattr(self, "_menu_open", False))
+        menu.tk_popup(event.x_root, event.y_root)
+        self.root.after(1500, lambda: setattr(self, "_suppress_focus_out", False))
 
     def _acked_section(self, acked: list) -> None:
         """Acknowledged alerts — visible by default, amber, someone is working on them."""
@@ -1373,6 +1589,14 @@ class AlertPanel:
                              font=("Segoe UI", 8), anchor="w", justify="left",
                              wraplength=self.W - 120)
             s_lbl.pack(fill="x")
+            # Wrap to the real text-column width. The fixed wraplength above is a
+            # guess that ignores the right-side buttons (🔕 / PD ↗ / Grafana ↗) and
+            # the left dot, so the longest instance line (e.g. a long mountpoint)
+            # overflows under the buttons and clips its value. Bind to mid's actual
+            # width so every line wraps to fit instead. Bind on the frame, not the
+            # label, to avoid a resize feedback loop.
+            mid.bind("<Configure>",
+                     lambda e, lbl=s_lbl: lbl.config(wraplength=max(120, e.width - 8)))
             all_w.append(s_lbl)
 
         if is_pd:
@@ -1477,34 +1701,8 @@ class AlertPanel:
                     self.root.after(1500, lambda: setattr(self, "_suppress_focus_out", False))
                 btn.bind("<Button-1>", _show_pd_menu)
             else:
-                def _show_silence_menu(_e, a=alert):
-                    self._suppress_focus_out = True
-                    self._menu_open          = True
-                    menu_kw = dict(bg="#2a2a3e", fg=self.FG,
-                                   activebackground="#7c6af7",
-                                   activeforeground="#ffffff", bd=0, tearoff=0)
-                    menu = tk.Menu(self._win, **menu_kw)
-
-                    ack_menu = tk.Menu(menu, **menu_kw)
-                    for h, lbl in [(1, "1 hour"), (2, "2 hours"), (4, "4 hours")]:
-                        ack_menu.add_command(
-                            label=f"for {lbl}",
-                            command=lambda hours=h, al=a: self._do_silence(al, hours, "ack"),
-                        )
-
-                    mute_menu = tk.Menu(menu, **menu_kw)
-                    for h, lbl in [(4, "4 hours"), (8, "8 hours"), (24, "24 hours")]:
-                        mute_menu.add_command(
-                            label=f"for {lbl}",
-                            command=lambda hours=h, al=a: self._do_silence(al, hours, "mute"),
-                        )
-
-                    menu.add_cascade(label="🔧  Acknowledge (working on it)", menu=ack_menu)
-                    menu.add_cascade(label="🔇  Mute (not important)", menu=mute_menu)
-                    menu.bind("<Unmap>", lambda _e: setattr(self, "_menu_open", False))
-                    menu.tk_popup(_e.x_root, _e.y_root)
-                    self.root.after(1500, lambda: setattr(self, "_suppress_focus_out", False))
-                btn.bind("<Button-1>", _show_silence_menu)
+                btn.bind("<Button-1>",
+                         lambda e, a=alert: self._open_grafana_silence_menu(e, a))
 
         btn.bind("<Enter>", lambda _: btn.configure(fg=self.FG))
         btn.bind("<Leave>", lambda _: btn.configure(fg=self.FG_DIM))
@@ -1624,8 +1822,9 @@ class AlertPanel:
 # ---------------------------------------------------------------------------
 
 def _poll(icon: pystray.Icon) -> None:
-    previous_per: dict = {}    # {profile_idx: {fingerprint: alert}}
-    initialised:  set  = set() # profiles that have completed their first sync
+    previous_per:   dict = {}  # {profile_idx: {fingerprint: alert}}
+    initialised:    set  = set() # profiles that have completed their first sync
+    reachable_prev: dict = {}  # {profile_idx: bool} — to log up/down transitions
 
     while True:
         profiles     = settings.get_profiles()
@@ -1659,6 +1858,19 @@ def _poll(icon: pystray.Icon) -> None:
                     elif warns:      any_warning  = True
                     any_reachable = True
 
+            # Log reachable up/down transitions. The cause of a drop is already
+            # logged by _fetch/_fetch_pd just above; this marks the moment.
+            now_reachable = result is not None
+            if reachable_prev.get(i, now_reachable) != now_reachable:
+                if now_reachable:
+                    log.info("Profile '%s' recovered — now reachable",
+                             profile.get("name", "?"))
+                else:
+                    log.warning("Profile '%s' became UNREACHABLE "
+                                "(see preceding error for cause)",
+                                profile.get("name", "?"))
+            reachable_prev[i] = now_reachable
+
             # Toasts for newly firing alerts — skip on first sync to avoid
             # flooding with everything that was already alerting at startup
             with _state_lock:
@@ -1673,7 +1885,7 @@ def _poll(icon: pystray.Icon) -> None:
                         lb  = alert.get("labels", {})
                         sev = lb.get("severity", "warning")
                         prefix = f"[{profile.get('name', '')}] " if len(profiles) > 1 else ""
-                        if settings.get().get("toast_notifications", True):
+                        if not _toasts_suppressed():
                             _notify(
                                 f"{prefix}{'CRITICAL' if sev == 'critical' else 'Warning'}: "
                                 f"{lb.get('alertname', 'Alert')}",
@@ -1784,6 +1996,7 @@ def main() -> None:
     def _toggle(_i, _t):   panel.toggle()
     def _open_g(_i, _t):   webbrowser.open(f"{settings.get()['grafana_url']}/alerting/list")
     def _settings(_i, _t): dialog.open()
+    def _open_logs(_i, _t): _open_log_folder()
 
     def _maint_start(profile_idx, hours):
         def _act(_icon, _item):
@@ -1856,8 +2069,39 @@ def main() -> None:
                 else "Disable Toasts")
 
     def _toast_toggle(_i, _t):
-        s = settings.get()
-        settings.save_global(toast_notifications=not s.get("toast_notifications", True))
+        if settings.get().get("toast_notifications", True):
+            settings.save_global(toast_notifications=False)
+        else:
+            # Re-enabling also clears any outstanding timed pause.
+            settings.save_global(toast_notifications=True, toast_pause_until=0)
+
+    _TOAST_PAUSE_CHOICES = [("15 minutes", 15), ("30 minutes", 30),
+                            ("1 hour", 60), ("2 hours", 120)]
+
+    def _toast_pause_remaining():
+        """Whole minutes left on a timed toast pause, else 0."""
+        left = (settings.get().get("toast_pause_until", 0) or 0) - time.time()
+        return int(-(-left // 60)) if left > 0 else 0
+
+    def _pause_toasts_for(minutes):
+        def _act(_i, _t):
+            settings.save_global(toast_pause_until=time.time() + minutes * 60)
+        return _act
+
+    def _resume_toasts(_i, _t):
+        settings.save_global(toast_pause_until=0)
+
+    def _toast_pause_items():
+        rem = _toast_pause_remaining()
+        if rem:
+            yield item(f"Resume now ({rem} min left)", _resume_toasts)
+            yield pystray.Menu.SEPARATOR
+        for label, mins in _TOAST_PAUSE_CHOICES:
+            yield item(label, _pause_toasts_for(mins))
+
+    def _toast_pause_text(_i):
+        rem = _toast_pause_remaining()
+        return f"Pause Toasts ({rem} min left)" if rem else "Pause Toasts"
 
     def _quit(i, _t):
         i.stop()
@@ -1889,9 +2133,11 @@ def main() -> None:
             item(_flash_pause_text,     _flash_pause_toggle),
             item(_flash_enabled_text,   _flash_enabled_toggle),
             item(_toast_text,           _toast_toggle),
+            item(_toast_pause_text,     pystray.Menu(_toast_pause_items)),
             pystray.Menu.SEPARATOR,
             item("Settings",            _settings),
             item("Open Grafana",        _open_g),
+            item("Open Log Folder",     _open_logs),
             pystray.Menu.SEPARATOR,
             item("Quit",                _quit),
         ),
