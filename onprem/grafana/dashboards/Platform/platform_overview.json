@@ -288,7 +288,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "count(up{job=~\"node|windows\"} == 0 and on(instance) max_over_time(up{job=~\"node|windows\"}[7d]) == 1) or vector(0)",
+          "expr": "count(up{job=~\"node|windows\"} == 0 and on(instance) node_windows:up_recent_7d == 1) or vector(0)",
           "legendFormat": "Targets Down",
           "range": true,
           "refId": "A"
