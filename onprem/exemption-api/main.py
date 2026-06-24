@@ -464,7 +464,8 @@ def vm_backup_overdue_exempt_metrics():
         lines.append(f'vcenter_vm_backup_overdue_exempt{{vm_name="{_escape_label(identifier)}"}} 1')
     body = "\n".join(lines) + "\n"
     with _vm_backup_overdue_exempt_lock:
-        _vm_backup_overdue_exempt_cache = (now, body)
+        # re-capture now at write time so a slow DB query doesn't shorten the TTL
+        _vm_backup_overdue_exempt_cache = (time.monotonic(), body)
     return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 
