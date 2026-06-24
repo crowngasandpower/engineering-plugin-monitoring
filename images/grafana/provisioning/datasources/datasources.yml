@@ -60,3 +60,7 @@ datasources:
     jsonData:
       allowedHosts:
         - https://0ndrg8kla9.execute-api.eu-west-2.amazonaws.com
+        # status.claude.com kept allowed too so any cached/stale dashboard tab
+        # (which still queries the old direct URL) doesn't hard-error during
+        # the transition to the API Gateway endpoint.
+        - https://status.claude.com
