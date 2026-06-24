@@ -1,0 +1,14 @@
+groups:
+  - name: node-windows-recording
+    # Evaluated by Prometheus every 5m (NOT on the interactive Grafana path).
+    # Precomputes the 7d "was up recently" baseline so the Platform Overview
+    # "Targets Down" panel reads a cheap instant series instead of running a
+    # 7d max_over_time on every dashboard load (which timed out the datasource).
+    # Same pattern as os10:interface_up_recent_7d.
+    interval: 5m
+    rules:
+      # 1 if the host's exporter was up at any point in the last 7 days, else 0.
+      # Lets the panel tell a real host that is currently down (recently up)
+      # from a decommissioned target (not up in 7d) without scanning 7d at query time.
+      - record: node_windows:up_recent_7d
+        expr: max_over_time(up{job=~"node|windows"}[7d])
