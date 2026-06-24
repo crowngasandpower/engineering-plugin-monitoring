@@ -553,8 +553,8 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^display$/",
-          "values": false
+          "fields": "",
+          "values": true
         },
         "showPercentChange": false,
         "textMode": "value",
