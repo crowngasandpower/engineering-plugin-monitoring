@@ -500,29 +500,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "mappings": [
-            {
-              "options": {
-                "Minor Outage": {
-                  "color": "yellow",
-                  "index": 0
-                },
-                "Major Outage": {
-                  "color": "red",
-                  "index": 1
-                },
-                "Critical Outage": {
-                  "color": "red",
-                  "index": 2
-                },
-                "Status Unknown": {
-                  "color": "orange",
-                  "index": 3
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "mappings": [],
           "noValue": "No data",
           "thresholds": {
             "mode": "absolute",
@@ -530,6 +508,14 @@
               {
                 "color": "green",
                 "value": 0
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 2
               }
             ]
           }
@@ -554,22 +540,16 @@
             "lastNotNull"
           ],
           "fields": "",
-          "values": true
+          "values": false
         },
         "showPercentChange": false,
-        "textMode": "value",
+        "textMode": "name",
         "wideLayout": true
       },
       "pluginVersion": "12.4.2",
       "targets": [
         {
-          "columns": [
-            {
-              "selector": "display",
-              "text": "display",
-              "type": "string"
-            }
-          ],
+          "columns": [],
           "datasource": {
             "type": "yesoreyeram-infinity-datasource",
             "uid": "claude-status-infinity"
