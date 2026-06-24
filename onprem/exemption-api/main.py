@@ -283,6 +283,9 @@ _node_memory_exempt_lock = threading.Lock()
 _vm_powered_off_exempt_cache: tuple[float, str] | None = None
 _VM_POWERED_OFF_EXEMPT_TTL = 60.0
 _vm_powered_off_exempt_lock = threading.Lock()
+_vm_backup_overdue_exempt_cache: tuple[float, str] | None = None
+_VM_BACKUP_OVERDUE_EXEMPT_TTL = 60.0
+_vm_backup_overdue_exempt_lock = threading.Lock()
 
 @app.get("/node-memory-exempt/metrics")
 def node_memory_exempt_metrics():
@@ -415,6 +418,53 @@ def vm_powered_off_exempt_metrics():
     body = "\n".join(lines) + "\n"
     with _vm_powered_off_exempt_lock:
         _vm_powered_off_exempt_cache = (now, body)
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+
+
+# In-process cache - valid only because the Dockerfile pins --workers 1.
+@app.get("/vm-backup-overdue-exempt/metrics")
+def vm_backup_overdue_exempt_metrics():
+    """Prometheus text format - one gauge per VM suppressed from the backup-overdue alert.
+    Scraped by the vcenter_vm_backup_overdue_exempt job. The vm_name label must match
+    the vm_name label on vcenter_vm_last_backup_timestamp emitted by vcenter-sd.
+
+    Intentionally unauthenticated; only reachable within the Docker compose network."""
+    global _vm_backup_overdue_exempt_cache
+    now = time.monotonic()
+    with _vm_backup_overdue_exempt_lock:
+        if _vm_backup_overdue_exempt_cache is not None:
+            cached_at, body = _vm_backup_overdue_exempt_cache
+            if now - cached_at < _VM_BACKUP_OVERDUE_EXEMPT_TTL:
+                return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        stale = _vm_backup_overdue_exempt_cache
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT identifier FROM platform_suppressions WHERE category = 'backup_overdue' ORDER BY identifier"
+            )
+            rows = cur.fetchall()
+    except Exception as exc:
+        _log.warning("vm_backup_overdue_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if stale is not None else "empty metrics")
+        if stale is not None:
+            _, body = stale
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        return PlainTextResponse(
+            "# HELP vcenter_vm_backup_overdue_exempt 1 if this VM is suppressed from the backup-overdue alert\n"
+            "# TYPE vcenter_vm_backup_overdue_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
+        )
+    lines = [
+        "# HELP vcenter_vm_backup_overdue_exempt 1 if this VM is suppressed from the backup-overdue alert",
+        "# TYPE vcenter_vm_backup_overdue_exempt gauge",
+    ]
+    for (identifier,) in rows:
+        # _escape_label is mandatory: identifier is user-supplied via /suppress/add.
+        lines.append(f'vcenter_vm_backup_overdue_exempt{{vm_name="{_escape_label(identifier)}"}} 1')
+    body = "\n".join(lines) + "\n"
+    with _vm_backup_overdue_exempt_lock:
+        _vm_backup_overdue_exempt_cache = (now, body)
     return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 
