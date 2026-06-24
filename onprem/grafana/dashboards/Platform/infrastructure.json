@@ -424,7 +424,7 @@
       "pluginVersion": "12.4.2",
       "targets": [
         {
-          "expr": "sum by (app) (count_over_time({log_type=\"laravel\"} |~ \"(?i)error|exception|fatal\" != \"Serialization failure: 1213 Deadlock\" [$__auto]))",
+          "expr": "sum by (app) (count_over_time({log_type=\"laravel\"} |~ \"(ERROR|CRITICAL|ALERT|EMERGENCY):\" != \"Serialization failure: 1213 Deadlock\" [$__auto]))",
           "legendFormat": "{{app}}",
           "queryType": "range",
           "refId": "A"
@@ -484,7 +484,7 @@
       "pluginVersion": "12.4.2",
       "targets": [
         {
-          "expr": "sum(count_over_time({log_type=\"laravel\"} |~ \"(?i)error|exception|fatal\" [5m]))",
+          "expr": "sum(count_over_time({log_type=\"laravel\"} |~ \"(ERROR|CRITICAL|ALERT|EMERGENCY):\" [5m]))",
           "legendFormat": "Errors",
           "queryType": "instant",
           "refId": "A"
