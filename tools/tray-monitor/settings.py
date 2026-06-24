@@ -31,6 +31,7 @@ DEFAULTS: dict = {
     "poll_interval":       30,
     "flash_on_critical":   True,
     "toast_notifications": True,
+    "toast_pause_until":   0,   # epoch seconds; toasts suppressed until this time (0 = not paused)
 }
 
 _DIR  = Path(os.environ.get("APPDATA", ".")) / "CrownMonitoring"
