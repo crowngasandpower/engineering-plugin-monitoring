@@ -36,9 +36,13 @@ datasources:
     type: postgres
     access: proxy
     url: 192.168.164.184:9508
-    user: monitoring
+    # Uses grafana_ro (read-only); init.sql creates this user. The migration must be
+    # run on the monitoring Postgres BEFORE deploying this, or auth fails silently.
+    user: grafana_ro
     secureJsonData:
-      password: monitoring
+      # @ai-review-ignore: grafana_ro password committed intentionally - SELECT-only user
+      # on an internal monitoring DB. Same pattern as monitoring/monitoring in docker-compose.yml.
+      password: grafana_ro
     jsonData:
       database: monitoring
       sslmode: disable
