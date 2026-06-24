@@ -14,6 +14,8 @@ Required environment variables:
 
 Optional:
   POLL_INTERVAL_SECONDS — how often to query (default: 300 = 5 minutes)
+  GATEWAY_GAS_STATS_URL, GATEWAY_GAS_STATS_TOKEN — gas gateway /api/source-stats endpoint + bearer token
+  GATEWAY_ELEC_STATS_URL, GATEWAY_ELEC_STATS_TOKEN — power gateway /api/source-stats endpoint + bearer token
 """
 
 import os
@@ -130,6 +132,21 @@ if os.environ.get('GATEWAY_GAS_DB'):
 if os.environ.get('GATEWAY_ELEC_DB'):
     GATEWAY_CONFIG['elec'] = os.environ['GATEWAY_ELEC_DB']
 
+# --- Gateway source-stats API config (files waiting at the source) ---
+# Each gateway exposes /api/source-stats reporting files sitting at the source
+# waiting to be collected. Tokens are read from env (never committed).
+GATEWAY_SOURCE_STATS = {}
+if os.environ.get('GATEWAY_GAS_STATS_URL'):
+    GATEWAY_SOURCE_STATS['gas'] = {
+        'url': os.environ['GATEWAY_GAS_STATS_URL'],
+        'token': os.environ.get('GATEWAY_GAS_STATS_TOKEN', ''),
+    }
+if os.environ.get('GATEWAY_ELEC_STATS_URL'):
+    GATEWAY_SOURCE_STATS['elec'] = {
+        'url': os.environ['GATEWAY_ELEC_STATS_URL'],
+        'token': os.environ.get('GATEWAY_ELEC_STATS_TOKEN', ''),
+    }
+
 # --- PowerStore SAN config ---
 POWERSTORE_CONFIG = None
 if os.environ.get('POWERSTORE_HOST'):
@@ -168,8 +185,14 @@ gateway_files_retrieved_today = Gauge('gateway_files_retrieved_today',
     'Industry files retrieved by gateway today', ['fuel'])
 gateway_files_transferred_today = Gauge('gateway_files_transferred_today',
     'Industry files successfully transferred to Genus today', ['fuel'])
-gateway_files_pending = Gauge('gateway_files_pending',
-    'Industry files retrieved but not yet transferred to Genus', ['fuel'])
+gateway_files_out_today = Gauge('gateway_files_out_today',
+    'Industry files routed outbound to counterparties today', ['fuel'])
+gateway_source_files = Gauge('gateway_source_files',
+    'Files currently waiting at the source to be collected by the gateway', ['fuel'])
+gateway_source_files_over_10min = Gauge('gateway_source_files_over_10min',
+    'Source files that have been waiting more than 10 minutes to be collected', ['fuel'])
+gateway_source_unreadable = Gauge('gateway_source_unreadable',
+    'Number of gateway sources that could not be read', ['fuel'])
 gateway_files_failed_today = Gauge('gateway_files_failed_today',
     'Industry files that failed to transfer today', ['fuel'])
 gateway_oldest_pending_minutes = Gauge('gateway_oldest_pending_minutes',
@@ -879,6 +902,72 @@ def collect_gateway_metrics():
     if not MYSQL_CONFIG or not GATEWAY_CONFIG:
         return
 
+    # Files "transferred to Genus" are only those routed to a Genus destination,
+    # identified by the destination route's reference_path (gas lands under
+    # Hubfiles, elec under the Electralink Gateway path). The two estates model
+    # the file -> route link differently, so the queries differ:
+    #   - gas:  files.routing_rule_id is a direct FK to routing_rules.
+    #   - elec: files map to routing_rules many-to-many via the file_routing_rules
+    #           junction, so COUNT(DISTINCT f.id) avoids double-counting and the
+    #           junction's own soft-delete (frr.deleted_at) is honoured.
+    # The reference_path is bound as a parameter so pymysql doesn't treat the
+    # '%' wildcards as format specifiers.
+    genus_transferred = {
+        'gas': {
+            'match': '%Hubfiles%',
+            'sql': (
+                "SELECT COUNT(*) FROM files f "
+                "JOIN routing_rules rr ON rr.id = f.routing_rule_id "
+                "JOIN routes r ON r.id = rr.destination_id "
+                "WHERE r.reference_path LIKE %s "
+                "AND f.processed_at >= CURDATE() "
+                "AND f.processed_at < CURDATE() + INTERVAL 1 DAY "
+                "AND f.failed = 0 "
+                "AND f.deleted_at IS NULL"
+            ),
+        },
+        'elec': {
+            'match': '%Electralink Gateway%',
+            'sql': (
+                "SELECT COUNT(DISTINCT f.id) FROM files f "
+                "JOIN file_routing_rules frr ON frr.file_id = f.id "
+                "JOIN routing_rules rr ON rr.id = frr.routing_rule_id "
+                "JOIN routes r ON r.id = rr.destination_id "
+                "WHERE r.reference_path LIKE %s "
+                "AND f.processed_at >= CURDATE() "
+                "AND f.processed_at < CURDATE() + INTERVAL 1 DAY "
+                "AND f.deleted_at IS NULL "
+                "AND frr.deleted_at IS NULL"
+            ),
+        },
+    }
+
+    # Files routed "out" (Crown -> counterparties) are identified by the routing
+    # rule's direction column ('out' vs 'in'), not by a Genus destination path.
+    # Same per-estate join shapes as genus_transferred (gas: direct FK; elec:
+    # the file_routing_rules junction with its own soft-delete honoured).
+    gateway_out = {
+        'gas': (
+            "SELECT COUNT(*) FROM files f "
+            "JOIN routing_rules rr ON rr.id = f.routing_rule_id "
+            "WHERE rr.direction = 'out' "
+            "AND f.processed_at >= CURDATE() "
+            "AND f.processed_at < CURDATE() + INTERVAL 1 DAY "
+            "AND f.failed = 0 "
+            "AND f.deleted_at IS NULL"
+        ),
+        'elec': (
+            "SELECT COUNT(DISTINCT f.id) FROM files f "
+            "JOIN file_routing_rules frr ON frr.file_id = f.id "
+            "JOIN routing_rules rr ON rr.id = frr.routing_rule_id "
+            "WHERE rr.direction = 'out' "
+            "AND f.processed_at >= CURDATE() "
+            "AND f.processed_at < CURDATE() + INTERVAL 1 DAY "
+            "AND f.deleted_at IS NULL "
+            "AND frr.deleted_at IS NULL"
+        ),
+    }
+
     for fuel, database in GATEWAY_CONFIG.items():
         try:
             conn = get_mysql_connection(database)
@@ -889,15 +978,15 @@ def collect_gateway_metrics():
                     "SELECT COUNT(*) FROM files "
                     "WHERE DATE(created_at) = CURDATE() AND deleted_at IS NULL"))
 
-            gateway_files_transferred_today.labels(fuel=fuel).set(
-                query_single_value(cursor,
-                    "SELECT COUNT(*) FROM files "
-                    "WHERE processed = 1 AND DATE(processed_at) = CURDATE() AND deleted_at IS NULL"))
+            transferred = genus_transferred.get(fuel)
+            if transferred:
+                gateway_files_transferred_today.labels(fuel=fuel).set(
+                    query_single_value(cursor, transferred['sql'], [transferred['match']]))
 
-            gateway_files_pending.labels(fuel=fuel).set(
-                query_single_value(cursor,
-                    "SELECT COUNT(*) FROM files "
-                    "WHERE processed = 0 AND failed = 0 AND failed_transfer = 0 AND deleted_at IS NULL"))
+            out_sql = gateway_out.get(fuel)
+            if out_sql:
+                gateway_files_out_today.labels(fuel=fuel).set(
+                    query_single_value(cursor, out_sql))
 
             gateway_files_failed_today.labels(fuel=fuel).set(
                 query_single_value(cursor,
@@ -927,6 +1016,43 @@ def collect_gateway_metrics():
 
         except Exception as e:
             logger.error(f"Gateway {fuel} ({database}) collection failed: {e}")
+
+
+def collect_gateway_source_stats():
+    """Poll each gateway's /api/source-stats for files waiting at the source.
+
+    Reports files sitting at the source not yet collected by the gateway —
+    upstream of the gateway DB. Replaces the old MySQL-derived pending count.
+    """
+    if not GATEWAY_SOURCE_STATS:
+        return
+
+    # Gateways use internal certs, so skip verification (as PowerStore/PRTG do).
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    for fuel, cfg in GATEWAY_SOURCE_STATS.items():
+        try:
+            req = urllib.request.Request(cfg['url'], headers={
+                'Authorization': f"Bearer {cfg['token']}",
+                'Accept': 'application/json',
+            })
+            with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
+                data = json.loads(resp.read())
+
+            total = data.get('total_files', 0)
+            over_10 = data.get('files_over_10_mins', 0)
+            unreadable = len(data.get('unreadable_sources') or [])
+
+            gateway_source_files.labels(fuel=fuel).set(total)
+            gateway_source_files_over_10min.labels(fuel=fuel).set(over_10)
+            gateway_source_unreadable.labels(fuel=fuel).set(unreadable)
+
+            logger.info(f"Gateway {fuel} source-stats: {total} files, "
+                        f"{over_10} over 10min, {unreadable} unreadable sources")
+        except Exception as e:
+            logger.error(f"Gateway {fuel} source-stats failed: {e}")
 
 
 def collect_powerstore_metrics():
@@ -1043,6 +1169,7 @@ def collect_metrics():
     collect_genus_metrics()
     collect_cross_reference()
     collect_gateway_metrics()
+    collect_gateway_source_stats()
     collect_ewelcome_metrics()
     collect_eps_pricing_metrics()
     collect_gps_pricing_metrics()
