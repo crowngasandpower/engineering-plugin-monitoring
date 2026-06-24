@@ -1999,7 +1999,7 @@
           "custom": {
             "align": "auto",
             "cellOptions": {
-              "type": "color-background"
+              "type": "auto"
             },
             "footer": {
               "reducers": []
@@ -2068,6 +2068,37 @@
               {
                 "id": "custom.width",
                 "value": 135
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Healthy": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": ".*",
+                      "result": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "applyToRow": true,
+                  "type": "color-background"
+                }
               }
             ]
           },
@@ -2098,7 +2129,7 @@
         "sortBy": [
           {
             "desc": false,
-            "displayName": "SAN"
+            "displayName": "State Label"
           }
         ]
       },

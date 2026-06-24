@@ -2677,7 +2677,7 @@ groups:
             model:
               type: reduce
               expression: A
-              reducer: max
+              reducer: last
               refId: swapin_rate
           - refId: threshold
             relativeTimeRange:
@@ -2843,7 +2843,7 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 600
+              from: 604800
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
@@ -3094,7 +3094,7 @@ groups:
             model:
               type: reduce
               expression: A
-              reducer: max
+              reducer: last
               refId: pagein_rate
           - refId: threshold
             relativeTimeRange:
@@ -3822,7 +3822,7 @@ groups:
         title: Container Stopped
         condition: threshold
         for: 5m
-        noDataState: OK
+        noDataState: Alerting
         execErrState: Error
         labels:
           severity: warning
