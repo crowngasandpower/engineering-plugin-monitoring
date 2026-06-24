@@ -503,25 +503,21 @@
           "mappings": [
             {
               "options": {
-                "none": {
-                  "color": "green",
-                  "index": 0,
-                  "text": "Operational"
-                },
-                "minor": {
+                "Minor Outage": {
                   "color": "yellow",
-                  "index": 1,
-                  "text": "Minor Outage"
+                  "index": 0
                 },
-                "major": {
+                "Major Outage": {
                   "color": "red",
-                  "index": 2,
-                  "text": "Major Outage"
+                  "index": 1
                 },
-                "critical": {
+                "Critical Outage": {
                   "color": "red",
-                  "index": 3,
-                  "text": "Critical Outage"
+                  "index": 2
+                },
+                "Status Unknown": {
+                  "color": "orange",
+                  "index": 3
                 }
               },
               "type": "value"
@@ -557,7 +553,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^indicator$/",
+          "fields": "/^display$/",
           "values": false
         },
         "showPercentChange": false,
@@ -569,8 +565,8 @@
         {
           "columns": [
             {
-              "selector": "indicator",
-              "text": "indicator",
+              "selector": "display",
+              "text": "display",
               "type": "string"
             }
           ],
@@ -581,15 +577,12 @@
           "filters": [],
           "format": "table",
           "global_query_id": "",
-          "json_options": {
-            "root_is_not_array": true
-          },
           "parser": "backend",
           "refId": "A",
-          "root_selector": "status",
+          "root_selector": "",
           "source": "url",
           "type": "json",
-          "url": "https://status.claude.com/api/v2/status.json",
+          "url": "https://0ndrg8kla9.execute-api.eu-west-2.amazonaws.com",
           "url_options": {
             "data": "",
             "method": "GET"
