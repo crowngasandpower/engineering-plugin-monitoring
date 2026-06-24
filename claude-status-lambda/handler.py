@@ -1,16 +1,25 @@
 """
-Claude status -> spinner-verb proxy (AWS Lambda, Function URL).
+Claude status -> spinner-verb proxy (AWS Lambda, API Gateway).
 
 Fetches https://status.claude.com/api/v2/status.json and returns a small JSON
 array the Grafana Infinity panel on the Infrastructure dashboard consumes:
 
-    [{"display": "<text>", "indicator": "<raw indicator>"}]
+    [{"<label>": <code>}]
 
-When Claude is operational (indicator == "none") the display text is a random
-Claude Code spinner verb (the 185 built-in defaults from
-https://github.com/wynandw87/claude-code-spinner-verbs) so the panel reads
-e.g. "Cogitating..." instead of a static "Operational". Outage states keep a
-clear fixed label so the panel still alarms.
+The label is the JSON *key*; a numeric severity *code* is the value. This
+shape is deliberate: a Grafana stat panel won't render a free-text string
+*value*, but it always renders the field *name* (textMode="name"), and a
+numeric value drives the background colour via thresholds. So the panel shows
+the label big and coloured:
+
+    code 0 -> green   (operational; label = a random Claude Code spinner verb)
+    code 1 -> yellow  (minor outage, or status unknown)
+    code 2 -> red     (major outage)
+    code 3 -> red     (critical outage)
+
+The operational verb is one of the 185 built-in defaults from
+https://github.com/wynandw87/claude-code-spinner-verbs, re-picked every call
+(i.e. every panel refresh).
 """
 
 import json
@@ -210,10 +219,12 @@ VERBS = [
 
 # Fixed labels for the non-operational states (kept stable so the dashboard
 # value-mappings can colour them yellow/red).
-OUTAGE_LABELS = {
-    "minor": "Minor Outage",
-    "major": "Major Outage",
-    "critical": "Critical Outage",
+# label + numeric severity code per indicator. Code drives the panel colour
+# via thresholds (0 green, 1 yellow, 2/3 red).
+OUTAGE = {
+    "minor": ("Minor Outage", 1),
+    "major": ("Major Outage", 2),
+    "critical": ("Critical Outage", 3),
 }
 
 
@@ -231,13 +242,15 @@ def handler(event, context):
         indicator = "unknown"
 
     if indicator == "none":
-        display = random.choice(VERBS) + "..."
-    elif indicator in OUTAGE_LABELS:
-        display = OUTAGE_LABELS[indicator]
+        label, code = random.choice(VERBS) + "...", 0
+    elif indicator in OUTAGE:
+        label, code = OUTAGE[indicator]
     else:
-        display = "Status Unknown"
+        label, code = "Status Unknown", 1
 
-    body = [{"display": display, "indicator": indicator}]
+    # Label is the field NAME (shown via textMode=name); code is the numeric
+    # value (drives threshold colour). One object, one row.
+    body = [{label: code}]
     return {
         "statusCode": 200,
         "headers": {
