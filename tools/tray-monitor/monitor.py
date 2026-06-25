@@ -187,11 +187,12 @@ def _notify(title: str, body: str) -> None:
     )
 
 
-def _toasts_suppressed(profile: dict) -> bool:
-    """True if toasts should not fire for THIS instance — disabled or within a timed pause."""
-    if not profile.get("toasts_enabled", True):
+def _toasts_suppressed() -> bool:
+    """True if toasts should not fire — globally disabled or within a timed pause."""
+    s = settings.get()
+    if not s.get("toast_notifications", True):
         return True
-    return time.time() < (profile.get("toast_pause_until", 0) or 0)
+    return time.time() < (s.get("toast_pause_until", 0) or 0)
 
 
 # ---------------------------------------------------------------------------
@@ -1069,20 +1070,12 @@ class AlertPanel:
         self._canvas = tk.Canvas(scroll_outer, bg=self.BG, highlightthickness=0, bd=0)
         scrollbar = tk.Scrollbar(
             scroll_outer, orient="vertical", command=self._canvas.yview,
-            bg="#7c6af7", troughcolor="#13131f", activebackground="#9c8cff",
-            relief="flat", bd=0, width=14,
+            bg="#2a2a3e", troughcolor="#13131f", activebackground="#7c6af7",
+            relief="flat", bd=0, width=10,
         )
         self._body = tk.Frame(self._canvas, bg=self.BG)
         _cwin = self._canvas.create_window((0, 0), window=self._body, anchor="nw",
                                            width=self.W)
-
-        # "More below" affordance — a pill pinned to the bottom edge that only
-        # shows while there is off-screen content beneath the fold, so it's
-        # obvious the panel scrolls. Clicking it pages down.
-        self._scroll_hint = tk.Label(
-            scroll_outer, text="⌄  more below  ⌄", bg="#7c6af7", fg="#ffffff",
-            font=("Segoe UI", 8, "bold"), padx=10, pady=2, cursor="hand2",
-        )
 
         def _on_frame_configure(_e):
             self._canvas.configure(scrollregion=self._canvas.bbox("all"))
@@ -1093,24 +1086,10 @@ class AlertPanel:
         def _on_mousewheel(e):
             self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
 
-        def _update_scroll_hint(first, last):
-            scrollbar.set(first, last)
-            try:
-                if float(last) < 0.999:          # content extends past the fold
-                    self._scroll_hint.place(relx=0.5, rely=1.0, anchor="s", y=-3)
-                    self._scroll_hint.lift()
-                else:                            # bottom reached / nothing hidden
-                    self._scroll_hint.place_forget()
-            except Exception:
-                pass
-
         self._body.bind("<Configure>", _on_frame_configure)
         self._canvas.bind("<Configure>", _on_canvas_configure)
         self._win.bind("<MouseWheel>", _on_mousewheel)
-        self._scroll_hint.bind("<Button-1>",
-                               lambda _e: self._canvas.yview_scroll(3, "units"))
-        self._scroll_hint.bind("<MouseWheel>", _on_mousewheel)
-        self._canvas.configure(yscrollcommand=_update_scroll_hint)
+        self._canvas.configure(yscrollcommand=scrollbar.set)
         self._canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
@@ -1148,15 +1127,6 @@ class AlertPanel:
         self._canvas.configure(height=max(canvas_h, 1))
         if content_h <= canvas_h:
             scrollbar.pack_forget()
-            self._scroll_hint.place_forget()
-        else:
-            # Content overflows — surface the scroll affordance immediately
-            # rather than waiting for the first scroll event to fire.
-            self._canvas.update_idletasks()
-            first, last = self._canvas.yview()
-            if float(last) < 0.999:
-                self._scroll_hint.place(relx=0.5, rely=1.0, anchor="s", y=-3)
-                self._scroll_hint.lift()
 
     def _header(self, profiles: list, alerts: list,
                 acked: list, muted: list, reachable: bool) -> None:
@@ -1915,7 +1885,7 @@ def _poll(icon: pystray.Icon) -> None:
                         lb  = alert.get("labels", {})
                         sev = lb.get("severity", "warning")
                         prefix = f"[{profile.get('name', '')}] " if len(profiles) > 1 else ""
-                        if not _toasts_suppressed(profile):
+                        if not _toasts_suppressed():
                             _notify(
                                 f"{prefix}{'CRITICAL' if sev == 'critical' else 'Warning'}: "
                                 f"{lb.get('alertname', 'Alert')}",
@@ -2094,79 +2064,44 @@ def main() -> None:
             _stop_flashing()
             i.icon = _make_icon("red")
 
-    # -- Toasts: per-instance enable/disable and timed pause -------------------
-    # Each profile carries its own `toasts_enabled` and `toast_pause_until`, so
-    # you can silence one instance's notifications without touching the others.
+    def _toast_text(_i):
+        return ("Enable Toasts" if not settings.get().get("toast_notifications", True)
+                else "Disable Toasts")
+
+    def _toast_toggle(_i, _t):
+        if settings.get().get("toast_notifications", True):
+            settings.save_global(toast_notifications=False)
+        else:
+            # Re-enabling also clears any outstanding timed pause.
+            settings.save_global(toast_notifications=True, toast_pause_until=0)
 
     _TOAST_PAUSE_CHOICES = [("15 minutes", 15), ("30 minutes", 30),
                             ("1 hour", 60), ("2 hours", 120)]
 
-    def _profile_at(idx):
-        profs = settings.get_profiles()
-        return profs[idx] if 0 <= idx < len(profs) else {}
-
-    def _toast_enabled(idx):
-        return _profile_at(idx).get("toasts_enabled", True)
-
-    def _toast_enable_toggle(idx):
-        def _act(_i, _t):
-            p = dict(_profile_at(idx))
-            now = p.get("toasts_enabled", True)
-            p["toasts_enabled"] = not now
-            if not now:                 # re-enabling clears any outstanding pause
-                p["toast_pause_until"] = 0
-            settings.save_profile(idx, p)
-        return _act
-
-    def _toast_enable_items():
-        for i, p in enumerate(settings.get_profiles()):
-            yield item(p["name"], _toast_enable_toggle(i),
-                       checked=lambda _i, idx=i: _toast_enabled(idx))
-
-    def _toast_pause_remaining(idx):
-        """Whole minutes left on this instance's timed toast pause, else 0."""
-        left = (_profile_at(idx).get("toast_pause_until", 0) or 0) - time.time()
+    def _toast_pause_remaining():
+        """Whole minutes left on a timed toast pause, else 0."""
+        left = (settings.get().get("toast_pause_until", 0) or 0) - time.time()
         return int(-(-left // 60)) if left > 0 else 0
 
-    def _pause_toasts_for(idx, minutes):
+    def _pause_toasts_for(minutes):
         def _act(_i, _t):
-            p = dict(_profile_at(idx))
-            p["toast_pause_until"] = time.time() + minutes * 60
-            settings.save_profile(idx, p)
+            settings.save_global(toast_pause_until=time.time() + minutes * 60)
         return _act
 
-    def _resume_toasts(idx):
-        def _act(_i, _t):
-            p = dict(_profile_at(idx))
-            p["toast_pause_until"] = 0
-            settings.save_profile(idx, p)
-        return _act
-
-    def _toast_pause_items_for(idx):
-        def _inner():
-            rem = _toast_pause_remaining(idx)
-            if rem:
-                yield item(f"Resume now ({rem} min left)", _resume_toasts(idx))
-                yield pystray.Menu.SEPARATOR
-            for label, mins in _TOAST_PAUSE_CHOICES:
-                yield item(label, _pause_toasts_for(idx, mins))
-        return _inner
-
-    def _toast_pause_label(idx):
-        def _inner(_i):
-            rem = _toast_pause_remaining(idx)
-            name = _profile_at(idx).get("name", "?")
-            return f"{name}  ({rem} min left)" if rem else name
-        return _inner
+    def _resume_toasts(_i, _t):
+        settings.save_global(toast_pause_until=0)
 
     def _toast_pause_items():
-        profiles = settings.get_profiles()
-        if len(profiles) == 1:
-            yield from _toast_pause_items_for(0)()
-        else:
-            for i in range(len(profiles)):
-                yield item(_toast_pause_label(i),
-                           pystray.Menu(_toast_pause_items_for(i)))
+        rem = _toast_pause_remaining()
+        if rem:
+            yield item(f"Resume now ({rem} min left)", _resume_toasts)
+            yield pystray.Menu.SEPARATOR
+        for label, mins in _TOAST_PAUSE_CHOICES:
+            yield item(label, _pause_toasts_for(mins))
+
+    def _toast_pause_text(_i):
+        rem = _toast_pause_remaining()
+        return f"Pause Toasts ({rem} min left)" if rem else "Pause Toasts"
 
     def _quit(i, _t):
         i.stop()
@@ -2197,8 +2132,8 @@ def main() -> None:
             pystray.Menu.SEPARATOR,
             item(_flash_pause_text,     _flash_pause_toggle),
             item(_flash_enabled_text,   _flash_enabled_toggle),
-            item("🔔 Toast Notifications", pystray.Menu(_toast_enable_items)),
-            item("Pause Toasts",        pystray.Menu(_toast_pause_items)),
+            item(_toast_text,           _toast_toggle),
+            item(_toast_pause_text,     pystray.Menu(_toast_pause_items)),
             pystray.Menu.SEPARATOR,
             item("Settings",            _settings),
             item("Open Grafana",        _open_g),
