@@ -1584,6 +1584,12 @@ groups:
     folder: Platform
     interval: 1m
     rules:
+      # Alerts per fuel (genus_up{fuel="gas"|"elec"|...}) rather than min(genus_up):
+      # a min() collapse hides which DB is down and can't fire a second incident
+      # when a second fuel drops while one is already down. Any additional Genus DB
+      # the exporter is pointed at appears as a new genus_up series and is covered
+      # automatically — no rule change needed. oncall: Platform so a billing-DB
+      # outage escalates on the Platform path. for: 1m absorbs transient reconnects.
       - uid: genus-db-down
         title: Genus DB Down
         condition: threshold
@@ -1592,8 +1598,9 @@ groups:
         execErrState: Error
         labels:
           severity: critical
+          oncall: "Platform"
         annotations:
-          summary: "Genus database is unreachable — billing system may be affected"
+          summary: "Genus {{ $labels.fuel }} database ({{ $labels.instance }}) is unreachable — billing system may be affected"
           panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=1"
         data:
           - refId: A
@@ -1602,7 +1609,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: min(genus_up)
+              expr: genus_up
               refId: A
           - refId: up
             relativeTimeRange:
