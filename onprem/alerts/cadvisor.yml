@@ -1,0 +1,16 @@
+groups:
+  - name: cadvisor-recording
+    # Evaluated by Prometheus every 5m (NOT on the interactive Grafana path).
+    # Defines the "expected" container set: those running CONTINUOUSLY — present in
+    # more than 60 of the last ~1440 one-minute scrapes (i.e. up for >1h in the last
+    # 24h). This deliberately EXCLUDES short-lived / one-off containers (e.g. Docker
+    # auto-named build/run jobs such as "vibrant_payne") so they don't false-alert as
+    # "stopped" when they exit normally. The Container Stopped alert fires on any
+    # container in this set that cAdvisor no longer sees.
+    # Same precompute pattern as node_windows:up_recent_7d.
+    # Trade-off: a deliberately-removed long-running container stays in the set (and so
+    # keeps alerting) for up to ~24h after it last ran, until it ages out of the window.
+    interval: 5m
+    rules:
+      - record: container:established_24h
+        expr: count by (instance, name) (count_over_time(container_last_seen{job="integrations/cadvisor", name!=""}[24h]) > 60)

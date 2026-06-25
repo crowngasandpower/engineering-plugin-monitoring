@@ -2791,11 +2791,11 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 604800
+              from: 600
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'up{job=~"node|windows"} == 0 and on(instance) max_over_time(up{job=~"node|windows"}[7d]) == 1'
+              expr: 'up{job=~"node|windows"} == 0 and on(instance) node_windows:up_recent_7d == 1'
               refId: A
           - refId: val
             relativeTimeRange:
@@ -3528,56 +3528,6 @@ groups:
 
       # Metric name requires verification against Crown's UniFi exporter instance.
       # Threshold (<1) fires when ALL tunnels are gone — set to expected tunnel count if known.
-      - uid: network-vpn-tunnel-drop
-        title: VPN Tunnel Drop
-        condition: threshold
-        for: 5m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-          oncall: Platform
-        annotations:
-          summary: "Active VPN tunnels dropped to {{ $values.tunnel_count.Value | printf \"%.0f\" }} — site-to-site connectivity may be lost"
-          panelUrl: "/d/crown-unifi-network?orgId=1&viewPanel=10"
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: PBFA97CFB590B2093
-            model:
-              expr: 'unifi_vpn_tunnels_active{job="unifi_local"}'
-              refId: A
-          - refId: tunnel_count
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: tunnel_count
-          - refId: threshold
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: tunnel_count
-              conditions:
-                - evaluator:
-                    type: lt
-                    params:
-                      # @ai-review-ignore: threshold of 1 (fires at 0 tunnels) is a conservative baseline until
-                      # the expected tunnel count is confirmed. Once verified, update to the real expected count
-                      # so a single-tunnel failure pages immediately rather than only when all tunnels are lost.
-                      # set to expected active tunnel count (e.g. 2 for two site-to-site tunnels)
-                      - 1
-              refId: threshold
-
       # Metric names and threshold require verification against Crown's UniFi exporter.
       # Threshold 100000000 = 100 MB/s = 80% of 1 Gbps symmetric; adjust for actual link speed.
       # Fires per-direction: Grafana evaluates RX and TX series independently.
@@ -3766,22 +3716,22 @@ groups:
                       - 50
               refId: threshold
 
-      # @ai-review-ignore: the > 300 PromQL guard plus for: 5m gives a deliberate ~10-minute
-      # total absence before firing. The two-stage approach is intentional: the PromQL confirms
-      # cAdvisor has not seen the container for at least 5 min (ruling out brief restart gaps),
-      # and the for: clause confirms that state is persistent rather than a momentary evaluation
-      # artefact. The absent_s summary value will always be >= 300 s, which is the correct
-      # context to show the operator (how long the container has been missing, not just "> 5m").
+      # @ai-review-ignore: fires on any container in the container:established_24h set
+      # (running continuously >1h in the last 24h, per onprem/alerts/cadvisor.yml) that cAdvisor
+      # no longer reports. for: 5m rules out brief restart/redeploy gaps. The
+      # `and on(instance) ... > 0` guard prevents a per-container storm if cAdvisor itself is
+      # down (a separate exporter-offline alert covers that). Short-lived one-off containers are
+      # excluded by the recording rule, so a normal one-off exit does not false-alert.
       - uid: container-stopped
         title: Container Stopped
         condition: threshold
         for: 5m
-        noDataState: Alerting
+        noDataState: OK
         execErrState: Error
         labels:
           severity: warning
         annotations:
-          summary: "Container {{ $labels.name }} on {{ $labels.instance }} has not been seen by cAdvisor for {{ $values.absent_s.Value | printf \"%.0f\" }}s — may have exited"
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} is not running — it was up continuously but cAdvisor no longer sees it (stopped or removed)"
           panelUrl: "/d/docker-containers?orgId=1&viewPanel=154"
         data:
           - refId: A
@@ -3790,9 +3740,9 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'time() - container_last_seen{job="integrations/cadvisor",name!=""} > 300'
+              expr: '(container:established_24h unless on(instance, name) count by (instance, name) (container_last_seen{job="integrations/cadvisor",name!=""})) and on(instance) (count by (instance) (container_last_seen{job="integrations/cadvisor",name!=""}) > 0)'
               refId: A
-          - refId: absent_s
+          - refId: down
             relativeTimeRange:
               from: 0
               to: 0
@@ -3801,7 +3751,7 @@ groups:
               type: reduce
               expression: A
               reducer: last
-              refId: absent_s
+              refId: down
           - refId: threshold
             relativeTimeRange:
               from: 0
@@ -3809,7 +3759,7 @@ groups:
             datasourceUid: __expr__
             model:
               type: threshold
-              expression: absent_s
+              expression: down
               conditions:
                 - evaluator:
                     type: gt
