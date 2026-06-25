@@ -109,17 +109,31 @@ groups:
     folder: Hardware
     interval: 1m
     rules:
-      - uid: powerstore-major-alert
-        title: PowerStore Major Alert
+      # Driven off PowerStore's own alert feed (powerstore_alert job, scraped every
+      # 1m) rather than per-component metric snapshots that scrape every 5-15m.
+      # Fires one instance per active Critical/Major alert and surfaces the
+      # affected resource plus PowerStore's own description, so port-link-down and
+      # metro/replication faults page in ~2-3m instead of ~13-16m. This replaces
+      # the count-only "PowerStore Major Alert" rule and supersedes the removed
+      # eth-port-down and metro status/witness rules (PowerStore raises Major/
+      # Critical alerts for all of those). Capacity, drive-wear and port-error-rate
+      # rules below stay metric-driven because they alert on Crown thresholds set
+      # tighter than PowerStore's own, not on faults.
+      #
+      # for: 0s — PowerStore has already raised and debounced the alert; the only
+      # remaining latency is the 1m scrape. When the array clears an alert the
+      # series disappears, so noDataState: OK resolves the instance.
+      - uid: powerstore-active-alert
+        title: PowerStore Active Alert
         condition: threshold
-        for: 2m
+        for: 0s
         noDataState: OK
         execErrState: Error
         labels:
           severity: critical
           oncall: "Platform"
         annotations:
-          summary: "PowerStore has {{ $values.alert_count.Value | printf \"%.0f\" }} active Major/Critical alert(s)"
+          summary: "PowerStore {{ $labels.severity }} alert on {{ $labels.resource_type }} {{ $labels.resource_name }}: {{ $labels.description }}"
           panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
         data:
           - refId: A
@@ -128,9 +142,9 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: sum(powerstore_active_alert_count{severity=~"Critical|Major"})
+              expr: powerstore_active_alert_info{severity=~"Critical|Major"}
               refId: A
-          - refId: alert_count
+          - refId: alert_present
             relativeTimeRange:
               from: 0
               to: 0
@@ -139,7 +153,7 @@ groups:
               type: reduce
               expression: A
               reducer: last
-              refId: alert_count
+              refId: alert_present
           - refId: threshold
             relativeTimeRange:
               from: 0
@@ -147,7 +161,7 @@ groups:
             datasourceUid: __expr__
             model:
               type: threshold
-              expression: alert_count
+              expression: alert_present
               conditions:
                 - evaluator:
                     type: gt
@@ -247,52 +261,6 @@ groups:
                       - 20
               refId: threshold
 
-      - uid: powerstore-eth-port-down
-        title: PowerStore ETH Port Link Down
-        condition: threshold
-        for: 5m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-          oncall: "Platform"
-        annotations:
-          summary: "PowerStore ETH port {{ $labels.eth_port_id }} on appliance {{ $labels.appliance_id }} link is down"
-          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: PBFA97CFB590B2093
-            model:
-              expr: powerstore_eth_port_is_link_up == 0 and on(appliance_id, eth_port_id) (max_over_time(powerstore_eth_port_is_link_up[8h]) == 1)
-              refId: A
-          - refId: link_up
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: link_up
-          - refId: threshold
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: link_up
-              conditions:
-                - evaluator:
-                    type: lt
-                    params:
-                      - 1
-              refId: threshold
-
       - uid: powerstore-eth-port-errors
         title: PowerStore ETH Port Errors
         condition: threshold
@@ -337,99 +305,6 @@ groups:
                     type: gt
                     params:
                       - 100
-              refId: threshold
-
-      - uid: powerstore-metro-status
-        title: PowerStore Metro Replication Not Engaged
-        condition: threshold
-        for: 5m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-          oncall: "Platform"
-        annotations:
-          summary: "PowerStore metro session {{ $labels.id }} is not Engaged (state={{ $values.state.Value | printf \"%.0f\" }}: 0=Initializing 1=Disengaged 2=Engaged 3=WitnessInvalid 4=FailedInit 5=Unconfiguring)"
-          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: PBFA97CFB590B2093
-            model:
-              expr: powerstore_metro_status
-              refId: A
-          - refId: state
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: state
-          - refId: threshold
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: state
-              conditions:
-                - evaluator:
-                    type: outside_range
-                    params:
-                      - 2
-                      - 2
-              refId: threshold
-
-      - uid: powerstore-metro-witness
-        title: PowerStore Metro Witness Not OK
-        condition: threshold
-        for: 2m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-          oncall: "Platform"
-        annotations:
-          summary: "PowerStore metro witness {{ $labels.name }} is not OK (state={{ $values.state.Value | printf \"%.0f\" }}: 0=OK 1=PartiallyConnected 2=Disconnected 3=Deleting 4=Initializing)"
-          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: PBFA97CFB590B2093
-            model:
-              expr: powerstore_metro_witness_status
-              refId: A
-          - refId: state
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: state
-          - refId: threshold
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: state
-              conditions:
-                - evaluator:
-                    type: gt
-                    params:
-                      - 0
               refId: threshold
 
   - orgId: 1
@@ -580,7 +455,10 @@ groups:
       - uid: vcenter-datastore-space-critical
         title: vCenter Datastore Space Critical
         condition: threshold
-        for: 5m
+        # for: 2m (tightened from 5m) — a datastore over 95% can stall VM writes,
+        # so this is the one "act now" alert in the group. Capacity climbs
+        # gradually, so a short pending window won't false-positive.
+        for: 2m
         noDataState: OK
         execErrState: Error
         labels:
@@ -761,7 +639,11 @@ groups:
       - uid: vcenter-vm-powered-off
         title: VM Powered Off Unexpectedly
         condition: threshold
-        for: 5m
+        # for: 1m (tightened from 5m) — surface an unexpected VM shutdown quickly.
+        # Known/planned shutdowns are silenced via the powered_off suppression
+        # category (see summary), so a short pending window mainly catches the
+        # genuinely unexpected ones.
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
