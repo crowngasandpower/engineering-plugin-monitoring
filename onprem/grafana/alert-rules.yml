@@ -2843,11 +2843,11 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 604800
+              from: 600
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'up{job=~"node|windows"} == 0 and on(instance) max_over_time(up{job=~"node|windows"}[7d]) == 1'
+              expr: 'up{job=~"node|windows"} == 0 and on(instance) node_windows:up_recent_7d == 1'
               refId: A
           - refId: val
             relativeTimeRange:
@@ -3574,56 +3574,6 @@ groups:
 
       # Metric name requires verification against Crown's UniFi exporter instance.
       # Threshold (<1) fires when ALL tunnels are gone — set to expected tunnel count if known.
-      - uid: network-vpn-tunnel-drop
-        title: VPN Tunnel Drop
-        condition: threshold
-        for: 5m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-          oncall: Platform
-        annotations:
-          summary: "Active VPN tunnels dropped to {{ $values.tunnel_count.Value | printf \"%.0f\" }} — site-to-site connectivity may be lost"
-          panelUrl: "/d/crown-unifi-network?orgId=1&viewPanel=10"
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: PBFA97CFB590B2093
-            model:
-              expr: 'unifi_vpn_tunnels_active{job="unifi_local"}'
-              refId: A
-          - refId: tunnel_count
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: tunnel_count
-          - refId: threshold
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: tunnel_count
-              conditions:
-                - evaluator:
-                    type: lt
-                    params:
-                      # @ai-review-ignore: threshold of 1 (fires at 0 tunnels) is a conservative baseline until
-                      # the expected tunnel count is confirmed. Once verified, update to the real expected count
-                      # so a single-tunnel failure pages immediately rather than only when all tunnels are lost.
-                      # set to expected active tunnel count (e.g. 2 for two site-to-site tunnels)
-                      - 1
-              refId: threshold
-
       # Metric names and threshold require verification against Crown's UniFi exporter.
       # Threshold 100000000 = 100 MB/s = 80% of 1 Gbps symmetric; adjust for actual link speed.
       # Fires per-direction: Grafana evaluates RX and TX series independently.
@@ -3822,7 +3772,7 @@ groups:
         title: Container Stopped
         condition: threshold
         for: 5m
-        noDataState: Alerting
+        noDataState: OK
         execErrState: Error
         labels:
           severity: warning
