@@ -623,11 +623,37 @@ scrape_configs:
           - https://portal-gas.crowngasandpower.co.uk
           - https://portal-power.crowngasandpower.co.uk
           - https://portal-auth.crowngasandpower.co.uk
+          - https://electronic-direct-debit.crowngasandpower.co.uk
+          - https://quote-tool.crowngasandpower.co.uk
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
       - source_labels: [__param_target]
         regex: https://([^.]+)\.crowngasandpower\.co\.uk
+        target_label: app
+      - target_label: __address__
+        replacement: 192.168.164.184:9514
+
+  # AWS apps with no browsable 200 health surface: esignature is accessed via
+  # tokenised signing URLs and webhooks is a POST-only receiver, so both return
+  # 404 on GET / (and every other path). The http_app_up module treats any
+  # non-5xx HTTP response as "stack serving" — a real outage still shows as down
+  # (5xx / connection refused). webhooks is on crowngas.co.uk, not
+  # crowngasandpower.co.uk, so the app-label regex matches both domains.
+  - job_name: 'blackbox-aws-responding'
+    metrics_path: /probe
+    params:
+      module: [http_app_up]
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - https://esignature.crowngasandpower.co.uk
+          - https://webhooks.crowngas.co.uk
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        regex: https://([^.]+)\.crowngas(?:andpower)?\.co\.uk
         target_label: app
       - target_label: __address__
         replacement: 192.168.164.184:9514
