@@ -1008,15 +1008,7 @@ class AlertPanel:
             return
         if not self._win or not self._win.winfo_exists():
             return
-        # focus_get() returns the focused widget, None if focus left the app, or
-        # raises KeyError when focus moved to a window tkinter doesn't own (another
-        # app, or the tray's native Win32 menu). All three of those mean "focus is
-        # no longer on the panel" — so an exception here must close, not abort.
-        try:
-            focused = self.root.focus_get()
-        except KeyError:
-            focused = None
-        if focused is None:
+        if self.root.focus_get() is None:
             self._close()
 
     def _close(self) -> None:
