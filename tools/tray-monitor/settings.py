@@ -32,6 +32,7 @@ DEFAULTS: dict = {
     "flash_on_critical":   True,
     "toast_notifications": True,
     "toast_pause_until":   0,   # epoch seconds; toasts suppressed until this time (0 = not paused)
+    "auto_close":          False,  # close the alert panel when it loses focus (off = stays open until dismissed)
 }
 
 _DIR  = Path(os.environ.get("APPDATA", ".")) / "CrownMonitoring"

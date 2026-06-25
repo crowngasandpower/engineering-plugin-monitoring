@@ -1000,7 +1000,11 @@ class AlertPanel:
         self._place()
         self._win.deiconify()
         self._win.focus_force()
-        # Delay FocusOut binding so the opening click doesn't trigger a close
+        # Bind focus-out for the optional auto-close behaviour. The handler reads
+        # the live 'auto_close' setting at event time, so the tray-menu toggle
+        # takes effect immediately — no restart. Default is OFF: the panel stays
+        # open until dismissed via ✕ or the tray icon, so a toast stealing focus
+        # can't close it out from under you while you're still reading it.
         self.root.after(400, self._bind_focus_out)
         self._schedule_refresh()
 
@@ -1009,10 +1013,14 @@ class AlertPanel:
             self._win.bind("<FocusOut>", self._on_focus_out)
 
     def _on_focus_out(self, _event) -> None:
+        if not settings.get().get("auto_close", False):
+            return
         if not self._suppress_focus_out:
             self.root.after(200, self._close_if_unfocused)
 
     def _close_if_unfocused(self) -> None:
+        if not settings.get().get("auto_close", False):
+            return
         if self._suppress_focus_out:
             return
         if not self._win or not self._win.winfo_exists():
@@ -2111,6 +2119,9 @@ def main() -> None:
         rem = _toast_pause_remaining()
         return f"Pause Toasts ({rem} min left)" if rem else "Pause Toasts"
 
+    def _autoclose_toggle(_i, _t):
+        settings.save_global(auto_close=not settings.get().get("auto_close", False))
+
     def _quit(i, _t):
         i.stop()
         root.after(0, root.quit)
@@ -2142,6 +2153,8 @@ def main() -> None:
             item(_flash_enabled_text,   _flash_enabled_toggle),
             item(_toast_text,           _toast_toggle),
             item(_toast_pause_text,     pystray.Menu(_toast_pause_items)),
+            item("Auto-close panel when focus lost", _autoclose_toggle,
+                 checked=lambda _i: settings.get().get("auto_close", False)),
             pystray.Menu.SEPARATOR,
             item("Settings",            _settings),
             item("Open Grafana",        _open_g),
