@@ -1086,12 +1086,20 @@ class AlertPanel:
         self._canvas = tk.Canvas(scroll_outer, bg=self.BG, highlightthickness=0, bd=0)
         scrollbar = tk.Scrollbar(
             scroll_outer, orient="vertical", command=self._canvas.yview,
-            bg="#2a2a3e", troughcolor="#13131f", activebackground="#7c6af7",
-            relief="flat", bd=0, width=10,
+            bg=self.ACCENT, troughcolor="#13131f", activebackground="#9c8cff",
+            relief="flat", bd=0, width=14,
         )
         self._body = tk.Frame(self._canvas, bg=self.BG)
         _cwin = self._canvas.create_window((0, 0), window=self._body, anchor="nw",
                                            width=self.W)
+
+        # "More below" affordance — a pill pinned to the bottom edge that only
+        # shows while there is off-screen content beneath the fold, so it's
+        # obvious the panel scrolls. Clicking it pages down.
+        self._scroll_hint = tk.Label(
+            scroll_outer, text="⌄  more below  ⌄", bg=self.ACCENT, fg="#ffffff",
+            font=("Segoe UI", 8, "bold"), padx=10, pady=2, cursor="hand2",
+        )
 
         def _on_frame_configure(_e):
             self._canvas.configure(scrollregion=self._canvas.bbox("all"))
@@ -1102,10 +1110,24 @@ class AlertPanel:
         def _on_mousewheel(e):
             self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
 
+        def _update_scroll_hint(first, last):
+            scrollbar.set(first, last)
+            try:
+                if float(last) < 0.999:          # content extends past the fold
+                    self._scroll_hint.place(relx=0.5, rely=1.0, anchor="s", y=-3)
+                    self._scroll_hint.lift()
+                else:                            # bottom reached / nothing hidden
+                    self._scroll_hint.place_forget()
+            except Exception:
+                pass
+
         self._body.bind("<Configure>", _on_frame_configure)
         self._canvas.bind("<Configure>", _on_canvas_configure)
         self._win.bind("<MouseWheel>", _on_mousewheel)
-        self._canvas.configure(yscrollcommand=scrollbar.set)
+        self._scroll_hint.bind("<Button-1>",
+                               lambda _e: self._canvas.yview_scroll(3, "units"))
+        self._scroll_hint.bind("<MouseWheel>", _on_mousewheel)
+        self._canvas.configure(yscrollcommand=_update_scroll_hint)
         self._canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
@@ -1143,6 +1165,15 @@ class AlertPanel:
         self._canvas.configure(height=max(canvas_h, 1))
         if content_h <= canvas_h:
             scrollbar.pack_forget()
+            self._scroll_hint.place_forget()
+        else:
+            # Content overflows — surface the scroll affordance immediately
+            # rather than waiting for the first scroll event to fire.
+            self._canvas.update_idletasks()
+            first, last = self._canvas.yview()
+            if float(last) < 0.999:
+                self._scroll_hint.place(relx=0.5, rely=1.0, anchor="s", y=-3)
+                self._scroll_hint.lift()
 
     def _header(self, profiles: list, alerts: list,
                 acked: list, muted: list, reachable: bool) -> None:
