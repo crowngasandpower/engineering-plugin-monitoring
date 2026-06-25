@@ -343,7 +343,8 @@ groups:
         title: PowerStore Metro Replication Not Engaged
         condition: threshold
         for: 5m
-        noDataState: OK
+        keep_firing_for: 15m
+        noDataState: KeepLast
         execErrState: Error
         labels:
           severity: critical
@@ -390,7 +391,8 @@ groups:
         title: PowerStore Metro Witness Not OK
         condition: threshold
         for: 2m
-        noDataState: OK
+        keep_firing_for: 15m
+        noDataState: KeepLast
         execErrState: Error
         labels:
           severity: critical

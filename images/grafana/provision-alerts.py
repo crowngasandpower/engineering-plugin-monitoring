@@ -138,7 +138,7 @@ def _existing_rule_uids():
 
 def _convert_rule(rule, folder_uid, group_name):
     """Convert a YAML rule to the Grafana provisioning API format (flat structure)."""
-    return {
+    body = {
         "uid":          rule["uid"],
         "title":        rule["title"],
         "ruleGroup":    group_name,
@@ -152,6 +152,12 @@ def _convert_rule(rule, folder_uid, group_name):
         "labels":       rule.get("labels") or {},
         "annotations":  rule.get("annotations") or {},
     }
+    # keepFiringFor: only emit when set. Omitting it (vs sending "0s") avoids the
+    # Grafana "field keep_firing_for cannot be negative" rejection noted above and
+    # leaves rules that don't want stickiness untouched.
+    if rule.get("keep_firing_for"):
+        body["keepFiringFor"] = rule["keep_firing_for"]
+    return body
 
 
 def _upsert_rule(rule_body, existing_uids):
