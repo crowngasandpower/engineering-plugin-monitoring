@@ -1636,6 +1636,58 @@ groups:
                       - 1
               refId: threshold
 
+      # Safety net for the genus-monitor exporter itself dying. If it does, every
+      # genus_* series (including genus_up) disappears, so genus-db-down goes to
+      # noData -> OK and silently stops covering the billing DBs. up{job="genus"}
+      # is Prometheus's own scrape-health metric and stays present (=0) even when
+      # the exporter is down, so it catches that case. for: 2m rides out a normal
+      # redeploy of the container; a real death pages in ~3m.
+      - uid: genus-exporter-down
+        title: Genus Exporter Down
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "genus-monitor exporter is not responding — all Genus monitoring (DB health, replica lag, hub files) is blind"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: up{job="genus"}
+              refId: A
+          - refId: up
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: up
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: up
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
       - uid: hub-file-age
         title: Hub File Age Over 3 Hours
         condition: threshold
@@ -2351,11 +2403,15 @@ groups:
       - uid: linux-disk-critical
         title: Linux Disk Space Critical
         condition: threshold
-        for: 5m
+        # for: 2m (tightened from 5m) — a runaway log/job can fill a partition fast,
+        # and a full disk fails app writes. Usage doesn't bounce around the 10% line,
+        # so a short window won't false-positive. oncall: Platform so it escalates.
+        for: 2m
         noDataState: OK
         execErrState: Error
         labels:
           severity: critical
+          oncall: "Platform"
         annotations:
           summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free — filesystem near full"
           panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
@@ -2721,7 +2777,10 @@ groups:
       - uid: host-exporter-offline
         title: Host Exporter Offline
         condition: threshold
-        for: 10m
+        # for: 2m (tightened from 10m) — prefer to know fast when a host/exporter
+        # goes dark; reboot/patch-night noise is tolerated and suppressed via a
+        # PagerDuty maintenance window rather than a long pending period here.
+        for: 2m
         noDataState: OK
         execErrState: Error
         labels:
@@ -2817,11 +2876,15 @@ groups:
       - uid: windows-disk-critical
         title: Windows Disk Space Critical
         condition: threshold
-        for: 5m
+        # for: 2m (tightened from 5m) — a runaway log/job can fill a volume fast,
+        # and a full disk fails app writes. Usage doesn't bounce around the 10% line,
+        # so a short window won't false-positive. oncall: Platform so it escalates.
+        for: 2m
         noDataState: OK
         execErrState: Error
         labels:
           severity: critical
+          oncall: "Platform"
         annotations:
           summary: "Drive {{ $labels.volume }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free — filesystem near full"
           panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
