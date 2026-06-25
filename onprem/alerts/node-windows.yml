@@ -10,5 +10,7 @@ groups:
       # 1 if the host's exporter was up at any point in the last 7 days, else 0.
       # Lets the panel tell a real host that is currently down (recently up)
       # from a decommissioned target (not up in 7d) without scanning 7d at query time.
+      # Trade-off (intentional): a decommissioned host stays visible in Targets Down for
+      # up to 7d after its last scrape. Do NOT shorten [7d] thinking it is a mistake.
       - record: node_windows:up_recent_7d
         expr: max_over_time(up{job=~"node|windows"}[7d])

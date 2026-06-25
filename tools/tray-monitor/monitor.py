@@ -13,8 +13,10 @@ Click an alert row        → open that rule directly in Grafana
 """
 
 import logging
+import math
 import os
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -72,7 +74,6 @@ def _open_log_folder() -> None:
     """Open the log directory in Explorer, highlighting the log file."""
     try:
         if _LOG_FILE.exists():
-            import subprocess
             subprocess.Popen(["explorer", "/select,", str(_LOG_FILE)])
         else:
             os.startfile(str(_LOG_DIR))   # folder may exist before the file
@@ -209,6 +210,7 @@ def _fetch(profile: dict | None = None) -> tuple[list, list] | None:
     name = s.get("name", "?")
     base = s.get("grafana_url", "").rstrip("/")
     alerts_url = f"{base}/api/alertmanager/grafana/api/v2/alerts"
+    r = None  # defensive: defined for the non-200 log path even if a later call raises
     try:
         kwargs: dict = {
             "params":  {"active": "true", "inhibited": "false"},
@@ -458,12 +460,18 @@ def _normalise_pd_incident(inc: dict, grafana_url: str = "") -> dict:
     }
 
 
+_pd_key_warned: set = set()   # profiles already warned about a malformed PD key (warn once, not every poll)
+
+
 def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
     name    = profile.get("name", "?")
     api_key = profile.get("pd_api_key", "").strip()
-    if not api_key or any(c in api_key for c in "\r\n"):
-        log.warning("PagerDuty '%s': API key missing or malformed (contains "
-                    "newline) — skipping", name)
+    if not api_key:
+        return None  # Grafana-only profile: a missing PD key is normal — nothing to fetch, no warning
+    if any(c in api_key for c in "\r\n"):
+        if name not in _pd_key_warned:   # warn once, not on every 30s poll
+            log.warning("PagerDuty '%s': API key malformed (contains newline) — skipping", name)
+            _pd_key_warned.add(name)
         return None
     try:
         params: dict = {
@@ -992,7 +1000,11 @@ class AlertPanel:
         self._place()
         self._win.deiconify()
         self._win.focus_force()
-        # Delay FocusOut binding so the opening click doesn't trigger a close
+        # Bind focus-out for the optional auto-close behaviour. The handler reads
+        # the live 'auto_close' setting at event time, so the tray-menu toggle
+        # takes effect immediately — no restart. Default is OFF: the panel stays
+        # open until dismissed via ✕ or the tray icon, so a toast stealing focus
+        # can't close it out from under you while you're still reading it.
         self.root.after(400, self._bind_focus_out)
         self._schedule_refresh()
 
@@ -1001,10 +1013,14 @@ class AlertPanel:
             self._win.bind("<FocusOut>", self._on_focus_out)
 
     def _on_focus_out(self, _event) -> None:
+        if not settings.get().get("auto_close", False):
+            return
         if not self._suppress_focus_out:
             self.root.after(200, self._close_if_unfocused)
 
     def _close_if_unfocused(self) -> None:
+        if not settings.get().get("auto_close", False):
+            return
         if self._suppress_focus_out:
             return
         if not self._win or not self._win.winfo_exists():
@@ -1070,12 +1086,20 @@ class AlertPanel:
         self._canvas = tk.Canvas(scroll_outer, bg=self.BG, highlightthickness=0, bd=0)
         scrollbar = tk.Scrollbar(
             scroll_outer, orient="vertical", command=self._canvas.yview,
-            bg="#2a2a3e", troughcolor="#13131f", activebackground="#7c6af7",
-            relief="flat", bd=0, width=10,
+            bg=self.ACCENT, troughcolor="#13131f", activebackground="#9c8cff",
+            relief="flat", bd=0, width=14,
         )
         self._body = tk.Frame(self._canvas, bg=self.BG)
         _cwin = self._canvas.create_window((0, 0), window=self._body, anchor="nw",
                                            width=self.W)
+
+        # "More below" affordance — a pill pinned to the bottom edge that only
+        # shows while there is off-screen content beneath the fold, so it's
+        # obvious the panel scrolls. Clicking it pages down.
+        self._scroll_hint = tk.Label(
+            scroll_outer, text="⌄  more below  ⌄", bg=self.ACCENT, fg="#ffffff",
+            font=("Segoe UI", 8, "bold"), padx=10, pady=2, cursor="hand2",
+        )
 
         def _on_frame_configure(_e):
             self._canvas.configure(scrollregion=self._canvas.bbox("all"))
@@ -1086,10 +1110,24 @@ class AlertPanel:
         def _on_mousewheel(e):
             self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
 
+        def _update_scroll_hint(first, last):
+            scrollbar.set(first, last)
+            try:
+                if float(last) < 0.999:          # content extends past the fold
+                    self._scroll_hint.place(relx=0.5, rely=1.0, anchor="s", y=-3)
+                    self._scroll_hint.lift()
+                else:                            # bottom reached / nothing hidden
+                    self._scroll_hint.place_forget()
+            except Exception:
+                pass
+
         self._body.bind("<Configure>", _on_frame_configure)
         self._canvas.bind("<Configure>", _on_canvas_configure)
         self._win.bind("<MouseWheel>", _on_mousewheel)
-        self._canvas.configure(yscrollcommand=scrollbar.set)
+        self._scroll_hint.bind("<Button-1>",
+                               lambda _e: self._canvas.yview_scroll(3, "units"))
+        self._scroll_hint.bind("<MouseWheel>", _on_mousewheel)
+        self._canvas.configure(yscrollcommand=_update_scroll_hint)
         self._canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
@@ -1127,6 +1165,15 @@ class AlertPanel:
         self._canvas.configure(height=max(canvas_h, 1))
         if content_h <= canvas_h:
             scrollbar.pack_forget()
+            self._scroll_hint.place_forget()
+        else:
+            # Content overflows — surface the scroll affordance immediately
+            # rather than waiting for the first scroll event to fire.
+            self._canvas.update_idletasks()
+            first, last = self._canvas.yview()
+            if float(last) < 0.999:
+                self._scroll_hint.place(relx=0.5, rely=1.0, anchor="s", y=-3)
+                self._scroll_hint.lift()
 
     def _header(self, profiles: list, alerts: list,
                 acked: list, muted: list, reachable: bool) -> None:
@@ -2081,7 +2128,7 @@ def main() -> None:
     def _toast_pause_remaining():
         """Whole minutes left on a timed toast pause, else 0."""
         left = (settings.get().get("toast_pause_until", 0) or 0) - time.time()
-        return int(-(-left // 60)) if left > 0 else 0
+        return math.ceil(left / 60) if left > 0 else 0
 
     def _pause_toasts_for(minutes):
         def _act(_i, _t):
@@ -2102,6 +2149,9 @@ def main() -> None:
     def _toast_pause_text(_i):
         rem = _toast_pause_remaining()
         return f"Pause Toasts ({rem} min left)" if rem else "Pause Toasts"
+
+    def _autoclose_toggle(_i, _t):
+        settings.save_global(auto_close=not settings.get().get("auto_close", False))
 
     def _quit(i, _t):
         i.stop()
@@ -2134,6 +2184,8 @@ def main() -> None:
             item(_flash_enabled_text,   _flash_enabled_toggle),
             item(_toast_text,           _toast_toggle),
             item(_toast_pause_text,     pystray.Menu(_toast_pause_items)),
+            item("Auto-close panel when focus lost", _autoclose_toggle,
+                 checked=lambda _i: settings.get().get("auto_close", False)),
             pystray.Menu.SEPARATOR,
             item("Settings",            _settings),
             item("Open Grafana",        _open_g),
