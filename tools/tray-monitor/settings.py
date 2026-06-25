@@ -10,6 +10,7 @@ from pathlib import Path
 _PROFILE_KEYS = (
     "name", "grafana_url", "auth_type", "username", "password", "api_token",
     "source_type", "pd_api_key", "pd_user_email", "pd_service_id",
+    "toasts_enabled", "toast_pause_until",
 )
 
 PROFILE_DEFAULTS: dict = {
@@ -23,6 +24,8 @@ PROFILE_DEFAULTS: dict = {
     "pd_api_key":    "",
     "pd_user_email": "",
     "pd_service_id": "",
+    "toasts_enabled":    True,   # per-instance toast on/off
+    "toast_pause_until": 0,      # per-instance timed pause (epoch seconds; 0 = not paused)
 }
 
 DEFAULTS: dict = {
