@@ -3345,7 +3345,9 @@ groups:
       - uid: network-switch-down
         title: Switch Interface Down
         condition: threshold
-        for: 2m
+        # 1m at the 60s scrape/eval cadence = 2 consecutive down scrapes before
+        # firing: faster than the old 2m, but still tolerates a single failed/blip scrape.
+        for: 1m
         noDataState: OK
         execErrState: Error
         labels:
