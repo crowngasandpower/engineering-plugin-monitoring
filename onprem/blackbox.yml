@@ -16,6 +16,21 @@ modules:
       tls_config:
         insecure_skip_verify: true
 
+  # For apps with no browsable 200 health route (token-URL flows, POST-only
+  # webhook receivers). Any non-5xx response means the Apache+PHP+Laravel stack
+  # is up and routing; only 5xx and connection failures count as down. Used by
+  # the blackbox-aws-responding scrape job (esignature, webhooks).
+  http_app_up:
+    prober: http
+    timeout: 10s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: [200, 301, 302, 401, 403, 404]
+      method: GET
+      follow_redirects: true
+      tls_config:
+        insecure_skip_verify: true
+
   # Certificate monitoring — TLS verification ON, any HTTP status accepted.
   # Exposes probe_ssl_earliest_cert_expiry, probe_ssl_cert_not_after,
   # and probe_tls_version_info for the cert_probe scrape job.
