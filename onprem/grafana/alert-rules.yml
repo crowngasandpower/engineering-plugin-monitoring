@@ -4107,3 +4107,54 @@ groups:
                     params:
                       - 93600
               refId: threshold
+
+      # Catches the metric being ABSENT entirely (push silently failing, backup never ran, or
+      # the pushgateway lost the series). Without this, a missing metric is NoData → OK on both
+      # rules above, so a backup that stops reporting looks healthy — exactly how the first
+      # monitored run slipped through. absent() returns 1 only when the series is missing; when
+      # present it returns no data (→ OK here). The pushgateway has --persistence.file, so the
+      # series survives restarts; for:6h still rides out any brief gap before paging.
+      - uid: mysql-backup-metric-missing
+        title: MySQL Backup Metric Missing
+        condition: threshold
+        for: 6h
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "No mysql_backup metrics present in Prometheus — the backup is not reporting (push failing, never ran, or pushgateway lost the series). Both other backup alerts go blind when the metric is absent; this one catches that. See the MySQL Backups dashboard."
+          panelUrl: "/d/mysql-backups?orgId=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'absent(mysql_backup_last_run_timestamp_seconds)'
+              refId: A
+          - refId: missing
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: missing
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: missing
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
