@@ -1,0 +1,845 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: iDRAC
+    folder: Hardware
+    interval: 1m
+    rules:
+      # Warning only — Teams notification is sufficient; critical rule pages PagerDuty
+      - uid: server-intake-temp-warning
+        title: Server Intake Temp Warning
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Server intake temperature elevated on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C (warning: 29.5°C, critical: 30°C)"
+          panelUrl: "/d/server-room-temperature?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_sensors_temperature{name=~"Inlet Temp|System Board Inlet Temp"})
+              refId: A
+          - refId: temp_c
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: temp_c
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: temp_c
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 29.5
+                      - 30
+              refId: threshold
+
+      - uid: server-intake-temp-critical
+        title: Server Intake Temp Critical
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Server intake temperature critical on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C (threshold: 30°C)"
+          panelUrl: "/d/server-room-temperature?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_sensors_temperature{name=~"Inlet Temp|System Board Inlet Temp"})
+              refId: A
+          - refId: temp_c
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: temp_c
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: temp_c
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 30
+              refId: threshold
+
+      # Individual subsystem health rules — each pages PagerDuty independently
+      # so that a second failure (e.g. CPU degrades after a PSU is acknowledged)
+      # creates a new incident rather than being masked by the acknowledged one.
+      # The idrac-system-health composite below also pages PagerDuty and acts as
+      # a catch-all for components not covered by individual rules (intrusion,
+      # network subsystem, power redundancy, etc.).
+      - uid: idrac-cpu-health
+        title: iDRAC CPU Health Degraded
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "CPU health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=4"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_cpu_health)
+              refId: A
+          - refId: health
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: health
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: health
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: idrac-psu-health
+        title: iDRAC PSU Health Degraded
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "PSU {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=12"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance, id)(idrac_power_supply_health)
+              refId: A
+          - refId: health
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: health
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: health
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: idrac-psu-no-input
+        title: iDRAC PSU Power Loss
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "PSU {{ $labels.id }} on {{ $labels.instance }} receiving no input power"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=14"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: idrac_power_supply_input_watts
+              refId: A
+          - refId: watts
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: watts
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: watts
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: idrac-fan-health
+        title: iDRAC Fan Health Degraded
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Fan {{ $labels.name }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=32"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance, name)(idrac_sensors_fan_health)
+              refId: A
+          - refId: health
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: health
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: health
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: idrac-fan-rpm-low
+        title: iDRAC Fan RPM Low
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Fan {{ $labels.name }} on {{ $labels.instance }} running at low RPM: {{ $values.rpm.Value | printf \"%.0f\" }} RPM"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=31"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: min by (instance, name)(idrac_sensors_fan_speed{name!~"(?i).*absent.*|.*not installed.*|.*n/a.*"})
+              refId: A
+          - refId: rpm
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: rpm
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: rpm
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 500
+              refId: threshold
+
+      - uid: idrac-storage-drive-health
+        title: iDRAC Storage Drive Health Degraded
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Storage drive {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=41"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance, id, storage_id)(idrac_storage_drive_health)
+              refId: A
+          - refId: health
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: health
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: health
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: idrac-storage-controller-health
+        title: iDRAC Storage Controller Health Degraded
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Storage controller {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=42"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance, id)(idrac_storage_controller_health)
+              refId: A
+          - refId: health
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: health
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: health
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: idrac-storage-volume-health
+        title: iDRAC Storage Volume Health Degraded
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Storage volume {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=43"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance, id)(idrac_storage_volume_health)
+              refId: A
+          - refId: health
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: health
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: health
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: idrac-system-power-off
+        title: iDRAC Server Powered Off
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Server {{ $labels.instance }} is unexpectedly powered off"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=2"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: idrac_system_power_on
+              refId: A
+          - refId: power_on
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: power_on
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: power_on
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      # Composite catch-all — fires on overall system health degradation including
+      # components not covered by individual rules (intrusion, network, etc.).
+      # Individual subsystem rules also page PagerDuty independently.
+      - uid: idrac-system-health
+        title: iDRAC System Health Degraded
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "System health degraded on {{ $labels.instance }}.{{ with $values.cpu }}{{ if gt .Value 0.0 }} CPU unhealthy.{{ end }}{{ end }}{{ with $values.psu }}{{ if gt .Value 0.0 }} PSU unhealthy.{{ end }}{{ end }}{{ with $values.fan }}{{ if gt .Value 0.0 }} Fan unhealthy.{{ end }}{{ end }}{{ with $values.stor }}{{ if gt .Value 0.0 }} Storage unhealthy.{{ end }}{{ end }}{{ with $values.mem }}{{ if gt .Value 0.0 }} Memory unhealthy.{{ end }}{{ end }} Check iDRAC console for full details."
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=3"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_system_health)
+              refId: A
+          - refId: health
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: health
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: health
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+          - refId: cpu_q
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_cpu_health)
+              refId: cpu_q
+          - refId: cpu
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: cpu_q
+              reducer: last
+              refId: cpu
+          - refId: psu_q
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_power_supply_health)
+              refId: psu_q
+          - refId: psu
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: psu_q
+              reducer: last
+              refId: psu
+          - refId: fan_q
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_sensors_fan_health)
+              refId: fan_q
+          - refId: fan
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: fan_q
+              reducer: last
+              refId: fan
+          - refId: stor_q
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_storage_drive_health)
+              refId: stor_q
+          - refId: stor
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: stor_q
+              reducer: last
+              refId: stor
+          - refId: mem_q
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance)(idrac_memory_module_health)
+              refId: mem_q
+          - refId: mem
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: mem_q
+              reducer: last
+              refId: mem
+
+      - uid: idrac-cpu-temp
+        title: iDRAC CPU Temperature High
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "CPU temperature high on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=25"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance, name)(idrac_sensors_temperature{name=~"CPU.*"})
+              refId: A
+          - refId: temp_c
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: temp_c
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: temp_c
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 90
+              refId: threshold
+
+      - uid: idrac-exhaust-temp
+        title: iDRAC Exhaust Temperature High
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Exhaust temperature high on {{ $labels.instance }}: {{ $values.temp_c.Value | printf \"%.1f\" }}°C"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=25"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance, name)(idrac_sensors_temperature{name=~"System Board Exhaust.*|Exhaust.*"})
+              refId: A
+          - refId: temp_c
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: temp_c
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: temp_c
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 45
+              refId: threshold
+
+      - uid: idrac-nic-down
+        title: iDRAC NIC Link Down
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "NIC {{ $labels.id }} on adapter {{ $labels.adapter_id }} lost link on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=51"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: idrac_network_port_link_up == 0 and on(instance, adapter_id, id) (max_over_time(idrac_network_port_link_up[8h]) == 1)
+              refId: A
+          - refId: link_up
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: link_up
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: link_up
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: idrac-memory-health
+        title: iDRAC Memory Health Degraded
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Memory module {{ $labels.id }} health degraded on {{ $labels.instance }}"
+          panelUrl: "/d/idrac-crown?orgId=1&viewPanel=44"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max by (instance, id)(idrac_memory_module_health)
+              refId: A
+          - refId: health
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: health
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: health
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold

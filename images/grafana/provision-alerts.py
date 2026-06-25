@@ -10,9 +10,10 @@ Two modes
               rules as read-only before we take ownership via the API.
 
 --provision   Waits for Grafana to be healthy, then creates/updates every rule
-              in /opt/alert-rules.yml via the Grafana provisioning API with the
-              X-Disable-Provenance header.  Rules are created without a
-              provenance lock, keeping them fully editable in the Grafana UI.
+              from /opt/alert-rules/*.yml (one file per group; legacy single
+              /opt/alert-rules.yml still supported as a fallback) via the Grafana
+              provisioning API with the X-Disable-Provenance header.  Rules are
+              created without a provenance lock, keeping them editable in the UI.
 
 Why API provisioning instead of file provisioning?
 ---------------------------------------------------
@@ -32,9 +33,10 @@ X-Disable-Provenance does not have this restriction.
 Live-edit / persistence contract
 ---------------------------------
 * UI edits take effect immediately and are stored in the Grafana database.
-* On container restart this script re-runs and re-applies alert-rules.yml,
-  overwriting any UI-only changes.
-* To make a change permanent: edit alert-rules.yml and raise a PR.
+* On container restart this script re-runs and re-applies the alert-rules/ group
+  files, overwriting any UI-only changes.
+* To make a change permanent: edit the relevant alert-rules/<group>.yml and raise
+  a PR.
   The next deploy will bake the change into the image and it will survive
   all future restarts.
 """
@@ -54,7 +56,8 @@ except ImportError:
     sys.exit(1)
 
 GRAFANA_URL = "http://localhost:3000"
-RULES_FILE  = "/opt/alert-rules.yml"
+RULES_DIR   = "/opt/alert-rules"        # one YAML file per group (preferred)
+RULES_FILE  = "/opt/alert-rules.yml"    # legacy single-file fallback
 DB_PATH     = "/var/lib/grafana/grafana.db"
 
 
@@ -169,19 +172,35 @@ def _upsert_rule(rule_body, existing_uids):
 # Provision mode
 # ---------------------------------------------------------------------------
 
+def _load_groups():
+    """Load alert rule groups from the alert-rules directory (one YAML file per
+    group), merging every file's `groups`. Falls back to the legacy single-file
+    path for backward compatibility with images that predate the split.
+    Returns (groups, source_description)."""
+    if os.path.isdir(RULES_DIR):
+        groups = []
+        for fn in sorted(os.listdir(RULES_DIR)):
+            if fn.endswith((".yml", ".yaml")):
+                with open(os.path.join(RULES_DIR, fn)) as f:
+                    cfg = yaml.safe_load(f) or {}
+                groups.extend(cfg.get("groups", []) or [])
+        return groups, RULES_DIR
+    if os.path.exists(RULES_FILE):
+        with open(RULES_FILE) as f:
+            cfg = yaml.safe_load(f) or {}
+        return (cfg.get("groups", []) or []), RULES_FILE
+    return [], None
+
+
 def provision():
     _wait_for_grafana()
 
-    if not os.path.exists(RULES_FILE):
-        print(f"[provision-alerts] {RULES_FILE} not found, skipping.", flush=True)
+    groups, source = _load_groups()
+    if source is None:
+        print(f"[provision-alerts] No rules found at {RULES_DIR} or {RULES_FILE}, skipping.", flush=True)
         return
-
-    with open(RULES_FILE) as f:
-        config = yaml.safe_load(f)
-
-    groups = config.get("groups", [])
     if not groups:
-        print("[provision-alerts] No groups in rules file, skipping.", flush=True)
+        print(f"[provision-alerts] No groups in {source}, skipping.", flush=True)
         return
 
     folders      = _folder_map()

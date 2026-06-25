@@ -1,0 +1,54 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: EPS Pricing
+    folder: Applications
+    interval: 1m
+    rules:
+      - uid: oldest-in-queue
+        title: Oldest Quote in Queue Over 1 Hour
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "EPS pricing queue has a job waiting over 1 hour — check for stuck jobs"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=99"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: eps_pricing_oldest_in_queue_seconds
+              refId: A
+          - refId: queue_seconds
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: queue_seconds
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: queue_seconds
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 3600
+              refId: threshold

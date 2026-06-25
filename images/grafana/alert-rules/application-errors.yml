@@ -1,0 +1,54 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: Application Errors
+    folder: Applications
+    interval: 5m
+    rules:
+      - uid: laravel-error-rate-spike
+        title: Laravel Error Rate Spike
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: "Laravel error rate exceeded 75 in 5 minutes (deadlocks excluded)"
+          panelUrl: "/d/infrastructure?orgId=1&viewPanel=2"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: P8E80F9AEF21F6940
+            model:
+              expr: 'sum(count_over_time({log_type="laravel"} |~ "(ERROR|CRITICAL|ALERT|EMERGENCY):" != "Serialization failure: 1213 Deadlock" [5m]))'
+              refId: A
+          - refId: error_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: error_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: error_count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 75
+              refId: threshold

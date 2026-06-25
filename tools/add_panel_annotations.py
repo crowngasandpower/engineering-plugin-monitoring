@@ -1,5 +1,5 @@
 """
-Add panelUrl annotation to alert rules in alert-rules.yml.
+Add panelUrl annotation to alert rules in the alert-rules/ group files.
 Removes any previously injected __dashboardUid__ / __panelId__ lines (reserved
 Grafana names — stripped from notification payloads) and replaces with a plain
 panelUrl annotation that DOES appear in the PD firing text.
@@ -101,47 +101,66 @@ PANEL_MAP = {
 
 _RESERVED = {"__dashboardUid__", "__panelId__"}
 
-TARGET = Path(r"c:\Users\john.simmons\OneDrive - Crown Gas & Power\Documents\crown\monitoring\images\grafana\alert-rules.yml")
+# Alert rules are split one-file-per-group under alert-rules/ in each stack.
+_BASE = Path(r"c:\Users\john.simmons\OneDrive - Crown Gas & Power\Documents\crown\monitoring")
+ALERT_DIRS = [
+    _BASE / "images" / "grafana" / "alert-rules",
+    _BASE / "onprem" / "grafana" / "alert-rules",
+]
 
-lines       = TARGET.read_text(encoding="utf-8").splitlines()
-out         = []
-i           = 0
-current_uid = None
-added       = 0
 
-while i < len(lines):
-    line = lines[i]
+def process_file(target: Path) -> int:
+    lines       = target.read_text(encoding="utf-8").splitlines()
+    out         = []
+    i           = 0
+    current_uid = None
+    added       = 0
 
-    # Strip any previously-injected reserved annotations (they don't appear in notifications)
-    if any(f"{k}:" in line for k in _RESERVED):
-        i += 1
-        continue
+    while i < len(lines):
+        line = lines[i]
 
-    # Track current rule uid
-    m = re.match(r'\s+- uid:\s+(\S+)', line)
-    if m:
-        current_uid = m.group(1)
-
-    # Inject panelUrl right after the summary annotation
-    if current_uid in PANEL_MAP:
-        m2 = re.match(r'(\s+)summary:', line)
-        if m2:
-            indent = m2.group(1)
-            out.append(line)
+        # Strip any previously-injected reserved annotations (they don't appear in notifications)
+        if any(f"{k}:" in line for k in _RESERVED):
             i += 1
-            # Skip any existing panelUrl line (idempotency)
-            while i < len(lines) and 'panelUrl:' in lines[i]:
-                i += 1
-            dashboard_uid, panel_id = PANEL_MAP[current_uid]
-            panel_path = f"/d/{dashboard_uid}?orgId=1&viewPanel={panel_id}"
-            out.append(f'{indent}panelUrl: "{panel_path}"')
-            added += 1
-            current_uid = None
             continue
 
-    out.append(line)
-    i += 1
+        # Track current rule uid
+        m = re.match(r'\s+- uid:\s+(\S+)', line)
+        if m:
+            current_uid = m.group(1)
 
-result = "\n".join(out) + "\n"
-TARGET.write_text(result, encoding="utf-8")
-print(f"Done — injected panelUrl into {added} rules")
+        # Inject panelUrl right after the summary annotation
+        if current_uid in PANEL_MAP:
+            m2 = re.match(r'(\s+)summary:', line)
+            if m2:
+                indent = m2.group(1)
+                out.append(line)
+                i += 1
+                # Skip any existing panelUrl line (idempotency)
+                while i < len(lines) and 'panelUrl:' in lines[i]:
+                    i += 1
+                dashboard_uid, panel_id = PANEL_MAP[current_uid]
+                panel_path = f"/d/{dashboard_uid}?orgId=1&viewPanel={panel_id}"
+                out.append(f'{indent}panelUrl: "{panel_path}"')
+                added += 1
+                current_uid = None
+                continue
+
+        out.append(line)
+        i += 1
+
+    target.write_text("\n".join(out) + "\n", encoding="utf-8")
+    return added
+
+
+total = 0
+for d in ALERT_DIRS:
+    if not d.is_dir():
+        print(f"skip (not found): {d}")
+        continue
+    for target in sorted(d.glob("*.yml")):
+        n = process_file(target)
+        total += n
+        if n:
+            print(f"  {d.parent.name}/alert-rules/{target.name}: +{n}")
+print(f"Done — injected panelUrl into {total} rules")

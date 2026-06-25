@@ -1,0 +1,195 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: Containers
+    folder: Platform
+    interval: 1m
+    rules:
+      - uid: container-crash-loop
+        title: Container Crash Looping
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} has restarted {{ $values.restarts.Value | printf \"%.0f\" }} times in 10 minutes"
+          panelUrl: "/d/docker-containers?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'increase(container_restart_count{job="integrations/cadvisor",id!="/"}[10m])'
+              refId: A
+          - refId: restarts
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: restarts
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: restarts
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 3
+              refId: threshold
+
+      - uid: container-memory-limit
+        title: Container Memory Near Limit
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} using {{ $values.mem_pct.Value | printf \"%.1f\" }}% of its memory limit"
+          panelUrl: "/d/docker-containers?orgId=1&viewPanel=8"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'container_memory_usage_bytes{job="integrations/cadvisor",id!="/"} / (container_spec_memory_limit_bytes{job="integrations/cadvisor",id!="/"} > 0) * 100'
+              refId: A
+          - refId: mem_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: mem_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: mem_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 90
+              refId: threshold
+
+      - uid: container-cpu-throttle
+        title: Container CPU Throttling
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} is {{ $values.throttle_pct.Value | printf \"%.1f\" }}% CPU throttled"
+          panelUrl: "/d/docker-containers?orgId=1&viewPanel=6"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(container_cpu_cfs_throttled_periods_total{job="integrations/cadvisor",id!="/"}[5m]) / rate(container_cpu_cfs_periods_total{job="integrations/cadvisor",id!="/"}[5m]) * 100'
+              refId: A
+          - refId: throttle_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: throttle_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: throttle_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 50
+              refId: threshold
+
+      # @ai-review-ignore: fires on any container in the container:established_24h set
+      # (running continuously >1h in the last 24h, per onprem/alerts/cadvisor.yml) that cAdvisor
+      # no longer reports. for: 5m rules out brief restart/redeploy gaps. The
+      # `and on(instance) ... > 0` guard prevents a per-container storm if cAdvisor itself is
+      # down (a separate exporter-offline alert covers that). Short-lived one-off containers are
+      # excluded by the recording rule, so a normal one-off exit does not false-alert.
+      - uid: container-stopped
+        title: Container Stopped
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} on {{ $labels.instance }} is not running — it was up continuously but cAdvisor no longer sees it (stopped or removed)"
+          panelUrl: "/d/docker-containers?orgId=1&viewPanel=154"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(container:established_24h unless on(instance, name) count by (instance, name) (container_last_seen{job="integrations/cadvisor",name!=""})) and on(instance) (count by (instance) (container_last_seen{job="integrations/cadvisor",name!=""}) > 0)'
+              refId: A
+          - refId: down
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: down
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: down
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold

@@ -1,0 +1,435 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: ESXi
+    folder: VMware
+    interval: 1m
+    rules:
+      # Threshold gt:5 = alert when usage exceeds HA headroom by more than 5%.
+      # The 5% buffer prevents noise from near-threshold fluctuations and also
+      # suppresses spurious fires on single-host clusters where (N-1)/N = 0%.
+      - uid: vcenter-host-cpu-high
+        title: vCenter Cluster CPU HA Headroom Exceeded
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: high
+        annotations:
+          summary: "Cluster {{ $labels.vmwcluster }} CPU is {{ $values.pct_surplus.Value | printf \"%.1f\" }}% above HA failover headroom"
+          panelUrl: "/d/VMwExClV?orgId=1&viewPanel=14"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: "(sum by (vmwcluster)(vmware_host_cpu_usagemhz_average * on(hostmo,vcenter) group_left(cmo) vmware_host_info * on(cmo,vcenter) group_left(vmwcluster) vmware_cluster_info) / sum by (vmwcluster)(vmware_host_cpu_capacity * vmware_host_cpu_corecount * on(hostmo,vcenter) group_left(cmo) vmware_host_info * on(cmo,vcenter) group_left(vmwcluster) vmware_cluster_info) * 100) - ((count by (vmwcluster)(vmware_host_cpu_usagemhz_average * on(hostmo,vcenter) group_left(cmo) vmware_host_info * on(cmo,vcenter) group_left(vmwcluster) vmware_cluster_info) - 1) / count by (vmwcluster)(vmware_host_cpu_usagemhz_average * on(hostmo,vcenter) group_left(cmo) vmware_host_info * on(cmo,vcenter) group_left(vmwcluster) vmware_cluster_info) * 100)"
+              refId: A
+          - refId: pct_surplus
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: pct_surplus
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: pct_surplus
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 5
+              refId: threshold
+
+      # Threshold gt:5 — same 5% buffer rationale as vcenter-host-cpu-high above.
+      - uid: vcenter-cluster-mem-high
+        title: vCenter Cluster Memory HA Headroom Exceeded
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: high
+        annotations:
+          summary: "Cluster {{ $labels.vmwcluster }} memory is {{ $values.pct_surplus.Value | printf \"%.1f\" }}% above HA failover headroom"
+          panelUrl: "/d/VMwExClV?orgId=1&viewPanel=16"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: "(sum by (vmwcluster)(vmware_host_mem_consumed_average * 1024 * on(hostmo,vcenter) group_left(cmo) vmware_host_info * on(cmo,vcenter) group_left(vmwcluster) vmware_cluster_info) / sum by (vmwcluster)(vmware_host_mem_capacity * on(hostmo,vcenter) group_left(cmo) vmware_host_info * on(cmo,vcenter) group_left(vmwcluster) vmware_cluster_info) * 100) - ((count by (vmwcluster)(vmware_host_mem_consumed_average * on(hostmo,vcenter) group_left(cmo) vmware_host_info * on(cmo,vcenter) group_left(vmwcluster) vmware_cluster_info) - 1) / count by (vmwcluster)(vmware_host_mem_consumed_average * on(hostmo,vcenter) group_left(cmo) vmware_host_info * on(cmo,vcenter) group_left(vmwcluster) vmware_cluster_info) * 100)"
+              refId: A
+          - refId: pct_surplus
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: pct_surplus
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: pct_surplus
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 5
+              refId: threshold
+
+      - uid: vcenter-datastore-space-low
+        title: vCenter Datastore Space Low
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: high
+        annotations:
+          summary: "Datastore {{ $labels.ds }} has {{ $values.free_pct.Value | printf \"%.1f\" }}% free space remaining (warning: <20%, critical: <5%)"
+          panelUrl: "/d/VMwExDsV?orgId=1&viewPanel=100"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: min by (ds,vcenter)(vmware_datastore_free / vmware_datastore_capacity * 100 * on(dsmo,vcenter) group_left(ds) max by (dsmo,vcenter,ds)(vmware_datastore_info))
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 5
+                      - 20
+              refId: threshold
+
+      - uid: vcenter-datastore-space-critical
+        title: vCenter Datastore Space Critical
+        condition: threshold
+        # for: 2m (tightened from 5m) — a datastore over 95% can stall VM writes,
+        # so this is the one "act now" alert in the group. Capacity climbs
+        # gradually, so a short pending window won't false-positive.
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Datastore {{ $labels.ds }} is over 95% full — {{ $values.free_pct.Value | printf \"%.1f\" }}% free"
+          panelUrl: "/d/VMwExDsV?orgId=1&viewPanel=100"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: min by (ds,vcenter)(vmware_datastore_free / vmware_datastore_capacity * 100 * on(dsmo,vcenter) group_left(ds) max by (dsmo,vcenter,ds)(vmware_datastore_info))
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 5
+              refId: threshold
+
+      - uid: vcenter-host-mem-balloon
+        title: vCenter Host Memory Balloon Active
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host {{ $labels.host }} memory balloon at {{ $values.pct_ballooned.Value | printf \"%.1f\" }}% — host under memory pressure"
+          panelUrl: "/d/VMwExHoV?orgId=1&viewPanel=16"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: vmware_host_mem_vmmemctl_average * 1024 / vmware_host_mem_capacity * 100 * on(hostmo,vcenter) group_left(host) vmware_host_info
+              refId: A
+          - refId: pct_ballooned
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: pct_ballooned
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: pct_ballooned
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 5
+              refId: threshold
+
+      - uid: vcenter-host-mem-swap
+        title: vCenter Host Memory Swapping
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: high
+        annotations:
+          summary: "Host {{ $labels.host }} VMs are swapping to disk — {{ $values.pct_swapped.Value | printf \"%.1f\" }}% of memory swapped"
+          panelUrl: "/d/VMwExHoV?orgId=1&viewPanel=16"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: vmware_host_mem_swapped_average * 1024 / vmware_host_mem_capacity * 100 * on(hostmo,vcenter) group_left(host) vmware_host_info
+              refId: A
+          - refId: pct_swapped
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: pct_swapped
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: pct_swapped
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: vcenter-host-cpu-ready
+        title: vCenter Host CPU Ready High
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host {{ $labels.host }} CPU ready at {{ $values.pct_ready.Value | printf \"%.1f\" }}% — VMs waiting for CPU time"
+          panelUrl: "/d/VMwExHoV?orgId=1&viewPanel=14"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: vmware_host_cpu_ready_summation / (20 * 1000) / vmware_host_cpu_corecount * 100 * on(hostmo,vcenter) group_left(host) vmware_host_info
+              refId: A
+          - refId: pct_ready
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: pct_ready
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: pct_ready
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 5
+              refId: threshold
+
+      - uid: vcenter-vm-powered-off
+        title: VM Powered Off Unexpectedly
+        condition: threshold
+        # for: 1m (tightened from 5m) — surface an unexpected VM shutdown quickly.
+        # Known/planned shutdowns are silenced via the powered_off suppression
+        # category (see summary), so a short pending window mainly catches the
+        # genuinely unexpected ones.
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $values.count.Value | printf \"%.0f\" }} VM(s) powered off unexpectedly — add to the powered_off suppression category at http://poc-containers/exemptions/suppress to silence known intentional shutdowns"
+          panelUrl: "/d/vms?orgId=1&viewPanel=129"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count(vcenter_vm_powered_off unless on(vm_name) vcenter_vm_powered_off_exempt) or vector(0)'
+              refId: A
+          - refId: count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: vcenter-vm-backup-overdue
+        title: VM Backup Overdue
+        condition: threshold
+        # @ai-review-ignore: for: 0s is intentional. A backup already 7 days overdue needs no
+        # pending period — the condition has been true for a week before the alert even exists.
+        # A scrape gap would produce noDataState: OK (not Alerting), so false-positives from
+        # stale scrapes are not a risk; a missed scrape silences rather than fires the alert.
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $values.count.Value | printf \"%.0f\" }} VM(s) have not been backed up in over 7 days — check the VM Backup Status dashboard"
+          panelUrl: "/d/vm-backup-status?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              # @ai-review-ignore: vm_name join key verified against live Prometheus —
+              # vcenter_vm_last_backup_timestamp carries a vm_name label (68 series confirmed),
+              # the same label vcenter_vm_powered_off uses for its identical unless-on(vm_name)
+              # suppression, and what /vm-backup-overdue-exempt/metrics emits. No label mismatch.
+              expr: 'count((vcenter_vm_last_backup_timestamp > 0 and time() - vcenter_vm_last_backup_timestamp >= 604800) unless on(vm_name) vcenter_vm_backup_overdue_exempt) or vector(0)'
+              refId: A
+          - refId: count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold

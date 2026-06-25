@@ -1,0 +1,477 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: Linux
+    folder: Platform
+    interval: 1m
+    rules:
+      - uid: linux-disk-warning
+        title: Linux Disk Space Warning
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free (warning: <20%, critical: <10%)"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd",device!~".*:.*|//.*"} / node_filesystem_size_bytes{job="node",fstype!~"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd",device!~".*:.*|//.*"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 10
+                      - 20
+              refId: threshold
+
+      - uid: linux-disk-critical
+        title: Linux Disk Space Critical
+        condition: threshold
+        # for: 2m (tightened from 5m) — a runaway log/job can fill a partition fast,
+        # and a full disk fails app writes. Usage doesn't bounce around the 10% line,
+        # so a short window won't false-positive. oncall: Platform so it escalates.
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free — filesystem near full"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_filesystem_avail_bytes{job="node",fstype!~"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd",device!~".*:.*|//.*"} / node_filesystem_size_bytes{job="node",fstype!~"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd",device!~".*:.*|//.*"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: linux-inode-warning
+        title: Linux Disk Inode Exhaustion
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Inodes on {{ $labels.mountpoint }} ({{ $labels.instance }}) are {{ $values.free_pct.Value | printf \"%.1f\" }}% free"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_filesystem_files_free{job="node",fstype!~"tmpfs|overlay|squashfs|devtmpfs"} / node_filesystem_files{job="node",fstype!~"tmpfs|overlay|squashfs|devtmpfs"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: linux-cpu-warning
+        title: Linux High CPU Usage
+        condition: threshold
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU on {{ $labels.instance }} at {{ $values.cpu_pct.Value | printf \"%.1f\" }}% — sustained high load"
+          panelUrl: "/d/compute-cpu?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(1 - avg by (instance)(rate(node_cpu_seconds_total{job="node",mode="idle"}[5m]))) * 100'
+              refId: A
+          - refId: cpu_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: cpu_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: cpu_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 90
+              refId: threshold
+
+      - uid: linux-memory-warning
+        title: Linux High Memory Usage
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has {{ $values.avail_pct.Value | printf \"%.1f\" }}% memory available"
+          panelUrl: "/d/compute-memory?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} * 100) unless on(instance) node_memory_exempt'
+              refId: A
+          - refId: avail_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: avail_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: avail_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      # Intentionally does NOT carry the node_memory_exempt exclusion.
+      # DB servers in the high_memory_host suppression category are exempt from
+      # Memory > 90% alerts (expected behaviour for buffer-pool caching), but active
+      # swap-in means the OS is paging under genuine pressure — that is always worth
+      # alerting on, even for DB servers. See exemption-api /exemptions/suppress docs.
+      # Threshold of 10 pages/s matches the Platform Overview dashboard baseline
+      # (rate > 10 is the point at which the dashboard counts a host as swapping).
+      - uid: linux-swap-in-warning
+        title: Linux Active Swapping
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} is actively reading from swap at {{ $values.swapin_rate.Value | printf \"%.1f\" }} pages/s — possible memory pressure"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=30"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              # No threshold filter here — the threshold condition below handles that.
+              # Keeping the series alive at 0 prevents a brief exporter gap from
+              # silently clearing an in-flight alert via noDataState: OK.
+              expr: 'rate(node_vmstat_pswpin{job="node"}[5m])'
+              refId: A
+          - refId: swapin_rate
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: swapin_rate
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: swapin_rate
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: linux-iowait-warning
+        title: Linux High IO Wait
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} IO wait at {{ $values.iowait_pct.Value | printf \"%.1f\" }}% — storage may be bottlenecking"
+          panelUrl: "/d/compute-iowait?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'avg by (instance)(rate(node_cpu_seconds_total{job="node",mode="iowait"}[5m])) * 100'
+              refId: A
+          - refId: iowait_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: iowait_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: iowait_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 30
+              refId: threshold
+
+      - uid: linux-load-warning
+        title: Linux High System Load
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} load average {{ $values.load_ratio.Value | printf \"%.2f\" }}× CPU count"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=3"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'node_load5{job="node"} / count by (instance)(node_cpu_seconds_total{job="node",mode="idle"})'
+              refId: A
+          - refId: load_ratio
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: load_ratio
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: load_ratio
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 2
+              refId: threshold
+
+      - uid: linux-ntp-warning
+        title: Linux NTP Clock Drift
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} clock offset {{ $values.offset_s.Value | printf \"%.3f\" }}s — NTP sync may have failed"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'abs(node_timex_offset_seconds{job="node"})'
+              refId: A
+          - refId: offset_s
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: offset_s
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: offset_s
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0.1
+              refId: threshold
+
+      # Only fires for hosts seen in the last 7d — avoids noise from decommissioned scrape targets
+      - uid: host-exporter-offline
+        title: Host Exporter Offline
+        condition: threshold
+        # for: 2m (tightened from 10m) — prefer to know fast when a host/exporter
+        # goes dark; reboot/patch-night noise is tolerated and suppressed via a
+        # PagerDuty maintenance window rather than a long pending period here.
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} ({{ $labels.job }}) exporter is not responding — all host metrics lost for this target"
+          panelUrl: "/d/vms?orgId=1&viewPanel=133"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'up{job=~"node|windows"} == 0 and on(instance) node_windows:up_recent_7d == 1'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold

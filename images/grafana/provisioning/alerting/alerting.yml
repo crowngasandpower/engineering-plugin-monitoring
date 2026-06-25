@@ -57,5 +57,5 @@ policies:
 #
 # Alert rule groups are NOT defined here.
 # They are provisioned via the Grafana API by provision-alerts.py at container
-# startup, reading from alert-rules.yml. This allows live UI editing in Grafana 13
+# startup, reading from the alert-rules/ directory (one YAML file per group). This allows live UI editing in Grafana 13
 # (file-provisioned rules are permanently locked in Grafana 13).

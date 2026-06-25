@@ -1,0 +1,157 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: MySQL Backup
+    folder: Applications
+    interval: 5m
+    rules:
+      # Fed by metrics pushed from MySQL-Backups/runGZ.sh to the pushgateway
+      # (job="mysql_backup", instance=<backup host>).
+      - uid: mysql-backup-failed
+        title: MySQL Backup Failed
+        condition: threshold
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "MySQL backup on {{ $labels.instance }} reported {{ $values.failed.Value | printf \"%.0f\" }} schema failure(s) in its most recent run"
+          panelUrl: "/d/mysql-backups?orgId=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'mysql_backup_schemas_failed'
+              refId: A
+          - refId: failed
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: failed
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: failed
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      # Catches the backup not running at all (last_success_timestamp carries forward on a
+      # failed run, so this only trips when no successful run has landed for >26h). Backups
+      # are daily, so 26h gives a 2h grace. noDataState is OK (not Alerting) so a cold start
+      # — monitoring deployed before the first backup has pushed — doesn't false-fire; once a
+      # success exists the metric persists in the pushgateway, so staleness is detected reliably.
+      - uid: mysql-backup-stale
+        title: MySQL Backup Stale
+        condition: threshold
+        for: 1h
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "No successful MySQL backup on {{ $labels.instance }} for over 26h (last success {{ $values.stale.Value | printf \"%.0f\" }}s ago) — see the MySQL Backups dashboard"
+          panelUrl: "/d/mysql-backups?orgId=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'time() - mysql_backup_last_success_timestamp_seconds'
+              refId: A
+          - refId: stale
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: stale
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: stale
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 93600
+              refId: threshold
+
+      # Catches the metric being ABSENT entirely (push silently failing, backup never ran, or
+      # the pushgateway lost the series). Without this, a missing metric is NoData → OK on both
+      # rules above, so a backup that stops reporting looks healthy — exactly how the first
+      # monitored run slipped through. absent() returns 1 only when the series is missing; when
+      # present it returns no data (→ OK here). The pushgateway has --persistence.file, so the
+      # series survives restarts; for:6h still rides out any brief gap before paging.
+      - uid: mysql-backup-metric-missing
+        title: MySQL Backup Metric Missing
+        condition: threshold
+        for: 6h
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "No mysql_backup metrics present in Prometheus — the backup is not reporting (push failing, never ran, or pushgateway lost the series). Both other backup alerts go blind when the metric is absent; this one catches that. See the MySQL Backups dashboard."
+          panelUrl: "/d/mysql-backups?orgId=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'absent(mysql_backup_last_run_timestamp_seconds)'
+              refId: A
+          - refId: missing
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: missing
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: missing
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold

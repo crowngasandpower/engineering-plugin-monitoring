@@ -1,0 +1,144 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: Supervisor Workers
+    folder: Applications
+    interval: 1m
+    rules:
+      - uid: supervisor-worker-fatal
+        title: Supervisor Worker FATAL
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: "Supervisor worker {{ $labels.app }}/{{ $labels.worker }} is FATAL on {{ $labels.host }} (auto-restart failed)"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=7"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: supervisor_worker_up{job="supervisor"} == 0
+              refId: A
+          - refId: worker_up
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: worker_up
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: worker_up
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0.5
+              refId: threshold
+
+      - uid: supervisor-host-unreachable
+        title: Supervisor Host Unreachable
+        condition: threshold
+        for: 10m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cannot SSH to {{ $labels.host }} to check supervisor workers"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=7"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: supervisor_host_reachable{job="supervisor"}
+              refId: A
+          - refId: reachable
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: reachable
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: reachable
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: supervisor-check-stale
+        title: Supervisor Check Stale
+        condition: threshold
+        for: 15m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Supervisor health check has not run for {{ $labels.host }} in over 15 minutes"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=7"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: time() - supervisor_check_timestamp_seconds{job="supervisor"}
+              refId: A
+          - refId: seconds_stale
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: seconds_stale
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: seconds_stale
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 900
+              refId: threshold

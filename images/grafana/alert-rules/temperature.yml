@@ -1,0 +1,100 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: Temperature
+    folder: Hardware
+    interval: 1m
+    rules:
+      - uid: room-temp-warning
+        title: Room Temperature Warning
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Server room temperature is {{ $values.temp_c.Value | printf \"%.1f\" }}°C (warning: 29.5°C, critical: 30°C) — check cooling"
+          panelUrl: "/d/server-room-temperature?orgId=1&viewPanel=4"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: room_temperature_celsius
+              refId: A
+          - refId: temp_c
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: temp_c
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: temp_c
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 29.5
+                      - 30
+              refId: threshold
+
+      - uid: room-temp-critical
+        title: Room Temperature Critical
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: "Server room temperature is {{ $values.temp_c.Value | printf \"%.1f\" }}°C (threshold: 30°C) — take immediate action"
+          panelUrl: "/d/server-room-temperature?orgId=1&viewPanel=4"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: room_temperature_celsius
+              refId: A
+          - refId: temp_c
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: temp_c
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: temp_c
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 30
+              refId: threshold

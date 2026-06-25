@@ -1,0 +1,207 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: SAN
+    folder: Hardware
+    interval: 1m
+    rules:
+      # Driven off PowerStore's own alert feed (powerstore_alert job, scraped every
+      # 1m) rather than per-component metric snapshots that scrape every 5-15m.
+      # Fires one instance per active Critical/Major alert and surfaces the
+      # affected resource plus PowerStore's own description, so port-link-down and
+      # metro/replication faults page in ~2-3m instead of ~13-16m. This replaces
+      # the count-only "PowerStore Major Alert" rule and supersedes the removed
+      # eth-port-down and metro status/witness rules (PowerStore raises Major/
+      # Critical alerts for all of those). Capacity, drive-wear and port-error-rate
+      # rules below stay metric-driven because they alert on Crown thresholds set
+      # tighter than PowerStore's own, not on faults.
+      #
+      # for: 0s — PowerStore has already raised and debounced the alert; the only
+      # remaining latency is the 1m scrape. When the array clears an alert the
+      # series disappears, so noDataState: OK resolves the instance.
+      - uid: powerstore-active-alert
+        title: PowerStore Active Alert
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "PowerStore {{ $labels.severity }} alert on {{ $labels.resource_type }} {{ $labels.resource_name }}: {{ $labels.description }}"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: powerstore_active_alert_info{severity=~"Critical|Major"}
+              refId: A
+          - refId: alert_present
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: alert_present
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: alert_present
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: powerstore-capacity
+        title: PowerStore Capacity High
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "PowerStore {{ $labels.appliance_id }} physical capacity at {{ $values.pct_used.Value | printf \"%.1f\" }}% used (threshold: 75%)"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=11"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: powerstore_cap_last_physical_used / powerstore_cap_last_physical_total * 100 and powerstore_cap_last_physical_total > 0
+              refId: A
+          - refId: pct_used
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: pct_used
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: pct_used
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 75
+              refId: threshold
+
+      - uid: powerstore-drive-wear
+        title: PowerStore Drive Wear Low
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "PowerStore drive {{ $labels.name }} on {{ $labels.appliance_id }} has {{ $values.pct_remaining.Value | printf \"%.1f\" }}% endurance remaining"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=42"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: powerstore_wear_metrics_by_drive
+              refId: A
+          - refId: pct_remaining
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: pct_remaining
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: pct_remaining
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 20
+              refId: threshold
+
+      - uid: powerstore-eth-port-errors
+        title: PowerStore ETH Port Errors
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "PowerStore ETH port {{ $labels.eth_port_id }} on appliance {{ $labels.appliance_id }} has sustained packet errors: {{ $values.errors_per_sec.Value | printf \"%.0f\" }}/s"
+          panelUrl: "/d/powerstore-crown?orgId=1&viewPanel=49"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: powerstore_metricEthPort_avg_pkt_rx_crc_error_ps + powerstore_metricEthPort_avg_pkt_tx_error_ps
+              refId: A
+          - refId: errors_per_sec
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: errors_per_sec
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: errors_per_sec
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 100
+              refId: threshold

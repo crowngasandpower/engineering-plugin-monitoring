@@ -1,0 +1,517 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: Network
+    folder: Networking
+    interval: 1m
+    rules:
+      - uid: network-wan-latency
+        title: WAN High Latency
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "WAN latency at {{ $values.latency_ms.Value | printf \"%.0f\" }}ms — internet connection degraded"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_wan_latency_ms{job="unifi_local"}'
+              refId: A
+          - refId: latency_ms
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: latency_ms
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: latency_ms
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 150
+              refId: threshold
+
+      - uid: network-wan-packetloss-warning
+        title: WAN Packet Loss Warning
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "WAN packet loss at {{ $values.loss_pct.Value | printf \"%.1f\" }}% (warning: >5%, critical: >15%)"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=6"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_wan_packet_loss_percent{job="unifi_local"}'
+              refId: A
+          - refId: loss_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: loss_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: loss_pct
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 5
+                      - 15
+              refId: threshold
+
+      - uid: network-wan-packetloss-critical
+        title: WAN Packet Loss Critical
+        condition: threshold
+        for: 3m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "WAN packet loss at {{ $values.loss_pct.Value | printf \"%.1f\" }}% — internet connection severely degraded"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=6"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_wan_packet_loss_percent{job="unifi_local"}'
+              refId: A
+          - refId: loss_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: loss_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: loss_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 15
+              refId: threshold
+
+      - uid: network-wan-unreachable
+        title: UniFi Controller Unreachable
+        condition: threshold
+        for: 0m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "UniFi controller scrape failing — network monitoring blind"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'unifi_scrape_success{job="unifi_local"}'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: network-unifi-offline
+        title: UniFi Device Offline
+        condition: threshold
+        for: 3m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $values.offline_count.Value | printf \"%.0f\" }} UniFi device(s) offline — check the UniFi dashboard for details"
+          panelUrl: "/d/crown-unifi-network?orgId=1&viewPanel=10"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count(unifi_device_up{job="unifi_local"} == 0 unless on(device) unifi_device_exempt)'
+              refId: A
+          - refId: offline_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: offline_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: offline_count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: network-site-ping-down
+        title: Site Ping Failing
+        condition: threshold
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "{{ $labels.source }} cannot reach {{ $values.down_count.Value | printf \"%.0f\" }} ping target(s) — remote site connectivity may be lost"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count by(source) (site_ping_success == 0)'
+              refId: A
+          - refId: down_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: down_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: down_count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: network-switch-down
+        title: Switch Interface Down
+        condition: threshold
+        # 1m at the 60s scrape/eval cadence = 2 consecutive down scrapes before
+        # firing: faster than the old 2m, but still tolerates a single failed/blip scrape.
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $values.down_count.Value | printf \"%.0f\" }} switch interface(s) are down — check the Switch dashboard for details"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=31"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'count((os10_interface_up{job="dell_os10",interface=~"ethernet.*|port-channel.*|vti.*"} == 0) and on(switch, interface, port) (os10:interface_up_recent_7d == 1))'
+              refId: A
+          - refId: down_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: down_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: down_count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: network-switch-exporter-down
+        title: Switch Exporter Unreachable
+        condition: threshold
+        for: 3m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "Dell OS10 exporter is not responding to Prometheus scrapes ({{ $labels.instance }})"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'up{job="dell_os10"}'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: network-switch-unreachable
+        title: Switch Unreachable
+        condition: threshold
+        for: 3m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "Dell OS10 switch {{ $labels.switch }} is not responding to RESTCONF API"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'os10_scrape_success{job="dell_os10"}'
+              refId: A
+          - refId: val
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: val
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: val
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: network-switch-errors
+        title: Switch Interface High Errors
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Interface {{ $labels.interface }} on {{ $labels.instance }} receiving {{ $values.err_rate.Value | printf \"%.1f\" }} errors/s"
+          panelUrl: "/d/crown-dell-switches?orgId=1&viewPanel=20"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(os10_interface_in_errors_total{job="dell_os10"}[5m])'
+              refId: A
+          - refId: err_rate
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: err_rate
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: err_rate
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 10
+              refId: threshold
+
+      # Metric name requires verification against Crown's UniFi exporter instance.
+      # Threshold (<1) fires when ALL tunnels are gone — set to expected tunnel count if known.
+      # Metric names and threshold require verification against Crown's UniFi exporter.
+      # Threshold 100000000 = 100 MB/s = 80% of 1 Gbps symmetric; adjust for actual link speed.
+      # Fires per-direction: Grafana evaluates RX and TX series independently.
+      - uid: network-wan-utilisation
+        title: WAN High Utilisation
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "WAN {{ $labels.direction }} throughput {{ $values.bytes_per_sec.Value | printf \"%.0f\" }} bytes/s — above 80% of link capacity"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'label_replace(rate(unifi_wan_rx_bytes_total{job="unifi_local"}[5m]), "direction", "rx", "", "") or label_replace(rate(unifi_wan_tx_bytes_total{job="unifi_local"}[5m]), "direction", "tx", "", "")'
+              refId: A
+          - refId: bytes_per_sec
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: max
+              refId: bytes_per_sec
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: bytes_per_sec
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 100000000
+              refId: threshold

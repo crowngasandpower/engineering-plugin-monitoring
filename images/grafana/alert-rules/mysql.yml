@@ -1,0 +1,99 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: MySQL
+    folder: Applications
+    interval: 1m
+    rules:
+      - uid: mysql-connections-high
+        title: MySQL Connections High
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} MySQL connections at {{ $values.conn_pct.Value | printf \"%.1f\" }}% of max_connections"
+          panelUrl: "/d/infrastructure?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'mysql_global_status_threads_connected{job="mysql"} / mysql_global_variables_max_connections{job="mysql"} * 100'
+              refId: A
+          - refId: conn_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: conn_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: conn_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 80
+              refId: threshold
+
+      - uid: mysql-slow-queries
+        title: MySQL Slow Query Spike
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} MySQL slow queries at {{ $values.qps.Value | printf \"%.1f\" }}/s"
+          panelUrl: "/d/infrastructure?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(mysql_global_status_slow_queries{job="mysql"}[5m])'
+              refId: A
+          - refId: qps
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: qps
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: qps
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 5
+              refId: threshold

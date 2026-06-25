@@ -1,0 +1,248 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: Infrastructure
+    folder: Platform
+    interval: 1m
+    rules:
+      # Alerts per fuel (genus_up{fuel="gas"|"elec"|...}) rather than min(genus_up):
+      # a min() collapse hides which DB is down and can't fire a second incident
+      # when a second fuel drops while one is already down. Any additional Genus DB
+      # the exporter is pointed at appears as a new genus_up series and is covered
+      # automatically — no rule change needed. oncall: Platform so a billing-DB
+      # outage escalates on the Platform path. for: 1m absorbs transient reconnects.
+      - uid: genus-db-down
+        title: Genus DB Down
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Genus {{ $labels.fuel }} database ({{ $labels.instance }}) is unreachable — billing system may be affected"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: genus_up
+              refId: A
+          - refId: up
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: up
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: up
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      # Safety net for the genus-monitor exporter itself dying. If it does, every
+      # genus_* series (including genus_up) disappears, so genus-db-down goes to
+      # noData -> OK and silently stops covering the billing DBs. up{job="genus"}
+      # is Prometheus's own scrape-health metric and stays present (=0) even when
+      # the exporter is down, so it catches that case. for: 2m rides out a normal
+      # redeploy of the container; a real death pages in ~3m.
+      - uid: genus-exporter-down
+        title: Genus Exporter Down
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "genus-monitor exporter is not responding — all Genus monitoring (DB health, replica lag, hub files) is blind"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: up{job="genus"}
+              refId: A
+          - refId: up
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: up
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: up
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: hub-file-age
+        title: Hub File Age Over 3 Hours
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Genus hub file has not been updated for over 3 hours — industry data exchange may be stalled"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=40"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max(genus_hub_file_latest_age_hours)
+              refId: A
+          - refId: age_hours
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: age_hours
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: age_hours
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 3
+              refId: threshold
+
+      - uid: replica-lag
+        title: Replica Lag Over 1 Second
+        condition: threshold
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Genus replica lag exceeds 1 second — reporting and read queries may be stale"
+          panelUrl: "/d/genus-details?orgId=1&viewPanel=22"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max(genus_replica_lag_seconds)
+              refId: A
+          - refId: lag_seconds
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: lag_seconds
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: lag_seconds
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 1
+              refId: threshold
+
+      - uid: ewelcome-failures
+        title: Ewelcome Queue Failures
+        condition: threshold
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "eWelcome has failed jobs in the queue — welcome packs may not be sending"
+          panelUrl: "/d/genus-monitoring?orgId=1&viewPanel=64"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: max(ewelcome_failed_jobs)
+              refId: A
+          - refId: failed_jobs
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: failed_jobs
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: failed_jobs
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold

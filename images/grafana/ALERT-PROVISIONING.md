@@ -19,8 +19,8 @@ lock and are fully editable in the Grafana UI.
 | Action | Result |
 |---|---|
 | Edit a rule threshold/query in the Grafana UI | Takes effect immediately |
-| Container restart (local or ECS task replacement) | `alert-rules.yml` wins — UI edits overwritten |
-| Raise a PR updating `alert-rules.yml` and deploy | Change is permanent |
+| Container restart (local or ECS task replacement) | The `alert-rules/` group files win — UI edits overwritten |
+| Raise a PR updating the relevant `alert-rules/<group>.yml` and deploy | Change is permanent |
 
 This matches the agreed workflow: make hotfixes live in the UI, then raise a
 PR to make them permanent before the next deploy overwrites them.
@@ -31,19 +31,19 @@ PR to make them permanent before the next deploy overwrites them.
 
 | File | Change |
 |---|---|
-| `Dockerfile` | Adds `python3` + `py3-yaml` (Alpine apk); copies `entrypoint.sh`, `provision-alerts.py`, `alert-rules.yml`; overrides `ENTRYPOINT` |
+| `Dockerfile` | Adds `python3` + `py3-yaml` (Alpine apk); copies `entrypoint.sh`, `provision-alerts.py`, and the `alert-rules/` directory; overrides `ENTRYPOINT` |
 | `entrypoint.sh` | New. Runs DB migration, starts provisioner in background, hands off to `/run.sh` |
-| `provision-alerts.py` | New. Reads `alert-rules.yml` and pushes groups via the ruler API |
-| `alert-rules.yml` | New. Contains all alert rule groups (previously inside `alerting.yml`) |
+| `provision-alerts.py` | New. Reads every `alert-rules/*.yml` (one file per group; legacy single `alert-rules.yml` still works as a fallback) and pushes groups via the provisioning API |
+| `alert-rules/` | One YAML file per group (e.g. `san.yml`, `linux.yml`, `genus`→`infrastructure.yml`). Split from the former monolithic `alert-rules.yml` so parallel changes to different areas don't merge-conflict |
 | `provisioning/alerting/alerting.yml` | Groups section removed; now contains only contact points, notification policies, and templates |
 
 Onprem-specific:
 
 | File | Change |
 |---|---|
-| `onprem/grafana/alert-rules.yml` | New. Same rules as images version but with flat folder names and dashboard runbook annotations |
+| `onprem/grafana/alert-rules/` | Same rules as the images version (per-group files) but with flat folder names and dashboard runbook annotations |
 | `onprem/grafana/provisioning/alerting/alerting.yml` | Groups section removed |
-| `onprem/docker-compose.override.yml` | Mounts `./grafana/alert-rules.yml` into the container at `/opt/alert-rules.yml`; adds `GF_UNIFIED_ALERTING_PROVISIONING_ALLOW_UI_UPDATES=true` |
+| `onprem/docker-compose.override.yml` | Mounts the `./grafana/alert-rules` directory into the container at `/opt/alert-rules`; adds `GF_UNIFIED_ALERTING_PROVISIONING_ALLOW_UI_UPDATES=true` |
 
 ---
 
@@ -71,14 +71,14 @@ rules via the ruler API and they will be editable in the UI.
 ## Adding or editing alert rules
 
 **Permanent change (the normal path):**
-1. Edit `monitoring/images/grafana/alert-rules.yml`
-2. Also edit `monitoring/onprem/grafana/alert-rules.yml` if the folder names differ
+1. Edit the relevant group file under `monitoring/images/grafana/alert-rules/` (e.g. `san.yml`, `linux.yml`). Add a new group by dropping in a new `<group>.yml`
+2. Mirror the change in `monitoring/onprem/grafana/alert-rules/` (folder names differ there)
 3. Raise a PR
 4. On deploy the new rules are applied automatically
 
 **Live hotfix (emergency path):**
 1. Edit the rule in the Grafana UI — change takes effect immediately
-2. Raise a PR updating `alert-rules.yml` to match before the next deploy
+2. Raise a PR updating the matching `alert-rules/<group>.yml` before the next deploy
 
 **Exporting a UI-edited rule back to YAML:**
 ```bash
@@ -102,7 +102,7 @@ Container starts
 
     2. python3 provision-alerts.py --provision &  (background)
          Polls /api/health until Grafana is ready.
-         Reads /opt/alert-rules.yml.
+         Reads every /opt/alert-rules/*.yml (fallback: /opt/alert-rules.yml).
          For each group: POST to /api/ruler/grafana/api/v1/rules/{folderUID}
          Rules have no provenance lock — editable in UI.
 

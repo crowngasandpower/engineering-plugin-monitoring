@@ -18,6 +18,6 @@ USER grafana
 COPY provisioning/ /etc/grafana/provisioning/
 COPY dashboards/ /opt/grafana-dashboards/
 COPY provision-alerts.py /opt/provision-alerts.py
-COPY alert-rules.yml /opt/alert-rules.yml
+COPY alert-rules/ /opt/alert-rules/
 
 ENTRYPOINT ["/entrypoint.sh"]

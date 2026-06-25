@@ -1,0 +1,245 @@
+# Alert rule group — provisioned by provision-alerts.py at container startup.
+# One file per group; provision-alerts.py globs this directory and merges all
+# `groups`. Edit the relevant group file and raise a PR. Mirror any change in
+# the other stack's alert-rules/ dir (images/grafana <-> onprem/grafana).
+groups:
+  - orgId: 1
+    name: Windows
+    folder: Platform
+    interval: 1m
+    rules:
+      - uid: windows-disk-warning
+        title: Windows Disk Space Warning
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "Drive {{ $labels.volume }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free (warning: <20%, critical: <10%)"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'windows_logical_disk_free_bytes{job="windows",volume!~"HarddiskVolume.*|_Total",type!="4"} / windows_logical_disk_size_bytes{job="windows",volume!~"HarddiskVolume.*|_Total",type!="4"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: within_range
+                    params:
+                      - 10
+                      - 20
+              refId: threshold
+
+      - uid: windows-disk-critical
+        title: Windows Disk Space Critical
+        condition: threshold
+        # for: 2m (tightened from 5m) — a runaway log/job can fill a volume fast,
+        # and a full disk fails app writes. Usage doesn't bounce around the 10% line,
+        # so a short window won't false-positive. oncall: Platform so it escalates.
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: "Platform"
+        annotations:
+          summary: "Drive {{ $labels.volume }} on {{ $labels.instance }} is {{ $values.free_pct.Value | printf \"%.1f\" }}% free — filesystem near full"
+          panelUrl: "/d/vm-disk-capacity?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'windows_logical_disk_free_bytes{job="windows",volume!~"HarddiskVolume.*|_Total",type!="4"} / windows_logical_disk_size_bytes{job="windows",volume!~"HarddiskVolume.*|_Total",type!="4"} * 100'
+              refId: A
+          - refId: free_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: free_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: free_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      - uid: windows-cpu-warning
+        title: Windows High CPU Usage
+        condition: threshold
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU on {{ $labels.instance }} at {{ $values.cpu_pct.Value | printf \"%.1f\" }}% — sustained high load"
+          panelUrl: "/d/compute-cpu?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(1 - avg by (instance)(rate(windows_cpu_time_total{job="windows",mode="idle"}[5m]))) * 100'
+              refId: A
+          - refId: cpu_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: cpu_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: cpu_pct
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 90
+              refId: threshold
+
+      - uid: windows-memory-warning
+        title: Windows High Memory Usage
+        condition: threshold
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has {{ $values.avail_pct.Value | printf \"%.1f\" }}% memory available"
+          panelUrl: "/d/compute-memory?orgId=1&viewPanel=1"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: '(windows_memory_available_bytes{job="windows"} / windows_cs_physical_memory_bytes{job="windows"} * 100) unless on(instance) node_memory_exempt'
+              refId: A
+          - refId: avail_pct
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: avail_pct
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: avail_pct
+              conditions:
+                - evaluator:
+                    type: lt
+                    params:
+                      - 10
+              refId: threshold
+
+      # Intentionally does NOT carry the node_memory_exempt exclusion — see linux-swap-in-warning above.
+      # Threshold of 10 pages/s matches the Platform Overview dashboard baseline.
+      # The AND on(instance) clause filters out hosts with >10% available memory — Windows
+      # pages proactively for reasons unrelated to genuine pressure (prefetcher, standby list
+      # reclaim, memory compression). Without this guard, healthy hosts with plenty of free
+      # memory trigger false positives.
+      - uid: windows-swap-in-warning
+        title: Windows Active Swapping
+        condition: threshold
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} is actively reading from page file at {{ $values.pagein_rate.Value | printf \"%.1f\" }} reads/s with low memory available — memory pressure"
+          panelUrl: "/d/infra-detail?orgId=1&viewPanel=30"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'rate(windows_memory_swap_page_reads_total{job="windows"}[5m]) and on(instance) (windows_memory_available_bytes{job="windows"} / windows_cs_physical_memory_bytes{job="windows"} * 100 < 10)'
+              refId: A
+          - refId: pagein_rate
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: pagein_rate
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: pagein_rate
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 10
+              refId: threshold
