@@ -1,0 +1,6 @@
+---
+# Swarm nodes mount cifs/nfs4/overlay filesystems. node_exporter's filesystem
+# collector stats every mount synchronously, and these network/overlay mounts can
+# block >10s, stalling the whole scrape (and tripping the 25s scrape timeout).
+# Excluding those fs types keeps the collector responsive. Apply to ANY new swarm node.
+node_exporter_fs_types_exclude: "^(cifs|nfs4|overlay)$"
