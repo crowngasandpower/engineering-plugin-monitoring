@@ -1427,7 +1427,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sort_by_label(idrac_sensors_fan_speed{instance=~\"$instance\"}, \"instance\", \"name\")",
+          "expr": "idrac_sensors_fan_speed{instance=~\"$instance\"}",
           "legendFormat": "{{instance}} — {{name}}",
           "instant": true,
           "refId": "A"
