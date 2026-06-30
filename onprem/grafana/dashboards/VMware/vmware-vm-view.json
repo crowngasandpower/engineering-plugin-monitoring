@@ -116,7 +116,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_cpu_corecount{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * on(vm) group_left(dns) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_cpu_corecount{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}) * on(vm) group_left(dns) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{dns}} ({{vm}})",
           "range": true,
@@ -128,7 +128,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_cpu_corecount{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} unless on(vm) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_cpu_corecount{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}) unless on(vm) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{vm}}",
           "range": true,
@@ -282,7 +282,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "scalar(\n    vmware_vm_mem_active_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}\n) / \n(\n    vmware_vm_mem_capacity{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * 1024\n)\n* 100\n * on(vm) group_left(dns) vcenter_vm_dns_name",
+          "expr": "(scalar(\n    vmware_vm_mem_active_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}\n) / \n(\n    vmware_vm_mem_capacity{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * 1024\n)\n* 100\n) * on(vm) group_left(dns) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{dns}} ({{vm}})",
           "range": true,
@@ -294,7 +294,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "scalar(\n    vmware_vm_mem_active_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}\n) / \n(\n    vmware_vm_mem_capacity{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * 1024\n)\n* 100\n unless on(vm) vcenter_vm_dns_name",
+          "expr": "(scalar(\n    vmware_vm_mem_active_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}\n) / \n(\n    vmware_vm_mem_capacity{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * 1024\n)\n* 100\n) unless on(vm) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{vm}}",
           "range": true,
@@ -366,7 +366,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_cpu_usagemhz_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * 1000 * 1000 * on(vm) group_left(dns) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_cpu_usagemhz_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * 1000 * 1000) * on(vm) group_left(dns) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{dns}} ({{vm}})",
           "range": true,
@@ -378,7 +378,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_cpu_usagemhz_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * 1000 * 1000 unless on(vm) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_cpu_usagemhz_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * 1000 * 1000) unless on(vm) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{vm}}",
           "range": true,
@@ -457,7 +457,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_cpu_demand_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} / \nvmware_vm_cpu_entitlement_latest{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * on(vm) group_left(dns) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_cpu_demand_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} / \nvmware_vm_cpu_entitlement_latest{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}) * on(vm) group_left(dns) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{dns}} ({{vm}})",
           "range": true,
@@ -469,7 +469,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_cpu_demand_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} / \nvmware_vm_cpu_entitlement_latest{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} unless on(vm) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_cpu_demand_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} / \nvmware_vm_cpu_entitlement_latest{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}) unless on(vm) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{vm}}",
           "range": true,
@@ -550,7 +550,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_cpu_latency_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} / 100  * on(vm) group_left(dns) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_cpu_latency_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} / 100 ) * on(vm) group_left(dns) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{dns}} ({{vm}})",
           "range": true,
@@ -562,7 +562,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_cpu_latency_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} / 100  unless on(vm) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_cpu_latency_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} / 100 ) unless on(vm) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{vm}}",
           "range": true,
@@ -805,7 +805,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_mem_capacity{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * on(vm) group_left(dns) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_mem_capacity{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}) * on(vm) group_left(dns) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{dns}} ({{vm}})",
           "range": true,
@@ -817,7 +817,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_mem_capacity{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} unless on(vm) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_mem_capacity{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}) unless on(vm) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{vm}}",
           "range": true,
@@ -889,7 +889,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_mem_active_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} * on(vm) group_left(dns) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_mem_active_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}) * on(vm) group_left(dns) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{dns}} ({{vm}})",
           "range": true,
@@ -901,7 +901,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "vmware_vm_mem_active_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"} unless on(vm) vcenter_vm_dns_name",
+          "expr": "(vmware_vm_mem_active_average{vcenter=~\"$vcenter\", vmmo=~\"$vmmo\"}) unless on(vm) vcenter_vm_dns_name",
           "interval": "20s",
           "legendFormat": "{{vm}}",
           "range": true,

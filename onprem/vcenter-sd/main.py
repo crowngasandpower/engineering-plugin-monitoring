@@ -140,6 +140,11 @@ def poll():
             Disconnect(si)
 
 
+def _escape_label(v):
+    """Escape a value for the Prometheus text exposition format (backslash, quote, newline)."""
+    return v.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+
+
 def _push_metrics(no_ip_vms, powered_off_vms, backup_times, host_datastores, dns_names):
     lines = [
         '# HELP vcenter_vm_no_tools_ip VM in monitored folder is powered on but has no VMware Tools IP\n',
@@ -170,8 +175,8 @@ def _push_metrics(no_ip_vms, powered_off_vms, backup_times, host_datastores, dns
         '# TYPE vcenter_vm_dns_name gauge\n',
     ]
     for name, dns in dns_names.items():
-        safe = name.replace('"', '\\"')
-        safe_dns = dns.replace('"', '\\"')
+        safe = _escape_label(name)
+        safe_dns = _escape_label(dns)
         lines.append(f'vcenter_vm_dns_name{{vm="{safe}", dns="{safe_dns}"}} 1\n')
 
     vcenter_label = f'{VCENTER_HOST}:443'
