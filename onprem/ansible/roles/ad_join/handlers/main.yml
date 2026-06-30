@@ -1,4 +1,9 @@
 ---
+- name: Restart systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+
 - name: Restart sssd
   ansible.builtin.systemd:
     name: sssd

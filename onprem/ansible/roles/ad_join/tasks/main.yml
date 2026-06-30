@@ -23,6 +23,26 @@
     state: present
   environment: { DEBIAN_FRONTEND: noninteractive }
 
+- name: Ensure systemd-resolved drop-in dir exists
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Route AD DNS lookups to the DCs (prereq for realm discovery + resolution)
+  ansible.builtin.template:
+    src: resolved-crown-ad.conf.j2
+    dest: /etc/systemd/resolved.conf.d/10-crown-ad.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart systemd-resolved
+
+- name: Apply resolver change before attempting the join
+  ansible.builtin.meta: flush_handlers
+
 - name: Check current realm membership
   ansible.builtin.command: realm list
   register: ad_realm_list

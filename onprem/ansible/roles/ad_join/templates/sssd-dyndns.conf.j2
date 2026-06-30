@@ -1,9 +1,15 @@
 # {{ ansible_managed }}
 # Additive SSSD drop-in (loaded from /etc/sssd/conf.d/) — does NOT modify the
-# sssd.conf that `realm join` generated. Enables dynamic DNS registration so the
-# host registers/refreshes its own A (and PTR) record in AD DNS via GSS-TSIG.
+# sssd.conf that `realm join` generated. Makes the host register/refresh its own
+# A (and PTR) record in AD DNS via GSS-TSIG.
 [domain/{{ ad_domain }}]
 dyndns_update = true
 dyndns_update_ptr = true
 dyndns_refresh_interval = 43200
 dyndns_auth = gss-tsig
+# Register the IP of the primary interface (avoids docker0/secondary IPs).
+dyndns_iface = {{ ansible_default_ipv4.interface }}
+# CRITICAL: these hosts have a short hostname with no domain, so SSSD would build
+# a bare "{{ ansible_hostname }}." name (not in any zone) and the DC refuses it.
+# Pin the FQDN so the update lands in the crowngp.local zone. Hostname is unchanged.
+ad_hostname = {{ ansible_hostname }}.{{ ad_domain }}

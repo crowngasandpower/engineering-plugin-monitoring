@@ -2,6 +2,13 @@
 ad_realm: CROWNGP.LOCAL          # Kerberos realm (uppercase)
 ad_domain: crowngp.local         # DNS domain / sssd domain section (lowercase)
 
+# AD domain controllers (DNS). Non-domain hosts have these as resolvers but lack a
+# routing domain, so systemd-resolved doesn't send crowngp.local lookups to them
+# and `realm` can't discover the domain. We pin them + a routing domain.
+ad_dns_servers:
+  - 192.168.164.223   # CGPDC1
+  - 192.168.164.197   # CGPDC2
+
 # Domain groups permitted to log in (additive allow — realm default stays deny-all
 # for every other domain user; local users are unaffected, they don't use this gate).
 ad_permit_groups:
