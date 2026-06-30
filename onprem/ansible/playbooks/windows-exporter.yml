@@ -1,0 +1,16 @@
+---
+# Install / manage windows_exporter on Windows hosts over WinRM.
+#
+#   WINRM_PASS must be set in the environment (NTLM password for ansible_user).
+#   OPENSSL_CONF must point at a legacy-provider config (NTLM needs MD4, which
+#   OpenSSL 3 disables by default). See the ansible README.
+#
+#   ansible-playbook playbooks/windows-exporter.yml --limit windows_vh
+#   ansible-playbook playbooks/windows-exporter.yml --limit windows_test
+#
+- name: Install and configure windows_exporter
+  hosts: windows
+  gather_facts: true
+  serial: 1          # one host at a time — WinRM/NTLM and to keep blast radius low
+  roles:
+    - windows_exporter

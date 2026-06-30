@@ -1,0 +1,16 @@
+---
+# WinRM connection settings for all Windows hosts.
+ansible_connection: winrm
+ansible_port: 5985
+ansible_winrm_scheme: http
+ansible_winrm_transport: ntlm
+
+# Domain admin account. The password is NEVER committed — it is pulled from the
+# WINRM_PASS environment variable at runtime (export it from a local file, e.g.
+# `export WINRM_PASS="$(cat ~/.winrm_jsa)"`). For a permanent setup move this to
+# Ansible Vault.
+ansible_user: 'crowngp\jsa'
+ansible_password: "{{ lookup('env', 'WINRM_PASS') }}"
+
+# WinRM over HTTP still wraps the payload in NTLM message encryption.
+ansible_winrm_message_encryption: auto

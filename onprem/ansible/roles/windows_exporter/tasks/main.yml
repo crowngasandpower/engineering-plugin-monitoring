@@ -1,0 +1,54 @@
+---
+# Download the MSI once on the control node, then push to each host — avoids
+# assuming every Windows host has outbound internet to GitHub.
+- name: Download windows_exporter MSI to control node
+  ansible.builtin.get_url:
+    url: "{{ windows_exporter_msi_url }}"
+    dest: "/tmp/{{ windows_exporter_msi }}"
+    mode: "0644"
+  delegate_to: localhost
+  run_once: true
+
+- name: Copy MSI to host
+  ansible.windows.win_copy:
+    src: "/tmp/{{ windows_exporter_msi }}"
+    dest: 'C:\Windows\Temp\{{ windows_exporter_msi }}'
+
+- name: Install windows_exporter
+  ansible.windows.win_package:
+    path: 'C:\Windows\Temp\{{ windows_exporter_msi }}'
+    arguments: "ENABLED_COLLECTORS={{ windows_exporter_collectors }} LISTEN_PORT={{ windows_exporter_port }}"
+    state: present
+
+- name: Ensure service is running and set to auto-start
+  ansible.windows.win_service:
+    name: windows_exporter
+    state: started
+    start_mode: auto
+
+- name: Allow inbound scrape port through the firewall
+  community.windows.win_firewall_rule:
+    name: "Windows Exporter (Prometheus)"
+    localport: "{{ windows_exporter_port }}"
+    direction: in
+    protocol: tcp
+    action: allow
+    remoteip: "{{ windows_exporter_allowed_subnets | join(',') }}"
+    profiles: [domain, private, public]
+    enabled: true
+    state: present
+
+- name: Verify metrics endpoint responds
+  ansible.windows.win_uri:
+    url: "http://localhost:{{ windows_exporter_port }}/metrics"
+    method: GET
+    status_code: 200
+  register: windows_exporter_probe
+  retries: 5
+  delay: 3
+  until: windows_exporter_probe.status_code == 200
+
+- name: Remove MSI from host temp
+  ansible.windows.win_file:
+    path: 'C:\Windows\Temp\{{ windows_exporter_msi }}'
+    state: absent
