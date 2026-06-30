@@ -1,0 +1,15 @@
+---
+ad_realm: CROWNGP.LOCAL          # Kerberos realm (uppercase)
+ad_domain: crowngp.local         # DNS domain / sssd domain section (lowercase)
+
+# Domain groups permitted to log in (additive allow — realm default stays deny-all
+# for every other domain user; local users are unaffected, they don't use this gate).
+ad_permit_groups:
+  - "Domain Admins@crowngp.local"
+
+# Domain group granted sudo via a NEW /etc/sudoers.d drop-in (existing sudo untouched).
+# NOTE: must match exactly what `id` reports on a joined host — verify on the pilot.
+ad_sudo_group: "Domain Admins@crowngp.local"
+
+# ad_join_user / ad_join_password are supplied at runtime (extra-vars or env),
+# NEVER committed. e.g. -e ad_join_user=jsa -e ad_join_password="$(cat ~/.ad_join_pw)"

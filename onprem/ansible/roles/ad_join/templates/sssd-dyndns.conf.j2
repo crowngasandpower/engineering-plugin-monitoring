@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+# Additive SSSD drop-in (loaded from /etc/sssd/conf.d/) — does NOT modify the
+# sssd.conf that `realm join` generated. Enables dynamic DNS registration so the
+# host registers/refreshes its own A (and PTR) record in AD DNS via GSS-TSIG.
+[domain/{{ ad_domain }}]
+dyndns_update = true
+dyndns_update_ptr = true
+dyndns_refresh_interval = 43200
+dyndns_auth = gss-tsig

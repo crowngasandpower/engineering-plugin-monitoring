@@ -1,0 +1,78 @@
+---
+- name: Ensure time sync (Kerberos rejects >5 min skew)
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+    update_cache: true
+  environment: { DEBIAN_FRONTEND: noninteractive }
+
+- name: Install realmd / SSSD stack
+  ansible.builtin.apt:
+    name:
+      - realmd
+      - adcli
+      - sssd
+      - sssd-tools
+      - libnss-sss
+      - libpam-sss
+      - krb5-user
+      - samba-common-bin
+      - packagekit
+      - oddjob
+      - oddjob-mkhomedir
+    state: present
+  environment: { DEBIAN_FRONTEND: noninteractive }
+
+- name: Check current realm membership
+  ansible.builtin.command: realm list
+  register: ad_realm_list
+  changed_when: false
+  failed_when: false
+
+# realm join appends pam_sss via pam-auth-update (additive — pam_unix stays first,
+# local users unaffected) and writes /etc/sssd/sssd.conf. It does NOT permit any
+# domain logins by default (deny-all until `realm permit`).
+- name: Join the AD domain
+  ansible.builtin.shell:
+    cmd: "realm join --user={{ ad_join_user }} {{ ad_realm }}"
+    stdin: "{{ ad_join_password }}"
+  when: ad_domain not in (ad_realm_list.stdout | default(''))
+  no_log: true
+  notify: Restart sssd
+
+- name: Enable dynamic DNS registration (additive conf.d drop-in)
+  ansible.builtin.template:
+    src: sssd-dyndns.conf.j2
+    dest: /etc/sssd/conf.d/10-crown-dyndns.conf
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart sssd
+
+- name: Permit domain-admin logins (additive allow; everyone else stays denied)
+  ansible.builtin.command: "realm permit -g '{{ item }}'"
+  loop: "{{ ad_permit_groups }}"
+  register: ad_permit
+  changed_when: "'already permitted' not in (ad_permit.stderr | default('') ~ ad_permit.stdout | default(''))"
+
+# NEW sudoers drop-in only — existing /etc/sudoers and other drop-ins are untouched.
+- name: Grant sudo to domain-admin group (new drop-in, validated)
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/10-domain-admins
+    content: "%{{ ad_sudo_group | replace(' ', '\\\\ ') }} ALL=(ALL:ALL) ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Force sssd to apply config now
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify domain membership
+  ansible.builtin.command: realm list
+  register: ad_realm_verify
+  changed_when: false
+
+- name: Show realm + whether dyndns registered (manual DNS check still advised)
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} joined: {{ 'sssd' in ad_realm_verify.stdout }} — verify DNS A record on a DC after the refresh interval."
