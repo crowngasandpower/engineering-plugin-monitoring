@@ -39,6 +39,7 @@
       ansible.builtin.get_url:
         url: "{{ node_exporter_download_base }}/v{{ node_exporter_version }}/{{ node_exporter_release }}.tar.gz"
         dest: "{{ node_exporter_tmp.path }}/{{ node_exporter_release }}.tar.gz"
+        checksum: "sha256:{{ node_exporter_checksums[node_exporter_arch] }}"
         mode: "0644"
 
     - name: Unpack tarball
@@ -83,7 +84,9 @@
 
 - name: Verify metrics endpoint responds
   ansible.builtin.uri:
-    url: "http://127.0.0.1{{ node_exporter_listen_address }}/metrics"
+    # Use only the port from listen_address so a full bind address
+    # (e.g. 0.0.0.0:9100) probes 127.0.0.1, not the literal bind host.
+    url: "http://127.0.0.1:{{ node_exporter_listen_address | regex_replace('^.*:', '') }}/metrics"
     method: GET
     status_code: 200
   register: node_exporter_probe

@@ -9,6 +9,14 @@ node_exporter_listen_address: ":9100"
 # GitHub release download. Architecture is resolved in tasks from ansible_architecture.
 node_exporter_download_base: "https://github.com/prometheus/node_exporter/releases/download"
 
+# SHA-256 of each release tarball, keyed by resolved arch. Pinned alongside
+# node_exporter_version — bump both together (values from the official release
+# sha256sums.txt). The download task verifies the tarball against these.
+node_exporter_checksums:
+  amd64: "6809dd0b3ec45fd6e992c19071d6b5253aed3ead7bf0686885a51d85c6643c66"
+  arm64: "627382b9723c642411c33f48861134ebe893e70a63bcc8b3fc0619cd0bfac4be"
+  armv7: "0fb88e682d055a70a8597504874b0a76d1df6a8a511f3d7cb1d48c7db84a2d2a"
+
 # Collector flags. The systemd collector matches the shell script's behaviour.
 # fs-types-exclude is empty by default and overridden for swarm nodes
 # (group_vars/swarm.yml) where cifs/nfs4/overlay mounts hang the filesystem collector.
