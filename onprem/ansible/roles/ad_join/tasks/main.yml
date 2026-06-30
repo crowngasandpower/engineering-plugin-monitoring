@@ -57,9 +57,9 @@
 
 # NEW sudoers drop-in only — existing /etc/sudoers and other drop-ins are untouched.
 - name: Grant sudo to domain-admin group (new drop-in, validated)
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: sudoers-domain-admins.j2
     dest: /etc/sudoers.d/10-domain-admins
-    content: "%{{ ad_sudo_group | replace(' ', '\\\\ ') }} ALL=(ALL:ALL) ALL\n"
     owner: root
     group: root
     mode: "0440"
