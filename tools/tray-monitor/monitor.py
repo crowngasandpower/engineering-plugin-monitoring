@@ -214,7 +214,12 @@ def _fetch(profile: dict | None = None) -> tuple[list, list] | None:
     try:
         kwargs: dict = {
             "params":  {"active": "true", "inhibited": "false"},
-            "timeout": 10,
+            # (connect, read): fast connect-failure detection, but a generous
+            # read budget so an occasional slow AWS Managed Grafana response
+            # doesn't trip a false "unreachable". The poll loop is single-
+            # threaded, so a slow read just delays the next cycle — it cannot
+            # stack or overlap, even when it exceeds the poll interval.
+            "timeout": (5, 20),
         }
         if s.get("auth_type") == "token":
             kwargs["headers"] = {"Authorization": f"Bearer {s['api_token']}"}
@@ -1917,6 +1922,13 @@ def _poll(icon: pystray.Icon) -> None:
                                 "(see preceding error for cause)",
                                 profile.get("name", "?"))
             reachable_prev[i] = now_reachable
+
+            # On a failed fetch the alert list above was reset to empty. Skip the
+            # toast diff and leave previous_per[i] untouched — otherwise the empty
+            # set becomes the new baseline and every still-firing alert re-toasts
+            # on the next successful poll (the "flood after every timeout" bug).
+            if result is None:
+                continue
 
             # Toasts for newly firing alerts — skip on first sync to avoid
             # flooding with everything that was already alerting at startup
