@@ -3407,52 +3407,6 @@ groups:
                       - 1
               refId: threshold
 
-      - uid: network-site-ping-down
-        title: Site Ping Failing
-        condition: threshold
-        for: 0s
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-          oncall: Platform
-        annotations:
-          summary: "{{ $labels.source }} cannot reach {{ $values.down_count.Value | printf \"%.0f\" }} ping target(s) — remote site connectivity may be lost"
-          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: PBFA97CFB590B2093
-            model:
-              expr: 'count by(source) (site_ping_success == 0)'
-              refId: A
-          - refId: down_count
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: reduce
-              expression: A
-              reducer: last
-              refId: down_count
-          - refId: threshold
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              expression: down_count
-              conditions:
-                - evaluator:
-                    type: gt
-                    params:
-                      - 0
-              refId: threshold
-
       - uid: network-switch-down
         title: Switch Interface Down
         condition: threshold
@@ -3685,6 +3639,118 @@ groups:
                     type: gt
                     params:
                       - 100000000
+              refId: threshold
+
+  - orgId: 1
+    name: Network Connectivity
+    folder: Networking
+    interval: 30s
+    rules:
+      - uid: network-site-ping-down
+        title: Site Ping Failing
+        condition: threshold
+        # Probes run every 30s. max_over_time(site_ping_success[1m]) == 0 means no
+        # successful probe in the last minute (2 missed probes) before we fire.
+        # The `== bool 0` keeps every target series present with a real 0 while
+        # healthy, so the reduce `last` always reflects the current state and the
+        # alert clears at the next 30s eval as soon as a probe succeeds — rather
+        # than latching for the length of the lookback window. Own group at 30s
+        # eval so resolve tracks the probe cadence without speeding up the other
+        # Network rules.
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "{{ $labels.source }} cannot reach {{ $values.down_count.Value | printf \"%.0f\" }} ping target(s) — remote site connectivity may be lost"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 120
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'sum by(source) (max_over_time(site_ping_success[1m]) == bool 0)'
+              refId: A
+          - refId: down_count
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: down_count
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: down_count
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 0
+              refId: threshold
+
+      - uid: network-site-ping-stale
+        title: Site Not Reporting Pings
+        condition: threshold
+        # Catches a site that has stopped reporting entirely — dead firewall, WAN
+        # down, or crashed script. site_ping_success can't cover this: results go
+        # via Pushgateway, which retains the last pushed value when pushes stop, so
+        # the gauge never flips. push_time_seconds is Pushgateway's stamp of the
+        # last push; probes run every 30s, so >120s without one (4 missed cycles)
+        # means the site has gone dark. Complements UniFi Device Offline, which
+        # depends on the controller still being able to see the gateway.
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          oncall: Platform
+        annotations:
+          summary: "{{ $labels.source }} has not reported ping results for {{ $values.age.Value | printf \"%.0f\" }}s — site firewall/router may be down (ping monitoring blind for this site)"
+          panelUrl: "/d/crown-network-connectivity?orgId=1&viewPanel=5"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              expr: 'time() - max by(source) (push_time_seconds{job="site_ping"})'
+              refId: A
+          - refId: age
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: age
+          - refId: threshold
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: age
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 120
               refId: threshold
 
   - orgId: 1
