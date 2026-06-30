@@ -112,6 +112,28 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Free %" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-background" }
+              },
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": 0 },
+                    { "color": "orange", "value": 10 },
+                    { "color": "green", "value": 20 }
+                  ]
+                }
+              }
+            ]
           }
         ]
       },
@@ -139,6 +161,22 @@
           "instant": true,
           "refId": "C",
           "expr": "node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"}\nor label_replace(\n  windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"},\n  \"mountpoint\", \"$1\", \"volume\", \"(.+)\"\n)"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "format": "table",
+          "instant": true,
+          "refId": "D",
+          "expr": "node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} * 1\nor label_replace(\n  windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} * 1,\n  \"mountpoint\", \"$1\", \"volume\", \"(.+)\"\n)"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "format": "table",
+          "instant": true,
+          "refId": "E",
+          "expr": "(node_filesystem_avail_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"} / node_filesystem_size_bytes{job=\"node\", fstype!~\"tmpfs|overlay|devtmpfs|nfs.*|cifs|smbfs|fuse.*|squashfs|autofs|davfs|glusterfs|cephfs|lustre|rbd\", device!~\".*:.*|//.*\"}) * 100\nor label_replace(\n  (windows_logical_disk_free_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"} / windows_logical_disk_size_bytes{job=\"windows\", volume!~\"HarddiskVolume.*|_Total\", type!=\"4\"}) * 100,\n  \"mountpoint\", \"$1\", \"volume\", \"(.+)\"\n)"
         }
       ],
       "transformations": [
@@ -147,7 +185,7 @@
           "id": "filterFieldsByName",
           "options": {
             "include": {
-              "names": ["host", "mountpoint", "Value #A", "Value #B", "Value #C"]
+              "names": ["host", "mountpoint", "Value #A", "Value #B", "Value #C", "Value #D", "Value #E"]
             }
           }
         },
@@ -159,14 +197,18 @@
               "mountpoint": 1,
               "Value #C": 2,
               "Value #B": 3,
-              "Value #A": 4
+              "Value #A": 4,
+              "Value #D": 5,
+              "Value #E": 6
             },
             "renameByName": {
               "host": "Host",
               "mountpoint": "Volume",
               "Value #A": "Used %",
               "Value #B": "Used",
-              "Value #C": "Total"
+              "Value #C": "Total",
+              "Value #D": "Free",
+              "Value #E": "Free %"
             }
           }
         },
