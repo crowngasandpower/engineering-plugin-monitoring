@@ -91,12 +91,18 @@ def poll():
 
         # Pass 2: service-discovery targets for all powered-on VMs
         linux_targets, windows_targets, no_ip = [], [], []
+        dns_names = {}
         for vm in collect_all_vms(content):
                 if vm.runtime.powerState != 'poweredOn':
                     continue
                 family = vm.guest and vm.guest.guestFamily
                 ip = vm.guest and vm.guest.ipAddress
                 hostname = vm.guest and vm.guest.hostName
+                # Additive display-only mapping: vCenter display name (vm.name) → short
+                # guest DNS hostname. Used purely for dashboard legends; does not affect
+                # the SD target list or any scraped metric.
+                if hostname and SAFE_HOSTNAME_RE.match(hostname):
+                    dns_names[vm.name] = hostname.split('.')[0]
                 if family == 'windowsGuest':
                     port = WINDOWS_EXPORTER_PORT
                     target_list = windows_targets
@@ -124,8 +130,8 @@ def poll():
 
         host_datastores = collect_host_datastores(content)
 
-        print(f'SD updated: {len(linux_targets)} Linux, {len(windows_targets)} Windows, {len(no_ip)} no IP, {len(powered_off)} powered off, {len(backup_times)} backup times, {len(host_datastores)} host-datastore pairs')
-        _push_metrics(no_ip, powered_off, backup_times, host_datastores)
+        print(f'SD updated: {len(linux_targets)} Linux, {len(windows_targets)} Windows, {len(no_ip)} no IP, {len(powered_off)} powered off, {len(backup_times)} backup times, {len(host_datastores)} host-datastore pairs, {len(dns_names)} dns names')
+        _push_metrics(no_ip, powered_off, backup_times, host_datastores, dns_names)
 
     except Exception as e:
         print(f'Poll error: {e}')
@@ -134,7 +140,7 @@ def poll():
             Disconnect(si)
 
 
-def _push_metrics(no_ip_vms, powered_off_vms, backup_times, host_datastores):
+def _push_metrics(no_ip_vms, powered_off_vms, backup_times, host_datastores, dns_names):
     lines = [
         '# HELP vcenter_vm_no_tools_ip VM in monitored folder is powered on but has no VMware Tools IP\n',
         '# TYPE vcenter_vm_no_tools_ip gauge\n',
@@ -158,6 +164,15 @@ def _push_metrics(no_ip_vms, powered_off_vms, backup_times, host_datastores):
     for name, ts in backup_times.items():
         safe = name.replace('"', '\\"')
         lines.append(f'vcenter_vm_last_backup_timestamp{{vm_name="{safe}"}} {ts}\n')
+
+    lines += [
+        '# HELP vcenter_vm_dns_name Display-only join: vCenter VM display name (vm) → short guest DNS hostname (dns)\n',
+        '# TYPE vcenter_vm_dns_name gauge\n',
+    ]
+    for name, dns in dns_names.items():
+        safe = name.replace('"', '\\"')
+        safe_dns = dns.replace('"', '\\"')
+        lines.append(f'vcenter_vm_dns_name{{vm="{safe}", dns="{safe_dns}"}} 1\n')
 
     vcenter_label = f'{VCENTER_HOST}:443'
     lines += [
