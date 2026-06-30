@@ -953,6 +953,11 @@ class AlertPanel:
     RED      = "#f44336"
     PURPLE   = "#9c27b0"
     AMBER    = "#ffa726"
+    # Purple accent for the scrollbar / "more below" hint. Restored after the
+    # "scroll affordance" revert (59a7178) removed the attribute but left the
+    # _build code referencing self.ACCENT — which raised AttributeError on
+    # every panel open, so the window never appeared.
+    ACCENT   = "#7c6af7"
 
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
