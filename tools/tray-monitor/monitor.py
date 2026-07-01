@@ -341,6 +341,8 @@ def _create_maintenance_silence(hours: int,
                                 profile: dict | None = None) -> tuple[bool, str]:
     """Silence all oncall=Platform alerts for the given number of hours."""
     s   = profile or settings.get()
+    if s.get("source_type") == "pagerduty":
+        return _create_pd_maintenance_window(hours, s)
     now = datetime.now(timezone.utc)
     payload = {
         "matchers": [{"name": "oncall", "value": "Platform",
@@ -367,6 +369,8 @@ def _end_maintenance_silence(silence_id: str,
                              profile: dict | None = None) -> tuple[bool, str]:
     """Delete the maintenance silence by ID."""
     s   = profile or settings.get()
+    if s.get("source_type") == "pagerduty":
+        return _end_pd_maintenance_window(silence_id, s)
     url = (f"{s['grafana_url'].rstrip('/')}"
            f"/api/alertmanager/grafana/api/v2/silence/{silence_id}")
     try:
@@ -468,7 +472,34 @@ def _normalise_pd_incident(inc: dict, grafana_url: str = "") -> dict:
 _pd_key_warned: set = set()   # profiles already warned about a malformed PD key (warn once, not every poll)
 
 
-def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
+def _fetch_pd_maintenance(profile: dict) -> dict | None:
+    """Return the active PagerDuty maintenance window for this service, normalised
+    to {"id", "endsAt"} so it matches the Grafana-silence shape the UI expects."""
+    service_id = profile.get("pd_service_id", "").strip()
+    if not service_id:
+        return None
+    try:
+        r = requests.get(
+            "https://api.pagerduty.com/maintenance_windows",
+            headers={
+                "Authorization": f"Token token={profile.get('pd_api_key', '')}",
+                "Accept": "application/vnd.pagerduty+json;version=2",
+            },
+            params={"filter": "open", "service_ids[]": [service_id], "limit": 100},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return None
+        for mw in r.json().get("maintenance_windows", []):
+            if not (mw.get("description") or "").startswith("[MAINTENANCE]"):
+                continue
+            return {"id": mw.get("id", ""), "endsAt": mw.get("end_time", "")}
+    except Exception:
+        return None
+    return None
+
+
+def _fetch_pd(profile: dict) -> tuple[list, list, dict | None] | None:
     name    = profile.get("name", "?")
     api_key = profile.get("pd_api_key", "").strip()
     if not api_key:
@@ -509,7 +540,7 @@ def _fetch_pd(profile: dict) -> tuple[list, list, None] | None:
                 silenced.append(alert)
             else:
                 active.append(alert)
-        return active, silenced, None
+        return active, silenced, _fetch_pd_maintenance(profile)
     except Exception as exc:
         log.error("PagerDuty '%s' fetch failed — %s: %s",
                   name, type(exc).__name__, exc)
@@ -555,6 +586,59 @@ def _add_pd_note(alert: dict, note_text: str, profile: dict) -> tuple[bool, str]
             timeout=10,
         )
         return (True, "Note added") if r.status_code in (200, 201) else (False, f"HTTP {r.status_code}")
+    except Exception as e:
+        return False, str(e)
+
+
+def _create_pd_maintenance_window(hours: int, profile: dict) -> tuple[bool, str]:
+    """Open a PagerDuty maintenance window over the profile's service."""
+    service_id = profile.get("pd_service_id", "").strip()
+    if not profile.get("pd_api_key", "").strip():
+        return False, "Missing PagerDuty API key"
+    if not service_id:
+        return False, "No PagerDuty service ID set on this profile"
+    if not profile.get("pd_user_email", "").strip():
+        # PagerDuty requires a valid From header (a user's email) to create one.
+        return False, "No PagerDuty user email set on this profile"
+    now = datetime.now(timezone.utc)
+    payload = {
+        "maintenance_window": {
+            "type":        "maintenance_window",
+            "start_time":  now.isoformat(),
+            "end_time":    (now + timedelta(hours=hours)).isoformat(),
+            "description": f"[MAINTENANCE] Crown maintenance window ({hours}h)",
+            "services":    [{"id": service_id, "type": "service_reference"}],
+        }
+    }
+    try:
+        r = requests.post(
+            "https://api.pagerduty.com/maintenance_windows",
+            headers=_pd_headers(profile),
+            json=payload,
+            timeout=10,
+        )
+        return (True, "Maintenance window created") \
+               if r.status_code in (200, 201) \
+               else (False, f"HTTP {r.status_code}\n{r.text[:160]}")
+    except Exception as e:
+        return False, str(e)
+
+
+def _end_pd_maintenance_window(mw_id: str, profile: dict) -> tuple[bool, str]:
+    """Delete (close) a PagerDuty maintenance window by ID."""
+    if not mw_id or not mw_id.strip():
+        # A blank ID would hit the /maintenance_windows/ list endpoint, not a
+        # delete — fail loudly instead of issuing a misleading request.
+        return False, "No maintenance window ID provided"
+    try:
+        r = requests.delete(
+            f"https://api.pagerduty.com/maintenance_windows/{mw_id}",
+            headers=_pd_headers(profile),
+            timeout=10,
+        )
+        return (True, "Maintenance ended") \
+               if r.status_code in (200, 204) \
+               else (False, f"HTTP {r.status_code}\n{r.text[:160]}")
     except Exception as e:
         return False, str(e)
 
