@@ -626,6 +626,10 @@ def _create_pd_maintenance_window(hours: int, profile: dict) -> tuple[bool, str]
 
 def _end_pd_maintenance_window(mw_id: str, profile: dict) -> tuple[bool, str]:
     """Delete (close) a PagerDuty maintenance window by ID."""
+    if not mw_id or not mw_id.strip():
+        # A blank ID would hit the /maintenance_windows/ list endpoint, not a
+        # delete — fail loudly instead of issuing a misleading request.
+        return False, "No maintenance window ID provided"
     try:
         r = requests.delete(
             f"https://api.pagerduty.com/maintenance_windows/{mw_id}",
