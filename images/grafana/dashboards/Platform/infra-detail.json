@@ -654,6 +654,11 @@
                     "title": "View VM",
                     "url": "/d/VMwExVmV?var-vm=${__data.fields[\"VM Name\"]}",
                     "targetBlank": false
+                  },
+                  {
+                    "title": "🔕 Suppress powered-off alert (this VM)",
+                    "url": "http://poc-containers/exemptions/suppress/add?category=powered_off&identifier=${__data.fields[\"VM Name\"]}&reason=Suppressed%20from%20Infrastructure%20Detail%20dashboard",
+                    "targetBlank": true
                   }
                 ]
               },
@@ -881,6 +886,28 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "Instance"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "🔕 Exempt this host from the offline alert",
+                    "url": "http://poc-containers/exemptions/exempt/add?host=${__data.fields.Instance}&reason=Exempted%20from%20Infrastructure%20Detail%20dashboard",
+                    "targetBlank": true
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 220
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "Exporter"
             },
             "properties": [
@@ -930,7 +957,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "up{job=~\"node|windows\"} == 0 and on(instance) node_windows:up_recent_7d == 1",
+          "expr": "up{job=~\"node|windows\"} == 0 and on(instance) node_windows:up_recent_7d == 1 unless on(instance) exporter_exempt",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -944,6 +971,7 @@
             "include": {
               "names": [
                 "host",
+                "instance",
                 "job",
                 "Value"
               ]
@@ -955,8 +983,15 @@
           "options": {
             "renameByName": {
               "host": "Host",
+              "instance": "Instance",
               "job": "Exporter",
               "Value": "Status"
+            },
+            "indexByName": {
+              "Host": 0,
+              "Instance": 1,
+              "Exporter": 2,
+              "Status": 3
             }
           }
         },

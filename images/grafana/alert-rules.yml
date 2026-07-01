@@ -2906,7 +2906,7 @@ groups:
               to: 0
             datasourceUid: PBFA97CFB590B2093
             model:
-              expr: 'up{job=~"node|windows"} == 0 and on(instance) node_windows:up_recent_7d == 1'
+              expr: 'up{job=~"node|windows"} == 0 and on(instance) node_windows:up_recent_7d == 1 unless on(instance) exporter_exempt'
               refId: A
           - refId: val
             relativeTimeRange:

@@ -23,7 +23,7 @@
       "id": 1,
       "type": "table",
       "title": "Memory > 90% — Active Now",
-      "description": "Hosts currently above 90% memory utilisation. Refreshes every 30s.",
+      "description": "Hosts currently above 90% memory utilisation. Refreshes every 30s. Click a host to suppress its high-memory alert — the action uses the exact instance label, so no copy-paste is needed.",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "gridPos": { "h": 12, "w": 12, "x": 0, "y": 0 },
       "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Memory %" }] },
@@ -37,7 +37,7 @@
           "noValue": "No hosts currently above 90% memory"
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }, { "title": "🔕 Suppress high-memory alert (this host)", "url": "http://poc-containers/exemptions/suppress/add?category=high_memory_host&identifier=${__data.fields.Instance}&reason=Suppressed%20from%20Memory%20Detail%20dashboard", "targetBlank": true }] }, { "id": "custom.width", "value": 240 }] },
           { "matcher": { "id": "byName", "options": "Memory %" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
         ]
       },
@@ -47,8 +47,8 @@
       ],
       "transformations": [
         { "id": "merge", "options": {} },
-        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
-        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Memory %" } } },
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "instance", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "instance": "Instance", "Value": "Memory %" }, "indexByName": { "Host": 0, "Instance": 1, "Memory %": 2 } } },
         { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Memory %" }] } }
       ]
     },
@@ -56,7 +56,7 @@
       "id": 2,
       "type": "table",
       "title": "Memory > 90% — Triggered Today",
-      "description": "Hosts that exceeded 90% memory at any point since midnight. Shows the peak value reached.",
+      "description": "Hosts that exceeded 90% memory at any point since midnight. Shows the peak value reached. Click a host to suppress its high-memory alert — the action uses the exact instance label, so no copy-paste is needed.",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "gridPos": { "h": 12, "w": 12, "x": 12, "y": 0 },
       "timeFrom": "now/d",
@@ -71,7 +71,7 @@
           "noValue": "No hosts exceeded 90% memory today"
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View VM", "url": "/d/VMwExVmV?var-vm=${__data.fields.Host}", "targetBlank": false }, { "title": "🔕 Suppress high-memory alert (this host)", "url": "http://poc-containers/exemptions/suppress/add?category=high_memory_host&identifier=${__data.fields.Instance}&reason=Suppressed%20from%20Memory%20Detail%20dashboard", "targetBlank": true }] }, { "id": "custom.width", "value": 240 }] },
           { "matcher": { "id": "byName", "options": "Peak Memory %" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
         ]
       },
@@ -81,8 +81,8 @@
       ],
       "transformations": [
         { "id": "merge", "options": {} },
-        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
-        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Peak Memory %" } } },
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "instance", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "instance": "Instance", "Value": "Peak Memory %" }, "indexByName": { "Host": 0, "Instance": 1, "Peak Memory %": 2 } } },
         { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Peak Memory %" }] } }
       ]
     }
