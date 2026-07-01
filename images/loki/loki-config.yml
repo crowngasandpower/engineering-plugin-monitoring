@@ -18,7 +18,17 @@ limits_config:
   reject_old_samples: false
   reject_old_samples_max_age: 8760h
   unordered_writes: true
-  max_query_length: 0
+  # Guardrails so a single heavy query (e.g. the status-page regex scan of
+  # {log_type="laravel"}) can't peg CPU and build an unbounded query queue.
+  max_query_length: 744h          # cap at ~31d instead of unlimited (0)
+  query_timeout: 60s              # kill runaway queries instead of queueing forever
+  split_queries_by_interval: 15m  # split range queries so they parallelise + cache
+  max_query_parallelism: 16
+
+# Cap concurrent query execution on this single-binary querier so query load
+# can't fully starve ingestion/internal gRPC (the DeadlineExceeded ratestore errors).
+querier:
+  max_concurrent: 6
 
 schema_config:
   configs:
