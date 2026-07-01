@@ -22,8 +22,8 @@
     {
       "id": 1,
       "type": "table",
-      "title": "Hosts Overloaded — Active Now",
-      "description": "Hosts where the 15-minute load average currently exceeds the CPU core count. Refreshes every 30s.",
+      "title": "Linux Hosts Overloaded — Active Now",
+      "description": "Linux hosts where the 15-minute load average currently exceeds the CPU core count. Refreshes every 30s.",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "gridPos": { "h": 12, "w": 12, "x": 0, "y": 0 },
       "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Load (15m)" }] },
@@ -36,7 +36,7 @@
           "noValue": "No overloaded hosts right now"
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View Host", "url": "/d/VMwExHoV?var-host=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View Host", "url": "/d/vm-load-detail?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
           { "matcher": { "id": "byName", "options": "Load (15m)" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
         ]
       },
@@ -50,8 +50,8 @@
     {
       "id": 2,
       "type": "table",
-      "title": "Hosts Overloaded — Triggered Today",
-      "description": "Hosts where load exceeded CPU count at any point since midnight. Shows the peak load-to-CPU ratio.",
+      "title": "Linux Hosts Overloaded — Triggered Today",
+      "description": "Linux hosts where load exceeded CPU count at any point since midnight. Shows the peak load-to-CPU ratio.",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "gridPos": { "h": 12, "w": 12, "x": 12, "y": 0 },
       "timeFrom": "now/d",
@@ -65,7 +65,7 @@
           "noValue": "No hosts were overloaded today"
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View Host", "url": "/d/VMwExHoV?var-host=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View Host", "url": "/d/vm-load-detail?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
           { "matcher": { "id": "byName", "options": "Peak Load Ratio" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
         ]
       },
@@ -74,6 +74,63 @@
         { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
         { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Peak Load Ratio" } } },
         { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Peak Load Ratio" }] } }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Windows Hosts Overloaded — Active Now",
+      "description": "Windows hosts where the processor queue length currently exceeds the logical CPU count. Refreshes every 30s.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 12 },
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Proc Queue Length" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "noValue": "No overloaded hosts right now"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View Host", "url": "/d/vm-load-detail?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Proc Queue Length" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "windows_system_processor_queue_length{job=\"windows\"} > on(host) group_left() count by(host)(windows_cpu_time_total{mode=\"idle\", job=\"windows\"})", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Proc Queue Length" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Proc Queue Length" }] } }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Windows Hosts Overloaded — Triggered Today",
+      "description": "Windows hosts where the processor queue length exceeded the logical CPU count at any point since midnight. Shows the peak queue-to-CPU ratio.",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 12 },
+      "timeFrom": "now/d",
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "reducer": ["sum"], "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Peak Queue Ratio" }] },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "inspect": false },
+          "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }, { "color": "red", "value": 2 }] },
+          "noValue": "No hosts were overloaded today"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Host" }, "properties": [{ "id": "links", "value": [{ "title": "View Host", "url": "/d/vm-load-detail?var-vm=${__data.fields.Host}", "targetBlank": false }] }, { "id": "custom.width", "value": 240 }] },
+          { "matcher": { "id": "byName", "options": "Peak Queue Ratio" }, "properties": [{ "id": "custom.displayMode", "value": "color-background-solid" }] }
+        ]
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" }, "editorMode": "code", "expr": "max_over_time(\n  (windows_system_processor_queue_length{job=\"windows\"} / on(host) group_left() count by(host)(windows_cpu_time_total{mode=\"idle\", job=\"windows\"}))\n  [$__range:5m]\n) > 1", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "A" }],
+      "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["host", "Value"] } } },
+        { "id": "organize", "options": { "renameByName": { "host": "Host", "Value": "Peak Queue Ratio" } } },
+        { "id": "sortBy", "options": { "fields": [{ "desc": true, "displayName": "Peak Queue Ratio" }] } }
       ]
     }
   ]
