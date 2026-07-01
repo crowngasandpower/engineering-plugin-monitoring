@@ -3666,7 +3666,7 @@
           "type": "prometheus",
           "uid": "PBFA97CFB590B2093"
         },
-        "definition": "label_values(vmware_host_info{vcenter=~\"$vcenter\", cmo=~\"$computemo|$clustermo\"}, host)",
+        "definition": "label_values(vmware_host_info{vcenter=~\"$vcenter\", cmo=~\"$computemo|$clustermo|domain-s.*\"}, host)",
         "hide": 0,
         "includeAll": true,
         "label": "ESXi Host",
@@ -3674,7 +3674,7 @@
         "name": "esxi_host",
         "options": [],
         "query": {
-          "query": "label_values(vmware_host_info{vcenter=~\"$vcenter\", cmo=~\"$computemo|$clustermo\"}, host)",
+          "query": "label_values(vmware_host_info{vcenter=~\"$vcenter\", cmo=~\"$computemo|$clustermo|domain-s.*\"}, host)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -3689,7 +3689,7 @@
           "type": "prometheus",
           "uid": "PBFA97CFB590B2093"
         },
-        "definition": "label_values(vmware_host_info{vcenter=~\"$vcenter\", cmo=~\"$computemo|$clustermo\", host=~\"$esxi_host\"}, hostmo)",
+        "definition": "label_values(vmware_host_info{vcenter=~\"$vcenter\", cmo=~\"$computemo|$clustermo|domain-s.*\", host=~\"$esxi_host\"}, hostmo)",
         "hide": 2,
         "includeAll": true,
         "label": "",
@@ -3697,7 +3697,7 @@
         "name": "hostmolist",
         "options": [],
         "query": {
-          "query": "label_values(vmware_host_info{vcenter=~\"$vcenter\", cmo=~\"$computemo|$clustermo\", host=~\"$esxi_host\"}, hostmo)",
+          "query": "label_values(vmware_host_info{vcenter=~\"$vcenter\", cmo=~\"$computemo|$clustermo|domain-s.*\", host=~\"$esxi_host\"}, hostmo)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
