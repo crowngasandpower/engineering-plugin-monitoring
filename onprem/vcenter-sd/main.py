@@ -105,7 +105,14 @@ def poll():
                     target_list = linux_targets
                 if ip:
                     if hostname and SAFE_HOSTNAME_RE.match(hostname):
-                        target_addr = hostname
+                        # Emit an FQDN. Guests report their hostname inconsistently
+                        # (some short like "proxysql-1", some already FQDN). The
+                        # metrics-proxy's nginx resolver does NOT apply a search
+                        # domain, so a bare short name fails to resolve → 502 → the
+                        # host shows DOWN on live. Appending the domain makes every
+                        # target resolvable. Prometheus strips ".crowngp.local" off
+                        # the instance label in relabel, so metric labels are unchanged.
+                        target_addr = hostname if '.' in hostname else f'{hostname}.crowngp.local'
                     else:
                         if hostname:
                             print(f'Unsafe hostname {hostname!r} for VM {vm.name!r} — using IP {ip}')
