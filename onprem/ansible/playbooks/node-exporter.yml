@@ -1,0 +1,13 @@
+---
+# Roll out / update node_exporter across all Linux monitoring targets.
+#
+#   ansible-playbook playbooks/node-exporter.yml
+#   ansible-playbook playbooks/node-exporter.yml --limit apps-prod-1
+#   ansible-playbook playbooks/node-exporter.yml --check --diff
+#
+- name: Install and configure node_exporter on Linux hosts
+  hosts: linux
+  gather_facts: true
+  serial: "50%"        # roll out in waves so a bad release can't take every host at once
+  roles:
+    - node_exporter

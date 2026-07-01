@@ -1,0 +1,18 @@
+---
+# Join non-domain Linux hosts to AD for auto-DNS (SSSD dyndns) + additive
+# domain-admin login. Existing/local user PAM and sudo are NOT modified.
+#
+#   Requires at runtime (never commit these):
+#     -e ad_join_user=<account-that-can-join-computers>
+#     -e ad_join_password="$(cat ~/.ad_join_pw)"
+#
+#   Pilot one host first:
+#     ansible-playbook playbooks/ad-join.yml --limit <pilot> -e ad_join_user=jsa -e ad_join_password="$(cat ~/.ad_join_pw)"
+#
+- name: Domain-join Linux hosts (auto-DNS via SSSD)
+  hosts: domain_join
+  gather_facts: true
+  serial: 1
+  become: true
+  roles:
+    - ad_join

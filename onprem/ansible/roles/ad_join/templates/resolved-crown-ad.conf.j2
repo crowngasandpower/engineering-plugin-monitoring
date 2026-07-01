@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# Routes {{ ad_domain }} lookups to the AD DCs via systemd-resolved. Without the
+# routing domain, resolved won't query the DCs for AD names and `realm` can't
+# discover the domain. "~" makes it a routing-only domain (not a global search suffix).
+[Resolve]
+DNS={{ ad_dns_servers | join(' ') }}
+Domains=~{{ ad_domain }}

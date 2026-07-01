@@ -1,0 +1,19 @@
+---
+# Pinned to match onprem/scripts/install-node-exporter.sh. Bump deliberately.
+node_exporter_version: "1.8.2"
+
+node_exporter_user: node_exporter
+node_exporter_bin: /usr/local/bin/node_exporter
+node_exporter_listen_address: ":9100"
+
+# GitHub release download. Architecture is resolved in tasks from ansible_architecture.
+node_exporter_download_base: "https://github.com/prometheus/node_exporter/releases/download"
+
+# Collector flags. The systemd collector matches the shell script's behaviour.
+# fs-types-exclude is empty by default and overridden for swarm nodes
+# (group_vars/swarm.yml) where cifs/nfs4/overlay mounts hang the filesystem collector.
+node_exporter_extra_args:
+  - "--collector.systemd"
+  - '--collector.systemd.unit-include=.+\.service'
+
+node_exporter_fs_types_exclude: ""

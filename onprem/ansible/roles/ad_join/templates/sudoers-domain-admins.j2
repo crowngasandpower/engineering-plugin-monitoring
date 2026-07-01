@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# Additive sudo for the AD domain-admin group. New drop-in only — existing
+# /etc/sudoers and other drop-ins are untouched. The space in the group name is
+# backslash-escaped as sudoers requires.
+%{{ ad_sudo_group | replace(' ', '\\ ') }} ALL=(ALL:ALL) ALL

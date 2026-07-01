@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Prometheus Node Exporter
+After=network.target
+
+[Service]
+User={{ node_exporter_user }}
+{% set _args = ['--web.listen-address=' ~ node_exporter_listen_address] + node_exporter_extra_args %}
+{% if node_exporter_fs_types_exclude | length > 0 %}
+{% set _args = _args + ['--collector.filesystem.fs-types-exclude=' ~ node_exporter_fs_types_exclude] %}
+{% endif %}
+ExecStart={{ node_exporter_bin }} {{ _args | join(' ') }}
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

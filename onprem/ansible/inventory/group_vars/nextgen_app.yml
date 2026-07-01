@@ -1,0 +1,6 @@
+---
+# Nextgen/Fusion app servers: the MinIO file-service container publishes host
+# :9100 (mapped to MinIO's :9000) and :9101 (console), so node_exporter's default
+# port is unavailable. Bind it to :9110 instead. The metrics-proxy has explicit
+# per-host routes pointing /node/ at :9110 for these hosts.
+node_exporter_listen_address: ":9110"
