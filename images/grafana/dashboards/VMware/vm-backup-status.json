@@ -422,6 +422,16 @@
             },
             "properties": [
               {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "🔕 Suppress backup-overdue alert (this VM)",
+                    "url": "http://poc-containers/exemptions/suppress/add?category=backup_overdue&identifier=${__data.fields.VM}&reason=Suppressed%20from%20VM%20Backup%20Status%20dashboard",
+                    "targetBlank": true
+                  }
+                ]
+              },
+              {
                 "id": "custom.width",
                 "value": 300
               }

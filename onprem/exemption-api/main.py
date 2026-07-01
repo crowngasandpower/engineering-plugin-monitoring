@@ -240,8 +240,19 @@ def _page(msg: str) -> HTMLResponse:
 </head>
 <body>
 <p>{msg}</p>
-<p><a href="javascript:history.back()">← Back to dashboard</a></p>
-<script>setTimeout(() => location.href = document.referrer || '/', 1500)</script>
+<p id="nav"><a href="javascript:history.back()">← Back to dashboard</a></p>
+<script>
+// Return the operator to wherever they came from. When this page is opened in a
+// new tab (e.g. the "Suppress" link on the Memory Performance dashboard), the
+// browser sends no referrer and there is no history to go back to — the old
+// `document.referrer || '/'` fallback then navigated to this API's own root ('/'),
+// which 404s. Detect that case and show a close-tab hint instead of redirecting.
+setTimeout(function () {{
+  if (document.referrer) {{ location.href = document.referrer; }}
+  else if (window.history.length > 1) {{ history.back(); }}
+  else {{ document.getElementById('nav').textContent = 'You can now close this tab.'; }}
+}}, 1500);
+</script>
 </body>
 </html>""")
 
@@ -289,6 +300,9 @@ _vm_powered_off_exempt_lock = threading.Lock()
 _vm_backup_overdue_exempt_cache: tuple[float, str] | None = None
 _VM_BACKUP_OVERDUE_EXEMPT_TTL = 60.0
 _vm_backup_overdue_exempt_lock = threading.Lock()
+_exporter_exempt_cache: tuple[float, str] | None = None
+_EXPORTER_EXEMPT_TTL = 60.0
+_exporter_exempt_lock = threading.Lock()
 
 @app.get("/node-memory-exempt/metrics")
 def node_memory_exempt_metrics():
@@ -358,6 +372,64 @@ def node_memory_exempt_metrics():
     body = "\n".join(lines) + "\n"
     with _node_memory_exempt_lock:
         _node_memory_exempt_cache = (now, body)
+    return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+
+
+# In-process cache — valid only because the Dockerfile pins --workers 1.
+@app.get("/exporter-exempt/metrics")
+def exporter_exempt_metrics():
+    """Prometheus text format — one gauge per host suppressed from the Host Exporter
+    Offline alert and the "Targets Down" panel. Scraped by the exporter_exempt job so
+    the alert can filter DOWN targets via `unless on(instance) exporter_exempt`.
+
+    Keyed on the `instance` label (the clean scrape-target name), NOT the friendly
+    `host` label: /exempt/add already forbids spaces, so every stored identifier is a
+    clean token that matches the instance label exactly. This is the same table
+    (exporter_exempt) that drives the "Exporter Not Installed" dashboard exemptions.
+
+    This endpoint is intentionally unauthenticated. It is not routed through the
+    Traefik/nginx proxy and is only reachable from within the Docker compose network
+    (the Prometheus container is the sole intended consumer)."""
+    global _exporter_exempt_cache
+    now = time.monotonic()
+    with _exporter_exempt_lock:
+        if _exporter_exempt_cache is not None:
+            cached_at, body = _exporter_exempt_cache
+            if now - cached_at < _EXPORTER_EXEMPT_TTL:
+                return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        stale = _exporter_exempt_cache
+
+    # Cache miss — query DB outside the lock. Same rationale as node_memory_exempt_metrics:
+    # returning a stale/empty body on DB failure keeps the scrape succeeding, so the
+    # `unless on(instance) exporter_exempt` clause degrades to a no-op (alert fires) rather
+    # than the series vanishing and un-suppressing everything abruptly.
+    try:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT hostname FROM exporter_exempt ORDER BY hostname")
+            rows = cur.fetchall()
+    except Exception as exc:
+        _log.warning("exporter_exempt_metrics: DB unavailable (%s); returning %s",
+                     exc, "stale cache" if stale is not None else "empty metrics")
+        if stale is not None:
+            _, body = stale
+            return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
+        return PlainTextResponse(
+            "# HELP exporter_exempt 1 if this host is suppressed from the exporter-offline alert and Targets Down panel\n"
+            "# TYPE exporter_exempt gauge\n",
+            media_type="text/plain; version=0.0.4",
+        )
+
+    lines = [
+        "# HELP exporter_exempt 1 if this host is suppressed from the exporter-offline alert and Targets Down panel",
+        "# TYPE exporter_exempt gauge",
+    ]
+    for (hostname,) in rows:
+        # _escape_label is mandatory here — hostname is user-supplied via /exempt/add.
+        lines.append(f'exporter_exempt{{instance="{_escape_label(hostname)}"}} 1')
+    body = "\n".join(lines) + "\n"
+    with _exporter_exempt_lock:
+        _exporter_exempt_cache = (now, body)
     return PlainTextResponse(body, media_type="text/plain; version=0.0.4")
 
 

@@ -448,6 +448,12 @@
               { "id": "custom.displayMode", "value": "color-background" },
               { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 75 }, { "color": "red", "value": 90 }] } }
             ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Device" },
+            "properties": [
+              { "id": "links", "value": [{ "title": "🔕 Exempt this device from the offline alert", "url": "http://poc-containers/exemptions/unifi/add?device=${__data.fields.Device}&reason=Exempted%20from%20UniFi%20Site%20Detail%20dashboard", "targetBlank": true }] }
+            ]
           }
         ]
       }
@@ -487,6 +493,12 @@
               { "id": "custom.displayMode", "value": "color-background" },
               { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }, { "color": "orange", "value": 2 }] } },
               { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "Online" }, "0": { "text": "Offline" }, "2": { "text": "Offline (Suppressed)" } } }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Console" },
+            "properties": [
+              { "id": "links", "value": [{ "title": "🔕 Exempt this console from the offline alert", "url": "http://poc-containers/exemptions/unifi/console/add?site=${__data.fields.Console}&reason=Exempted%20from%20UniFi%20Site%20Detail%20dashboard", "targetBlank": true }] }
             ]
           }
         ]
